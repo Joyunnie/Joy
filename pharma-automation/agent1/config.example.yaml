@@ -1,0 +1,23 @@
+pm20:
+  install_dir: "C:\\PM20"
+  config_file: "C:\\PM20\\config\\pm20.ini"
+  service_name: "PM20MariaDB"
+  data_dir: "C:\\PM20\\MariaDB\\data"
+
+agent:
+  polling_interval_seconds: 300   # 5분
+  cloud_api_url: "https://api.example.com"
+  # api_key: 환경변수 PHARMA_API_KEY 사용
+
+backup:
+  output_dir: "D:\\PM20_Backups"
+  compress: true
+  compress_format: "zip"          # zip | tar.gz
+  retention_days: 30
+  retention_min_count: 3
+  min_disk_space_gb: 10
+  lock_file: "D:\\PM20_Backups\\.backup.lock"
+  critical_file_patterns:
+    - "ibdata*"
+    - "ib_logfile*"
+    - "#innodb_redo/*"
