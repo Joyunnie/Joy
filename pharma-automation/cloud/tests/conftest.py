@@ -1,28 +1,26 @@
-import asyncio
 import hashlib
 from collections.abc import AsyncGenerator
 
-import pytest
+import bcrypt
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.database import get_db
 from app.main import app
-from app.models.tables import Drug, Pharmacy
+from app.models.tables import Drug, Pharmacy, User
 
 TEST_DATABASE_URL = "postgresql+asyncpg://pharma_user:pharma_pass@localhost:5432/pharma"
 TEST_API_KEY = "test-api-key-12345"
 TEST_API_KEY_HASH = hashlib.sha256(TEST_API_KEY.encode()).hexdigest()
-
-# Separate engine for seeding (NullPool avoids connection sharing issues)
-from sqlalchemy.pool import NullPool
+TEST_INVITE_CODE = "TEST-INVITE"
+TEST_USER_PASSWORD = "testpass123"
 
 seed_engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
 seed_session_factory = async_sessionmaker(seed_engine, class_=AsyncSession, expire_on_commit=False)
 
-# App engine — also NullPool for test isolation
 app_engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
 app_session_factory = async_sessionmaker(app_engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -39,7 +37,6 @@ async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
 
 app.dependency_overrides[get_db] = override_get_db
 
-# Cached seed data so we only insert once
 _seed_cache: dict | None = None
 
 
@@ -52,6 +49,10 @@ async def _ensure_seed():
         result = await db.execute(select(Pharmacy).where(Pharmacy.name == "테스트약국"))
         existing = result.scalar_one_or_none()
         if existing:
+            # invite_code가 없으면 설정
+            if existing.invite_code != TEST_INVITE_CODE:
+                existing.invite_code = TEST_INVITE_CODE
+                await db.commit()
             _seed_cache = {"pharmacy_id": existing.id, "api_key": TEST_API_KEY}
             return _seed_cache
 
@@ -60,6 +61,7 @@ async def _ensure_seed():
             patient_hash_salt="test-salt",
             patient_hash_algorithm="SHA-256",
             api_key_hash=TEST_API_KEY_HASH,
+            invite_code=TEST_INVITE_CODE,
             default_alert_days_before=3,
         )
         db.add(pharmacy)
@@ -75,9 +77,67 @@ async def _ensure_seed():
         return _seed_cache
 
 
+_user_seed_cache: dict | None = None
+
+
+async def _ensure_user_seed(pharmacy_id: int):
+    global _user_seed_cache
+    if _user_seed_cache is not None:
+        return _user_seed_cache
+
+    async with seed_session_factory() as db:
+        result = await db.execute(
+            select(User).where(User.pharmacy_id == pharmacy_id, User.username == "testuser")
+        )
+        existing = result.scalar_one_or_none()
+        if existing:
+            _user_seed_cache = {
+                "user_id": existing.id,
+                "pharmacy_id": existing.pharmacy_id,
+                "username": existing.username,
+                "password": TEST_USER_PASSWORD,
+            }
+            return _user_seed_cache
+
+        pw_hash = bcrypt.hashpw(TEST_USER_PASSWORD.encode(), bcrypt.gensalt()).decode()
+        user = User(
+            pharmacy_id=pharmacy_id,
+            username="testuser",
+            password_hash=pw_hash,
+            role="PHARMACIST",
+        )
+        db.add(user)
+        await db.commit()
+
+        _user_seed_cache = {
+            "user_id": user.id,
+            "pharmacy_id": user.pharmacy_id,
+            "username": user.username,
+            "password": TEST_USER_PASSWORD,
+        }
+        return _user_seed_cache
+
+
 @pytest_asyncio.fixture
 async def seed_data():
     return await _ensure_seed()
+
+
+@pytest_asyncio.fixture
+async def user_seed_data(seed_data):
+    return await _ensure_user_seed(seed_data["pharmacy_id"])
+
+
+@pytest_asyncio.fixture
+async def auth_headers(client, user_seed_data):
+    """로그인하여 Authorization 헤더 반환."""
+    resp = await client.post("/api/v1/auth/login", json={
+        "pharmacy_id": user_seed_data["pharmacy_id"],
+        "username": user_seed_data["username"],
+        "password": user_seed_data["password"],
+    })
+    tokens = resp.json()
+    return {"Authorization": f"Bearer {tokens['access_token']}"}
 
 
 @pytest_asyncio.fixture

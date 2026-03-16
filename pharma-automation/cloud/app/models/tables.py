@@ -35,6 +35,7 @@ class Pharmacy(Base):
     patient_hash_salt: Mapped[str] = mapped_column(String(64))
     patient_hash_algorithm: Mapped[str] = mapped_column(String(20), default="SHA-256")
     api_key_hash: Mapped[str | None] = mapped_column(String(128))
+    invite_code: Mapped[str | None] = mapped_column(String(20))
     default_alert_days_before: Mapped[int] = mapped_column(SmallInteger, default=3)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
@@ -63,6 +64,8 @@ class RefreshToken(Base):
     user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
     token_hash: Mapped[str] = mapped_column(String(128), unique=True)
     expires_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ)
+    is_revoked: Mapped[bool] = mapped_column(Boolean, default=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
 
 

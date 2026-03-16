@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.database import engine
-from app.routers import alerts, inventory, predictions, sync
+from app.routers import alerts, auth, inventory, predictions, sync
 
 
 @asynccontextmanager
@@ -18,6 +18,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(sync.router, prefix="/api/v1/sync", tags=["sync"])
 app.include_router(alerts.router, prefix="/api/v1/alerts", tags=["app-dev"])
 app.include_router(inventory.router, prefix="/api/v1/inventory", tags=["app-dev"])

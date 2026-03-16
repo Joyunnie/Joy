@@ -1,10 +1,10 @@
-# TODO(Phase 2B): JWT 인증 추가 — 현재는 개발/테스트용
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models.tables import Drug, DrugThreshold, PrescriptionInventory
+from app.dependencies import get_current_user
+from app.models.tables import Drug, DrugThreshold, PrescriptionInventory, User
 from app.schemas.api import InventoryStatusItem, InventoryStatusResponse
 
 router = APIRouter()
@@ -12,7 +12,7 @@ router = APIRouter()
 
 @router.get("/status", response_model=InventoryStatusResponse)
 async def get_inventory_status(
-    pharmacy_id: int = Query(...),
+    user: User = Depends(get_current_user),
     low_stock_only: bool = Query(False),
     db: AsyncSession = Depends(get_db),
 ):
@@ -27,7 +27,7 @@ async def get_inventory_status(
                 DrugThreshold.is_active == True,  # noqa: E712
             ),
         )
-        .where(PrescriptionInventory.pharmacy_id == pharmacy_id)
+        .where(PrescriptionInventory.pharmacy_id == user.pharmacy_id)
         .order_by(PrescriptionInventory.cassette_number)
     )
     rows = result.all()

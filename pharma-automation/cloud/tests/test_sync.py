@@ -97,12 +97,9 @@ async def test_sync_cassette_mapping(client: AsyncClient, seed_data: dict):
 
 
 @pytest.mark.asyncio
-async def test_get_alerts(client: AsyncClient, seed_data: dict):
-    """알림 목록 조회."""
-    resp = await client.get(
-        "/api/v1/alerts",
-        params={"pharmacy_id": seed_data["pharmacy_id"]},
-    )
+async def test_get_alerts(client: AsyncClient, auth_headers: dict):
+    """알림 목록 조회 (JWT 인증 필요)."""
+    resp = await client.get("/api/v1/alerts", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert "alerts" in data
@@ -110,24 +107,18 @@ async def test_get_alerts(client: AsyncClient, seed_data: dict):
 
 
 @pytest.mark.asyncio
-async def test_get_inventory_status(client: AsyncClient, seed_data: dict):
-    """재고 현황 조회."""
-    resp = await client.get(
-        "/api/v1/inventory/status",
-        params={"pharmacy_id": seed_data["pharmacy_id"]},
-    )
+async def test_get_inventory_status(client: AsyncClient, auth_headers: dict):
+    """재고 현황 조회 (JWT 인증 필요)."""
+    resp = await client.get("/api/v1/inventory/status", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert "items" in data
 
 
 @pytest.mark.asyncio
-async def test_get_predictions(client: AsyncClient, seed_data: dict):
-    """예측 목록 조회."""
-    resp = await client.get(
-        "/api/v1/predictions",
-        params={"pharmacy_id": seed_data["pharmacy_id"]},
-    )
+async def test_get_predictions(client: AsyncClient, auth_headers: dict):
+    """예측 목록 조회 (JWT 인증 필요)."""
+    resp = await client.get("/api/v1/predictions", headers=auth_headers)
     assert resp.status_code == 200
     data = resp.json()
     assert "predictions" in data

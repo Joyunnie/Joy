@@ -19,6 +19,7 @@ CREATE TABLE pharmacies (
     patient_hash_salt VARCHAR(64) NOT NULL,
     patient_hash_algorithm VARCHAR(20) NOT NULL DEFAULT 'SHA-256',
     api_key_hash VARCHAR(128),
+    invite_code VARCHAR(20),
     default_alert_days_before SMALLINT NOT NULL DEFAULT 3,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -43,6 +44,8 @@ CREATE TABLE refresh_tokens (
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     token_hash VARCHAR(128) NOT NULL UNIQUE,
     expires_at TIMESTAMPTZ NOT NULL,
+    is_revoked BOOLEAN NOT NULL DEFAULT FALSE,
+    revoked_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
