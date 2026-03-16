@@ -11,5 +11,14 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./docs/db-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
 
+  cloud:
+    build: ./cloud
+    ports:
+      - "8000:8000"
+    environment:
+      PHARMA_DATABASE_URL: "postgresql+asyncpg://pharma_user:pharma_pass@db:5432/pharma"
+    depends_on:
+      - db
+
 volumes:
   pgdata:

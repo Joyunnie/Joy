@@ -1,0 +1,29 @@
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+
+from app.database import engine
+from app.routers import alerts, inventory, predictions, sync
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    await engine.dispose()
+
+
+app = FastAPI(
+    title="Pharmacy Automation Cloud API",
+    version="2.0.0",
+    lifespan=lifespan,
+)
+
+app.include_router(sync.router, prefix="/api/v1/sync", tags=["sync"])
+app.include_router(alerts.router, prefix="/api/v1/alerts", tags=["app-dev"])
+app.include_router(inventory.router, prefix="/api/v1/inventory", tags=["app-dev"])
+app.include_router(predictions.router, prefix="/api/v1/predictions", tags=["app-dev"])
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
