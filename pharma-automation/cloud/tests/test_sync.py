@@ -4,10 +4,19 @@ from httpx import AsyncClient
 
 @pytest.mark.asyncio
 async def test_sync_inventory_no_auth(client: AsyncClient):
-    """API key 없이 호출 시 401."""
+    """API key 없이 호출 시 422 (헤더 누락), 잘못된 키 시 401."""
+    # No header → 422 (FastAPI Header validation)
     resp = await client.post(
         "/api/v1/sync/inventory",
         json={"items": [], "synced_at": "2026-03-16T02:00:00+09:00"},
+    )
+    assert resp.status_code == 422
+
+    # Wrong key → 401
+    resp = await client.post(
+        "/api/v1/sync/inventory",
+        json={"items": [], "synced_at": "2026-03-16T02:00:00+09:00"},
+        headers={"X-API-Key": "wrong-key"},
     )
     assert resp.status_code == 401
 
