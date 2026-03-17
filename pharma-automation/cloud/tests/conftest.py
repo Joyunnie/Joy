@@ -10,7 +10,15 @@ from sqlalchemy.pool import NullPool
 
 from app.database import get_db
 from app.main import app
-from app.models.tables import Drug, Pharmacy, User
+from app.models.tables import (
+    AlertLog,
+    Drug,
+    DrugThreshold,
+    InventoryAuditLog,
+    OtcInventory,
+    Pharmacy,
+    User,
+)
 
 TEST_DATABASE_URL = "postgresql+asyncpg://pharma_user:pharma_pass@localhost:5432/pharma"
 TEST_API_KEY = "test-api-key-12345"
@@ -145,3 +153,72 @@ async def client():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+
+
+# --- OTC 테스트용 시드/헬퍼 ---
+
+_otc_drug_cache: dict | None = None
+
+
+async def _ensure_otc_drug_seed(pharmacy_id: int):
+    """OTC 약품(타이레놀)의 drug_id 조회 + threshold 시드."""
+    global _otc_drug_cache
+    if _otc_drug_cache is not None:
+        return _otc_drug_cache
+
+    async with seed_session_factory() as db:
+        result = await db.execute(select(Drug).where(Drug.standard_code == "KD67890"))
+        drug = result.scalar_one_or_none()
+        if not drug:
+            drug = Drug(standard_code="KD67890", name="타이레놀", category="OTC")
+            db.add(drug)
+            await db.flush()
+
+        # threshold 시드 (min_quantity=10)
+        th_result = await db.execute(
+            select(DrugThreshold).where(
+                DrugThreshold.pharmacy_id == pharmacy_id,
+                DrugThreshold.drug_id == drug.id,
+            )
+        )
+        if not th_result.scalar_one_or_none():
+            db.add(DrugThreshold(
+                pharmacy_id=pharmacy_id,
+                drug_id=drug.id,
+                min_quantity=10,
+                is_active=True,
+            ))
+
+        await db.commit()
+        _otc_drug_cache = {"drug_id": drug.id, "drug_name": drug.name}
+        return _otc_drug_cache
+
+
+@pytest_asyncio.fixture
+async def otc_drug_seed(seed_data):
+    """OTC 약품 + threshold 시드. seed_data["pharmacy_id"] 기준."""
+    return await _ensure_otc_drug_seed(seed_data["pharmacy_id"])
+
+
+@pytest_asyncio.fixture(autouse=False)
+async def cleanup_otc(seed_data):
+    """OTC 테스트 전 기존 otc_inventory + 관련 audit/alert 정리."""
+    async with seed_session_factory() as db:
+        pharmacy_id = seed_data["pharmacy_id"]
+        await db.execute(
+            OtcInventory.__table__.delete().where(
+                OtcInventory.pharmacy_id == pharmacy_id
+            )
+        )
+        await db.execute(
+            InventoryAuditLog.__table__.delete().where(
+                InventoryAuditLog.pharmacy_id == pharmacy_id,
+            )
+        )
+        await db.execute(
+            AlertLog.__table__.delete().where(
+                AlertLog.pharmacy_id == pharmacy_id,
+            )
+        )
+        await db.commit()
+    yield

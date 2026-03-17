@@ -92,6 +92,8 @@ class OtcInventory(Base):
     pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
     drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id"))
     current_quantity: Mapped[int] = mapped_column(Integer, default=0)
+    display_location: Mapped[str | None] = mapped_column(String(100))
+    storage_location: Mapped[str | None] = mapped_column(String(100))
     last_counted_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
     version: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")

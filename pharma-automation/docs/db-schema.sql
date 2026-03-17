@@ -67,6 +67,8 @@ CREATE TABLE otc_inventory (
     pharmacy_id BIGINT NOT NULL REFERENCES pharmacies(id),
     drug_id BIGINT NOT NULL REFERENCES drugs(id),
     current_quantity INTEGER NOT NULL DEFAULT 0,
+    display_location VARCHAR(100),       -- 매장 진열 위치 (e.g. "A열 3번 선반")
+    storage_location VARCHAR(100),       -- 창고 내 위치 (e.g. "창고2-B선반")
     last_counted_at TIMESTAMPTZ,
     version INTEGER NOT NULL DEFAULT 1,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -276,7 +278,7 @@ CREATE TABLE inventory_audit_log (
     pharmacy_id BIGINT NOT NULL REFERENCES pharmacies(id),
     table_name VARCHAR(50) NOT NULL,
     record_id BIGINT NOT NULL,
-    action VARCHAR(20) NOT NULL CHECK (action IN ('INSERT', 'UPDATE', 'DELETE')),
+    action VARCHAR(20) NOT NULL CHECK (action IN ('INSERT', 'UPDATE', 'DELETE', 'OTC_DELETE')),
     old_values JSONB,
     new_values JSONB,
     performed_by BIGINT REFERENCES users(id),

@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.database import engine
-from app.routers import alerts, auth, inventory, predictions, sync
+from app.routers import alerts, auth, drugs, inventory, otc, predictions, sync
 
 
 @asynccontextmanager
@@ -23,6 +23,8 @@ app.include_router(sync.router, prefix="/api/v1/sync", tags=["sync"])
 app.include_router(alerts.router, prefix="/api/v1/alerts", tags=["app-dev"])
 app.include_router(inventory.router, prefix="/api/v1/inventory", tags=["app-dev"])
 app.include_router(predictions.router, prefix="/api/v1/predictions", tags=["app-dev"])
+app.include_router(otc.router)
+app.include_router(drugs.router)
 
 
 @app.get("/health")
