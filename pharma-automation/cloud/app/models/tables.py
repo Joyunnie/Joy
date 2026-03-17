@@ -285,6 +285,8 @@ class NarcoticsInventory(Base):
     lot_number: Mapped[str] = mapped_column(String(50))
     current_quantity: Mapped[int] = mapped_column(Integer, default=0)
     last_inspected_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
 
@@ -299,7 +301,7 @@ class NarcoticsTransaction(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
     narcotics_inventory_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("narcotics_inventory.id"))
-    transaction_type: Mapped[str] = mapped_column(String(20))  # RECEIVE | DISPENSE | DISPOSE | ADJUST
+    transaction_type: Mapped[str] = mapped_column(String(20))  # RECEIVE | DISPENSE | DISPOSE | ADJUST | RETURN
     quantity: Mapped[int] = mapped_column(Integer)
     remaining_quantity: Mapped[int] = mapped_column(Integer)
     patient_hash: Mapped[str | None] = mapped_column(String(64))
@@ -321,7 +323,7 @@ class InventoryAuditLog(Base):
     pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
     table_name: Mapped[str] = mapped_column(String(50))
     record_id: Mapped[int] = mapped_column(BigInteger)
-    action: Mapped[str] = mapped_column(String(20))  # INSERT | UPDATE | DELETE
+    action: Mapped[str] = mapped_column(String(20))  # INSERT | UPDATE | DELETE | OTC_DELETE | NARCOTICS_DEACTIVATE
     old_values: Mapped[dict | None] = mapped_column(JSONB)
     new_values: Mapped[dict | None] = mapped_column(JSONB)
     performed_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"))

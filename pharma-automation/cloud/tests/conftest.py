@@ -15,6 +15,8 @@ from app.models.tables import (
     Drug,
     DrugThreshold,
     InventoryAuditLog,
+    NarcoticsInventory,
+    NarcoticsTransaction,
     OtcInventory,
     Pharmacy,
     User,
@@ -208,6 +210,79 @@ async def cleanup_otc(seed_data):
         await db.execute(
             OtcInventory.__table__.delete().where(
                 OtcInventory.pharmacy_id == pharmacy_id
+            )
+        )
+        await db.execute(
+            InventoryAuditLog.__table__.delete().where(
+                InventoryAuditLog.pharmacy_id == pharmacy_id,
+            )
+        )
+        await db.execute(
+            AlertLog.__table__.delete().where(
+                AlertLog.pharmacy_id == pharmacy_id,
+            )
+        )
+        await db.commit()
+    yield
+
+
+# --- Narcotics 테스트용 시드/헬퍼 ---
+
+_narcotic_drug_cache: dict | None = None
+
+
+async def _ensure_narcotic_drug_seed(pharmacy_id: int):
+    """마약류 약품 시드 + threshold (min_quantity=10)."""
+    global _narcotic_drug_cache
+    if _narcotic_drug_cache is not None:
+        return _narcotic_drug_cache
+
+    async with seed_session_factory() as db:
+        result = await db.execute(select(Drug).where(Drug.standard_code == "NC00001"))
+        drug = result.scalar_one_or_none()
+        if not drug:
+            drug = Drug(standard_code="NC00001", name="펜타닐패치", category="NARCOTIC")
+            db.add(drug)
+            await db.flush()
+
+        th_result = await db.execute(
+            select(DrugThreshold).where(
+                DrugThreshold.pharmacy_id == pharmacy_id,
+                DrugThreshold.drug_id == drug.id,
+            )
+        )
+        if not th_result.scalar_one_or_none():
+            db.add(DrugThreshold(
+                pharmacy_id=pharmacy_id,
+                drug_id=drug.id,
+                min_quantity=10,
+                is_active=True,
+            ))
+
+        await db.commit()
+        _narcotic_drug_cache = {"drug_id": drug.id, "drug_name": drug.name}
+        return _narcotic_drug_cache
+
+
+@pytest_asyncio.fixture
+async def narcotic_drug_seed(seed_data):
+    """마약류 약품 + threshold 시드."""
+    return await _ensure_narcotic_drug_seed(seed_data["pharmacy_id"])
+
+
+@pytest_asyncio.fixture(autouse=False)
+async def cleanup_narcotics(seed_data):
+    """Narcotics 테스트 전 기존 narcotics 관련 데이터 정리."""
+    async with seed_session_factory() as db:
+        pharmacy_id = seed_data["pharmacy_id"]
+        await db.execute(
+            NarcoticsTransaction.__table__.delete().where(
+                NarcoticsTransaction.pharmacy_id == pharmacy_id
+            )
+        )
+        await db.execute(
+            NarcoticsInventory.__table__.delete().where(
+                NarcoticsInventory.pharmacy_id == pharmacy_id
             )
         )
         await db.execute(
