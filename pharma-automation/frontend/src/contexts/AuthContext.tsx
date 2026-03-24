@@ -1,0 +1,130 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import type { ReactNode } from 'react';
+import api from '../api/client.ts';
+import type { JwtPayload, TokenResponse } from '../types/api.ts';
+
+interface AuthState {
+  isAuthenticated: boolean;
+  pharmacyId: number | null;
+  username: string | null;
+  role: string | null;
+}
+
+interface AuthContextValue extends AuthState {
+  login: (pharmacyId: number, username: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+function decodeJwt(token: string): JwtPayload | null {
+  try {
+    const base64 = token.split('.')[1];
+    const json = atob(base64);
+    return JSON.parse(json) as JwtPayload;
+  } catch {
+    return null;
+  }
+}
+
+function loadInitialState(): AuthState {
+  // TODO: 프로덕션 배포 시 httpOnly 쿠키 전환 검토
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    return { isAuthenticated: false, pharmacyId: null, username: null, role: null };
+  }
+  const payload = decodeJwt(token);
+  if (!payload || payload.exp * 1000 < Date.now()) {
+    return { isAuthenticated: false, pharmacyId: null, username: null, role: null };
+  }
+  return {
+    isAuthenticated: true,
+    pharmacyId: payload.pharmacy_id,
+    username: null,
+    role: payload.role,
+  };
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [state, setState] = useState<AuthState>(loadInitialState);
+
+  // Try refresh on mount if we have a refresh_token but access expired
+  useEffect(() => {
+    const accessToken = localStorage.getItem('access_token');
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (!accessToken && refreshToken) {
+      api.post('/auth/refresh', { refresh_token: refreshToken })
+        .then(({ data }) => {
+          // TODO: 프로덕션 배포 시 httpOnly 쿠키 전환 검토
+          localStorage.setItem('access_token', data.access_token);
+          const payload = decodeJwt(data.access_token);
+          if (payload) {
+            setState({
+              isAuthenticated: true,
+              pharmacyId: payload.pharmacy_id,
+              username: null,
+              role: payload.role,
+            });
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+        });
+    }
+  }, []);
+
+  const login = useCallback(async (pharmacyId: number, username: string, password: string) => {
+    const { data } = await api.post<TokenResponse>('/auth/login', {
+      pharmacy_id: pharmacyId,
+      username,
+      password,
+    });
+
+    // TODO: 프로덕션 배포 시 httpOnly 쿠키 전환 검토
+    localStorage.setItem('access_token', data.access_token);
+    localStorage.setItem('refresh_token', data.refresh_token);
+
+    const payload = decodeJwt(data.access_token);
+    setState({
+      isAuthenticated: true,
+      pharmacyId: payload?.pharmacy_id ?? pharmacyId,
+      username,
+      role: payload?.role ?? null,
+    });
+  }, []);
+
+  const logout = useCallback(async () => {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (refreshToken) {
+      try {
+        await api.post('/auth/logout', { refresh_token: refreshToken });
+      } catch {
+        // ignore logout errors
+      }
+    }
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    setState({ isAuthenticated: false, pharmacyId: null, username: null, role: null });
+  }, []);
+
+  const value = useMemo(
+    () => ({ ...state, login, logout }),
+    [state, login, logout],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
+}
