@@ -18,7 +18,6 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
   const [recipes, setRecipes] = useState(loadRecipes);
   const [name, setName] = useState('');
   const [open, setOpen] = useState(false);
-  const [importMode, setImportMode] = useState(null); // null | 'merge' | 'overwrite'
   const fileInputRef = useRef(null);
 
   useEffect(() => { setRecipes(loadRecipes()); }, []);
@@ -70,11 +69,6 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
   };
 
   // --- Import ---
-  const triggerImport = (mode) => {
-    setImportMode(mode);
-    fileInputRef.current?.click();
-  };
-
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -82,44 +76,36 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
     reader.onload = (ev) => {
       try {
         const data = JSON.parse(ev.target.result);
-        applyImport(data, importMode);
+        applyImport(data);
       } catch {
         alert('올바른 JSON 파일이 아닙니다.');
       }
-      // Reset file input so same file can be selected again
       if (fileInputRef.current) fileInputRef.current.value = '';
-      setImportMode(null);
     };
     reader.readAsText(file);
   };
 
-  const applyImport = (data, mode) => {
-    if (mode === 'overwrite') {
-      // Replace all data
-      if (data.recipes) localStorage.setItem(STORAGE_KEY, JSON.stringify(data.recipes));
-      if (data.customFoods) localStorage.setItem(CUSTOM_FOODS_KEY, JSON.stringify(data.customFoods));
-      if (data.rFoodOverrides) localStorage.setItem(R_FOODS_KEY, JSON.stringify(data.rFoodOverrides));
-    } else {
-      // Merge: add new recipes (skip same name), append custom foods
-      if (data.recipes) {
-        const existing = loadRecipes();
-        const existingNames = new Set(existing.map(r => r.name));
-        const merged = [...existing, ...data.recipes.filter(r => !existingNames.has(r.name))];
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-      }
-      if (data.customFoods) {
-        const existing = JSON.parse(localStorage.getItem(CUSTOM_FOODS_KEY) || '[]');
-        const existingNames = new Set(existing.map(f => f.name));
-        const merged = [...existing, ...data.customFoods.filter(f => !existingNames.has(f.name))];
-        localStorage.setItem(CUSTOM_FOODS_KEY, JSON.stringify(merged));
-      }
-      if (data.rFoodOverrides) {
-        const existing = JSON.parse(localStorage.getItem(R_FOODS_KEY) || '{}');
-        const merged = { ...existing, ...data.rFoodOverrides };
-        localStorage.setItem(R_FOODS_KEY, JSON.stringify(merged));
-      }
+  // Merge helper: file items overwrite same-name existing, keep rest
+  const mergeByName = (existing, incoming) => {
+    const map = new Map(existing.map(item => [item.name, item]));
+    for (const item of incoming) map.set(item.name, item);
+    return [...map.values()];
+  };
+
+  const applyImport = (data) => {
+    if (data.recipes) {
+      const merged = mergeByName(loadRecipes(), data.recipes);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
     }
-    // Reload page to pick up all changes
+    if (data.customFoods) {
+      const existing = JSON.parse(localStorage.getItem(CUSTOM_FOODS_KEY) || '[]');
+      const merged = mergeByName(existing, data.customFoods);
+      localStorage.setItem(CUSTOM_FOODS_KEY, JSON.stringify(merged));
+    }
+    if (data.rFoodOverrides) {
+      const existing = JSON.parse(localStorage.getItem(R_FOODS_KEY) || '{}');
+      localStorage.setItem(R_FOODS_KEY, JSON.stringify({ ...existing, ...data.rFoodOverrides }));
+    }
     window.location.reload();
   };
 
@@ -178,16 +164,10 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
               내보내기
             </button>
             <button
-              onClick={() => triggerImport('merge')}
+              onClick={() => fileInputRef.current?.click()}
               className="text-[9px] px-1.5 py-0.5 bg-teal-500 text-white rounded hover:bg-teal-600"
             >
-              가져오기 (추가)
-            </button>
-            <button
-              onClick={() => triggerImport('overwrite')}
-              className="text-[9px] px-1.5 py-0.5 bg-red-400 text-white rounded hover:bg-red-500"
-            >
-              가져오기 (덮어쓰기)
+              가져오기
             </button>
             <input
               ref={fileInputRef}
