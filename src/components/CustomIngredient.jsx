@@ -12,6 +12,23 @@ const COMMON_KEYS = [
   '비타민E(mg)', 'EPA(mg)', 'DHA(mg)', '타우린(mg)',
 ];
 
+// 가로형 탭 구분 열 순서 (자료시트 B~BG 열)
+const HORIZONTAL_COLUMNS = [
+  'name', 'unit',
+  '칼로리(Kcal)', '수분(g)', '단백질(g)', '지방(g)', '탄수화물(g)',
+  '비타민A(mcg)', '비타민D(mcg)', '비타민E(mg)', '비타민K(mcg)',
+  '비타민B1(mg)', '비타민B2(mg)', '비타민B6(mg)', '나이아신(mg)',
+  '판토텐산(mg)', '비타민B12(mcg)', '폴산(mcg)',
+  '칼슘(mg)', '인(mg)', '마그네슘(mg)', '나트륨(mg)', '칼륨(mg)',
+  '철(mg)', '구리(mg)', '아연(mg)', '망간(mg)', '셀레늄(mcg)', '요오드(mcg)',
+  '이소루신(mg)', '루신(mg)', '라이신(mg)', '메티오닌(mg)', '시스테인(mg)',
+  '페닐알라린(mg)', '티로신(mg)', '트레오닌(mg)', '트립토판(mg)', '발린(mg)',
+  '히스티딘(mg)', '아르기닌(mg)', '알라닌(mg)', '아스파르트산(mg)',
+  '글루탐산(mg)', '글리신(mg)', '프롤린(mg)', '세린(mg)', '타우린(mg)',
+  '총지방산(mg)', '포화지방산(mg)', '불포화지방산(mg)', '콜레스테롤(mg)',
+  'n-3(mg)', 'n-6(mg)', '리놀레산(mg)', '알파리놀렌산(mg)', 'EPA(mg)', 'DHA(mg)',
+];
+
 // --- Parsing (unchanged) ---
 
 const NUTRIENT_NAME_MAP = {
@@ -104,7 +121,7 @@ function findMapping(name) {
   return null;
 }
 
-function parseNutritionText(text) {
+function parseVerticalText(text) {
   const result = {};
   const lines = text.split('\n');
   for (const line of lines) {
@@ -133,6 +150,69 @@ function parseNutritionText(text) {
   return result;
 }
 
+function parseHorizontalLine(line) {
+  const parts = line.split('\t').map(s => s.trim());
+  if (parts.length < 3) return null;
+  let colIdx = 0;
+  let foodName = '';
+  let nutrients = {};
+
+  // 첫 번째 값이 숫자가 아니면 식품명
+  if (isNaN(parseFloat(parts[0].replace(/,/g, '')))) {
+    foodName = parts[0];
+    colIdx = 1;
+  }
+  // 두 번째 값이 단위(100g 등)이면 건너뛰기
+  if (colIdx < parts.length && /^\d+[a-zA-Z가-힣]+$/.test(parts[colIdx])) {
+    colIdx++;
+  }
+
+  // 나머지 값을 HORIZONTAL_COLUMNS의 영양소 키에 순서대로 매핑
+  const nutrientCols = HORIZONTAL_COLUMNS.filter(c => c !== 'name' && c !== 'unit');
+  let nutIdx = 0;
+  while (colIdx < parts.length && nutIdx < nutrientCols.length) {
+    const raw = parts[colIdx].replace(/,/g, '');
+    const num = parseFloat(raw);
+    if (!isNaN(num) && num !== 0) {
+      nutrients[nutrientCols[nutIdx]] = num;
+    }
+    colIdx++;
+    nutIdx++;
+  }
+
+  return { name: foodName, nutrients };
+}
+
+function detectFormatAndParse(text) {
+  const lines = text.split('\n').filter(l => l.trim());
+  if (lines.length === 0) return { type: 'empty', results: [] };
+
+  // 가로형 감지: 1~3줄이고 탭 구분 숫자가 10개 이상
+  if (lines.length <= 3) {
+    const firstLine = lines[0];
+    const tabs = firstLine.split('\t');
+    const numCount = tabs.filter(t => !isNaN(parseFloat(t.trim().replace(/,/g, '')))).length;
+    if (numCount >= 10) {
+      const results = lines.map(l => parseHorizontalLine(l)).filter(Boolean);
+      return { type: 'horizontal', results };
+    }
+  }
+
+  // 여러 줄 가로형: 각 줄의 탭 개수가 10개 이상이면 가로형으로 판단
+  if (lines.length > 3) {
+    const firstLine = lines[0];
+    const tabs = firstLine.split('\t');
+    const numCount = tabs.filter(t => !isNaN(parseFloat(t.trim().replace(/,/g, '')))).length;
+    if (numCount >= 10) {
+      const results = lines.map(l => parseHorizontalLine(l)).filter(Boolean);
+      return { type: 'horizontal', results };
+    }
+  }
+
+  // 세로형 (기존 식약처 DB 형식)
+  return { type: 'vertical', results: [{ name: '', nutrients: parseVerticalText(text) }] };
+}
+
 // --- Component ---
 
 export default function CustomIngredient({ onUpdate }) {
@@ -145,6 +225,7 @@ export default function CustomIngredient({ onUpdate }) {
   const [pasteText, setPasteText] = useState('');
   const [parsePreview, setParsePreview] = useState(null);
   const [editTarget, setEditTarget] = useState(null); // { type, index, catKey }
+  const [horizontalResults, setHorizontalResults] = useState(null); // [{name, nutrients}, ...]
   const [refreshKey, setRefreshKey] = useState(0);
 
   const managedItems = getManagedItems(selectedCat);
@@ -161,6 +242,7 @@ export default function CustomIngredient({ onUpdate }) {
     setNutrients({});
     setPasteText('');
     setParsePreview(null);
+    setHorizontalResults(null);
     setEditTarget(null);
   };
 
@@ -199,7 +281,40 @@ export default function CustomIngredient({ onUpdate }) {
 
   const handleParse = () => {
     if (!pasteText.trim()) return;
-    setParsePreview(parseNutritionText(pasteText));
+    const { type, results } = detectFormatAndParse(pasteText);
+    if (type === 'horizontal' && results.length > 0) {
+      if (results.length === 1) {
+        // 단일 가로형: 바로 미리보기
+        if (results[0].name) setName(results[0].name);
+        setParsePreview(results[0].nutrients);
+        setHorizontalResults(null);
+      } else {
+        // 복수 가로형: 선택 목록 표시
+        setHorizontalResults(results);
+        setParsePreview(null);
+      }
+    } else if (type === 'vertical' && results.length > 0) {
+      setParsePreview(results[0].nutrients);
+      setHorizontalResults(null);
+    }
+  };
+
+  const handleSelectHorizontal = (item) => {
+    if (item.name) setName(item.name);
+    setNutrients(prev => ({ ...prev, ...item.nutrients }));
+    setHorizontalResults(null);
+    setPasteText('');
+  };
+
+  const handleRegisterAllHorizontal = () => {
+    if (!horizontalResults) return;
+    for (const item of horizontalResults) {
+      const food = { name: item.name || '이름없음', nutrients: { '함량(g)': '100g', ...item.nutrients } };
+      addFood(selectedCat, food);
+    }
+    setHorizontalResults(null);
+    setPasteText('');
+    refresh();
   };
 
   const handleApplyParse = () => {
@@ -270,15 +385,40 @@ export default function CustomIngredient({ onUpdate }) {
 
           {/* Paste-to-parse area */}
           <div>
-            <div className="text-[9px] text-gray-500 mb-0.5">식품영양DB 텍스트 붙여넣기</div>
+            <div className="text-[9px] text-gray-500 mb-0.5">영양 데이터 붙여넣기 (세로형/가로형 자동 감지)</div>
             <textarea
               className="w-full text-[9px] border border-gray-300 rounded px-1 py-0.5 h-16 resize-y font-mono"
-              placeholder={"에너지\t135.00㎉\n단백질\t20.88g\n나트륨\t48.00㎎"}
+              placeholder={"세로형: 에너지\\t135.00㎉\n가로형: 돼지등심\\t100g\\t142\\t71\\t23.33\\t..."}
               value={pasteText}
-              onChange={(e) => { setPasteText(e.target.value); setParsePreview(null); }}
+              onChange={(e) => { setPasteText(e.target.value); setParsePreview(null); setHorizontalResults(null); }}
             />
             <button onClick={handleParse} className="text-[9px] px-1.5 py-0.5 bg-blue-500 text-white rounded hover:bg-blue-600">파싱</button>
           </div>
+
+          {/* 가로형 복수 결과 선택 목록 */}
+          {horizontalResults && horizontalResults.length > 1 && (
+            <div className="border border-green-200 bg-green-50 rounded p-1">
+              <div className="text-[9px] font-semibold text-green-700 mb-0.5">
+                가로형 파싱 결과 ({horizontalResults.length}개 식품)
+              </div>
+              <div className="max-h-36 overflow-y-auto space-y-0.5">
+                {horizontalResults.map((item, i) => (
+                  <div key={i} className="flex items-center gap-1 px-1 py-0.5 bg-white rounded border border-green-100">
+                    <span className="flex-1 text-[10px] truncate">{item.name || `식품 ${i + 1}`}</span>
+                    <span className="text-[8px] text-gray-400">{Object.keys(item.nutrients).length}개</span>
+                    <button
+                      onClick={() => handleSelectHorizontal(item)}
+                      className="text-[9px] text-blue-500 hover:text-blue-700 px-0.5"
+                    >선택</button>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={handleRegisterAllHorizontal}
+                className="mt-0.5 text-[9px] px-1.5 py-0.5 bg-green-600 text-white rounded hover:bg-green-700"
+              >전체 등록</button>
+            </div>
+          )}
 
           {/* Parse preview */}
           {parsePreview && (
