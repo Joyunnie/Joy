@@ -6,29 +6,27 @@ export default function SlotRow({ slotDef, dropdown, amount, onDropdownChange, o
     : getCategoryItems(slotDef.category);
 
   return (
-    <div className="flex items-center gap-1 mb-0.5">
+    <div className="flex items-center gap-0.5">
       <select
-        className="flex-1 min-w-0 text-xs border border-gray-300 rounded px-1 py-0.5 bg-white truncate"
+        className="flex-1 min-w-0 text-[10px] border border-gray-300 rounded px-0.5 py-0 h-5 bg-white truncate"
         value={dropdown || 0}
         onChange={(e) => onDropdownChange(Number(e.target.value))}
       >
         <option value={0}>선택</option>
         {items.map((item) => (
-          <option key={item.index} value={item.index}>
-            {item.name}
-          </option>
+          <option key={item.index} value={item.index}>{item.name}</option>
         ))}
       </select>
       <input
         type="number"
-        className="w-16 text-xs border border-gray-300 rounded px-1 py-0.5 text-right"
+        className="w-14 text-[10px] border border-gray-300 rounded px-0.5 py-0 h-5 text-right"
         value={amount || ''}
         onChange={(e) => onAmountChange(e.target.value === '' ? '' : Number(e.target.value))}
         min={0}
         step="any"
         placeholder="0"
       />
-      <span className="text-xs text-gray-500 w-6">{slotDef.unit}</span>
+      <span className="text-[9px] text-gray-400 w-5">{slotDef.unit}</span>
     </div>
   );
 }

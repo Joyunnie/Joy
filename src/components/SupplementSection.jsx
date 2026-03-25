@@ -18,21 +18,17 @@ const sectionGroups = [
 
 export default function SupplementSection({ slotStates, onSlotUpdate }) {
   return (
-    <div className="bg-white rounded-lg p-3 shadow-sm border">
-      <h3 className="font-bold text-sm mb-2 text-gray-800">보조 재료 (선택)</h3>
+    <div className="bg-white rounded p-1.5 shadow-sm border">
+      <h3 className="font-bold text-[11px] mb-1 text-gray-800">보조 재료 (선택)</h3>
       {sectionGroups.map(({ title, sections }) => {
         const slots = SLOT_DEFS.filter(d => sections.includes(d.section));
         return (
-          <div key={title} className="mb-2">
-            <h4 className="text-xs font-semibold text-gray-600 mb-0.5">{title}</h4>
+          <div key={title} className="mb-1">
+            <h4 className="text-[10px] font-semibold text-gray-600">{title}</h4>
             {slots.map((def) => {
               const state = slotStates[def.id] || {};
               return (
-                <SlotRow
-                  key={def.id}
-                  slotDef={def}
-                  dropdown={state.dropdown}
-                  amount={state.amount}
+                <SlotRow key={def.id} slotDef={def} dropdown={state.dropdown} amount={state.amount}
                   onDropdownChange={(v) => onSlotUpdate(def.id, 'dropdown', v)}
                   onAmountChange={(v) => onSlotUpdate(def.id, 'amount', v)}
                 />
