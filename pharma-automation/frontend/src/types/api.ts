@@ -117,6 +117,43 @@ export interface PredictionListResponse {
   predictions: PredictionOut[];
 }
 
+// --- Drug Search ---
+
+export interface DrugOut {
+  id: number;
+  standard_code: string;
+  name: string;
+  category: string;
+}
+
+export interface DrugListResponse {
+  items: DrugOut[];
+  total: number;
+}
+
+// --- OTC Request Types ---
+
+export interface OtcCreateRequest {
+  drug_id: number;
+  current_quantity: number;
+  display_location?: string | null;
+  storage_location?: string | null;
+}
+
+export interface OtcUpdateRequest {
+  current_quantity: number;
+  display_location?: string | null;
+  storage_location?: string | null;
+  version: number;
+}
+
+// --- Alert Read ---
+
+export interface AlertReadResponse {
+  id: number;
+  read_at: string;
+}
+
 // --- JWT payload ---
 
 export interface JwtPayload {

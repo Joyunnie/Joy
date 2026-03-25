@@ -157,8 +157,14 @@ export default function DashboardPage() {
         </Link>
 
         {/* Card 3: Predictions */}
-        <div className="bg-white rounded-lg shadow p-4 border border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-600 mb-2">예상 내원</h3>
+        <Link
+          to="/predictions"
+          className="block bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow border border-gray-100"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-gray-600">예상 내원</h3>
+            <span className="text-xs text-blue-500">더보기 &rarr;</span>
+          </div>
           <div className="flex items-baseline gap-2">
             <p className="text-3xl font-bold text-blue-600">
               {data.predictionsThisWeek}명
@@ -168,13 +174,10 @@ export default function DashboardPage() {
           <p className="mt-1 text-sm text-gray-500">
             오늘 예상: <span className="font-semibold text-blue-700">{data.predictionsToday}명</span>
           </p>
-        </div>
+        </Link>
 
-        {/* Card 4: Narcotics */}
-        <Link
-          to="/narcotics"
-          className="block bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow border border-gray-100"
-        >
+        {/* Card 4: Narcotics (링크 없음 — PM+20이 별도 관리) */}
+        <div className="bg-white rounded-lg shadow p-4 border border-gray-100">
           <h3 className="text-sm font-semibold text-gray-600 mb-2">마약류 현황</h3>
           <p className="text-3xl font-bold text-purple-600">{data.narcoticsActive}건</p>
           <p className="text-sm text-gray-400">활성 품목</p>
@@ -183,7 +186,7 @@ export default function DashboardPage() {
               재고 부족 {data.narcoticsLow}건
             </p>
           )}
-        </Link>
+        </div>
       </div>
     </div>
   );

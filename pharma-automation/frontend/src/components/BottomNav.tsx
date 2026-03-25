@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 const tabs = [
   { path: '/', label: '대시보드' },
   { path: '/inventory', label: '재고' },
-  { path: '/narcotics', label: '마약류' },
+  { path: '/predictions', label: '내원예측' },
   { path: '/alerts', label: '알림' },
 ] as const;
 

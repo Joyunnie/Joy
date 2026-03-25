@@ -4,7 +4,9 @@ import ProtectedRoute from './components/ProtectedRoute.tsx';
 import Layout from './components/Layout.tsx';
 import LoginPage from './pages/LoginPage.tsx';
 import DashboardPage from './pages/DashboardPage.tsx';
-import PlaceholderPage from './pages/PlaceholderPage.tsx';
+import InventoryPage from './pages/InventoryPage.tsx';
+import AlertsPage from './pages/AlertsPage.tsx';
+import PredictionsPage from './pages/PredictionsPage.tsx';
 
 export default function App() {
   return (
@@ -15,9 +17,9 @@ export default function App() {
           <Route element={<ProtectedRoute />}>
             <Route element={<Layout />}>
               <Route path="/" element={<DashboardPage />} />
-              <Route path="/inventory" element={<PlaceholderPage />} />
-              <Route path="/narcotics" element={<PlaceholderPage />} />
-              <Route path="/alerts" element={<PlaceholderPage />} />
+              <Route path="/inventory" element={<InventoryPage />} />
+              <Route path="/predictions" element={<PredictionsPage />} />
+              <Route path="/alerts" element={<AlertsPage />} />
             </Route>
           </Route>
         </Routes>
