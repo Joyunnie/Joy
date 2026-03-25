@@ -77,7 +77,7 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
 
   const getAmt = (id) => {
     const s = slotStates[id];
-    return (s && s.amount > 0 && s.dropdown > 1) ? s.amount : 0;
+    return (s && s.amount > 0) ? s.amount : 0;
   };
 
   const rawBone = getAmt('calcium_0');
