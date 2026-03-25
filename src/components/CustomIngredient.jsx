@@ -227,7 +227,7 @@ export default function CustomIngredient({ onUpdate }) {
             onChange={(e) => { setSelectedCat(e.target.value); resetForm(); }}
           >
             {ALL_CATEGORY_KEYS.map(k => (
-              <option key={k} value={k}>{k} ({CATEGORY_LABELS[k]})</option>
+              <option key={k} value={k}>{CATEGORY_LABELS[k]}</option>
             ))}
           </select>
 
