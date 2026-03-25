@@ -135,6 +135,18 @@ export default function App() {
             <ResultPanel daily={daily} totals={totals} dailyCalories={dailyCalories}
               sufficiency={sufficiency} warnings={warnings} slotStates={slotStates} />
             <DetailedResults daily={daily} sufficiency={sufficiency} slotStates={slotStates} />
+
+            {/* Reference info */}
+            <div className="text-right text-xs text-gray-500 leading-relaxed mt-2 pr-1">
+              <p className="font-semibold text-gray-600 mb-0.5">참고 정보</p>
+              <p><span className="font-semibold">t, T 표기:</span> t = 티스푼, T = 테이블스푼</p>
+              <p className="text-[10px]">대부분의 t는 직접 계량한 것, T는 라벨상의 무게</p>
+              <p className="text-[10px]">ex) 솔가 맥주효모(15g,T) → 라벨상 1T=15g, 사용량 "1" 입력 시 15g</p>
+              <p className="text-[10px]">ex) 칼 영양효모(2g,t) → 직접 계량 1t=2g, 사용량 "1" 입력 시 2g</p>
+              <p className="font-semibold text-gray-600 mt-1 mb-0.5">뼈비율 참고</p>
+              <p className="text-[10px]">닭: 약 15~20% · 메추리: 약 20~25% · 오리: 약 25~30%</p>
+              <p className="text-[10px]">토끼: 메추리 뼈로 10~20% (추후 토끼뼈 추가 예정)</p>
+            </div>
           </div>
         </div>
       </div>
