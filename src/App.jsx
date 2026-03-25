@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import BasicInfo from './components/BasicInfo';
 import MeatSection from './components/MeatSection';
 import VegetableSection from './components/VegetableSection';
@@ -9,6 +9,7 @@ import ResultPanel from './components/ResultPanel';
 import DetailedResults from './components/DetailedResults';
 import RecipeManager from './components/RecipeManager';
 import CustomIngredient from './components/CustomIngredient';
+import NutrientRecommendation from './components/NutrientRecommendation';
 import { calcCalories } from './engine/calories';
 import { calcTotalNutrients, calcDailyNutrients, calcAllSufficiency } from './engine/nutrients';
 import { generateWarnings } from './engine/warnings';
@@ -24,6 +25,16 @@ const initialOmega3 = {
   calories: '', fat: '', epa: '', dha: '', otherOmega3: '', vitE: '',
 };
 
+const OMEGA3_STORAGE_KEY = 'catfood_omega3_custom';
+
+function loadOmega3() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(OMEGA3_STORAGE_KEY));
+    if (saved) return saved;
+  } catch {}
+  return initialOmega3;
+}
+
 const initialNutrientAdjust = {
   protein: '', fat: '', calcium: '', phosphorus: '', sodium: '',
 };
@@ -31,9 +42,15 @@ const initialNutrientAdjust = {
 export default function App() {
   const [basicInfo, setBasicInfo] = useState(initialBasicInfo);
   const [slotStates, setSlotStates] = useState({});
-  const [omega3Custom, setOmega3Custom] = useState(initialOmega3);
+  const [omega3Custom, setOmega3Custom] = useState(loadOmega3);
   const [nutrientAdjust, setNutrientAdjust] = useState(initialNutrientAdjust);
   const [refreshKey, setRefreshKey] = useState(0);
+  const resultRef = useRef(null);
+
+  // Persist omega3 to localStorage
+  useEffect(() => {
+    localStorage.setItem(OMEGA3_STORAGE_KEY, JSON.stringify(omega3Custom));
+  }, [omega3Custom]);
 
   const dailyCalories = useMemo(() =>
     calcCalories(basicInfo.calorieType, basicInfo.weight, basicInfo.expectedWeight),
@@ -86,6 +103,11 @@ export default function App() {
     setSlotStates({});
   }, []);
 
+  const handleOmega3Reset = useCallback(() => {
+    setOmega3Custom(initialOmega3);
+    localStorage.removeItem(OMEGA3_STORAGE_KEY);
+  }, []);
+
   const handleLoadRecipe = useCallback((recipe) => {
     setBasicInfo(recipe.basicInfo || initialBasicInfo);
     setSlotStates(recipe.slotStates || {});
@@ -116,7 +138,7 @@ export default function App() {
             <MeatSection slotStates={slotStates} onSlotUpdate={handleSlotUpdate} />
             <VegetableSection slotStates={slotStates} onSlotUpdate={handleSlotUpdate} />
             <Omega3Register values={omega3Custom} onUpdate={handleOmega3Update}
-              onReset={() => setOmega3Custom(initialOmega3)} />
+              onReset={handleOmega3Reset} />
             <NutrientAdjust values={nutrientAdjust} onUpdate={handleNutrientAdjustUpdate}
               onReset={() => setNutrientAdjust(initialNutrientAdjust)} />
           </div>
@@ -126,15 +148,17 @@ export default function App() {
             <CustomIngredient onUpdate={handleCustomFoodUpdate} />
             <RecipeManager basicInfo={basicInfo} slotStates={slotStates}
               omega3Custom={omega3Custom} nutrientAdjust={nutrientAdjust}
-              onLoadRecipe={handleLoadRecipe} />
+              onLoadRecipe={handleLoadRecipe} resultRef={resultRef} />
             <SupplementSection slotStates={slotStates} onSlotUpdate={handleSlotUpdate} />
           </div>
 
           {/* Right column */}
-          <div className="flex-1 min-w-72 space-y-1">
+          <div className="flex-1 min-w-72 space-y-1" ref={resultRef}>
             <ResultPanel daily={daily} totals={totals} dailyCalories={dailyCalories}
               sufficiency={sufficiency} warnings={warnings} slotStates={slotStates} />
             <DetailedResults daily={daily} sufficiency={sufficiency} slotStates={slotStates} />
+            <NutrientRecommendation sufficiency={sufficiency} daily={daily}
+              dailyCalories={dailyCalories} isKitten={isKitten} recipeDays={basicInfo.recipeDays} totals={totals} />
 
             {/* Reference info */}
             <div className="text-right text-xs text-gray-500 leading-relaxed mt-2 pr-1">

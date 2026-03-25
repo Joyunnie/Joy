@@ -154,10 +154,10 @@ export function calcRatios(slotStates) {
   for (let i = 0; i < 5; i++) organTotal += getAmt(`organ_${i}`);
 
   let veggieTotal = 0;
-  for (let i = 0; i < 13; i++) veggieTotal += getAmt(`veggie_${i}`);
+  for (let i = 0; i < 3; i++) veggieTotal += getAmt(`veggie_${i}`);
 
   let otherVegTotal = 0;
-  for (let i = 0; i < 7; i++) otherVegTotal += getAmt(`otherVeg_${i}`);
+  for (let i = 0; i < 3; i++) otherVegTotal += getAmt(`otherVeg_${i}`);
 
   // 뼈:살 비율 = (생뼈 + RMB×0.6) / (생뼈 + RMB + 고기류 + 내장류)
   const boneMeatDenom = rawBone + rmb + meatTotal + organTotal;

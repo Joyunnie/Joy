@@ -32,7 +32,6 @@ const aminoAcidKeys = [
   { key: '글리신(mg)', label: '글리신' },
   { key: '프롤린(mg)', label: '프롤린' },
   { key: '세린(mg)', label: '세린' },
-  { key: '타우린(mg)', label: '타우린' },
 ];
 
 const fattyAcidKeys = [
@@ -87,11 +86,11 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
   let organTotal = 0;
   for (let i = 0; i < 5; i++) organTotal += getAmt(`organ_${i}`);
   let veggieTotal = 0;
-  for (let i = 0; i < 13; i++) veggieTotal += getAmt(`veggie_${i}`);
+  for (let i = 0; i < 3; i++) veggieTotal += getAmt(`veggie_${i}`);
   let otherVegTotal = 0;
-  for (let i = 0; i < 7; i++) otherVegTotal += getAmt(`otherVeg_${i}`);
+  for (let i = 0; i < 3; i++) otherVegTotal += getAmt(`otherVeg_${i}`);
   let directTotal = 0;
-  for (let i = 0; i < 5; i++) directTotal += getAmt(`direct_${i}`);
+  for (let i = 0; i < 7; i++) directTotal += getAmt(`direct_${i}`);
 
   const organDenom = rawBone + meatTotal + organTotal;
   const organPct = organDenom > 0 ? (organTotal / organDenom) * 100 : 0;
@@ -127,33 +126,37 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
         </table>
       </Accordion>
 
-      <Accordion title="지방산">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-gray-300">
-              <th className="text-[9px] text-left py-0">항목</th>
-              <th className="text-[9px] text-right py-0">값</th>
-              <th className="text-[9px] text-right py-0">과부족</th>
-            </tr>
-          </thead>
-          <tbody>
-            {fattyAcidKeys.map(({ key, label, unit, isRatio, isComputed }) => {
-              let val, suff, raw;
-              if (key === '_n3n6ratio') { val = n6 > 0 ? fmt(n3 / n6) : '-'; suff = '-'; raw = null; }
-              else if (key === '_epaDha') { val = fmt(epa + dha); suff = sufficiency['EPA+DHA'] != null ? fmtPct(sufficiency['EPA+DHA']) : '-'; raw = sufficiency['EPA+DHA'] ?? null; }
-              else if (key === '_epaDhaRatio') { val = dha > 0 ? fmt(epa / dha) : '-'; suff = '-'; raw = null; }
-              else { val = fmt(daily[key]); suff = getSuff(key); raw = getSuffRaw(key); }
-              return (
-                <tr key={key} className="border-b border-gray-100">
-                  <td className="text-[10px] py-0">{label}</td>
-                  <td className="text-[10px] py-0 text-right">{val}{unit && !isRatio ? <span className="text-gray-400 ml-0.5">{unit}</span> : ''}</td>
-                  <td className={`text-[10px] py-0 text-right ${suffColor(raw)}`}>{suff}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </Accordion>
+      {/* 지방산 - always expanded */}
+      <div className="bg-white rounded p-1.5 shadow-sm border">
+        <h3 className="font-bold text-[11px] text-gray-800">지방산</h3>
+        <div className="mt-1">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-gray-300">
+                <th className="text-[9px] text-left py-0">항목</th>
+                <th className="text-[9px] text-right py-0">값</th>
+                <th className="text-[9px] text-right py-0">과부족</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fattyAcidKeys.map(({ key, label, unit, isRatio, isComputed }) => {
+                let val, suff, raw;
+                if (key === '_n3n6ratio') { val = n6 > 0 ? fmt(n3 / n6) : '-'; suff = '-'; raw = null; }
+                else if (key === '_epaDha') { val = fmt(epa + dha); suff = sufficiency['EPA+DHA'] != null ? fmtPct(sufficiency['EPA+DHA']) : '-'; raw = sufficiency['EPA+DHA'] ?? null; }
+                else if (key === '_epaDhaRatio') { val = dha > 0 ? fmt(epa / dha) : '-'; suff = '-'; raw = null; }
+                else { val = fmt(daily[key]); suff = getSuff(key); raw = getSuffRaw(key); }
+                return (
+                  <tr key={key} className="border-b border-gray-100">
+                    <td className="text-[10px] py-0">{label}</td>
+                    <td className="text-[10px] py-0 text-right">{val}{unit && !isRatio ? <span className="text-gray-400 ml-0.5">{unit}</span> : ''}</td>
+                    <td className={`text-[10px] py-0 text-right ${suffColor(raw)}`}>{suff}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       <div className="bg-white rounded p-1.5 shadow-sm border">
         <h3 className="font-bold text-[11px] mb-0.5 text-gray-800">비율 정보</h3>

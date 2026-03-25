@@ -143,6 +143,10 @@ export default function ResultPanel({ daily, totals, dailyCalories, sufficiency,
               sufficiency={getSuff(key)} suffRaw={getSuffRaw(key)}
               warning={key === '셀레늄(mcg)' ? warnings.find(w => w.msg.includes('셀레늄')) : undefined} />
           ))}
+
+          <tr><td colSpan={5} className="text-[9px] font-semibold pt-1 text-gray-600">타우린</td></tr>
+          <Row label="타우린" value={fmt(daily['타우린(mg)'])} unit="mg"
+            sufficiency={getSuff('타우린(mg)')} suffRaw={getSuffRaw('타우린(mg)')} />
         </tbody>
       </table>
     </div>

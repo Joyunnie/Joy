@@ -38,12 +38,12 @@ export const CELL_TO_SLOT = {
   F25: { slotId: 'water_0', type: 'dropdown' },
   H25: { slotId: 'water_0', type: 'value' },
 
-  // Vegetables (F28-F40 dropdowns, H28-H40 values)
+  // Vegetables (F28-F30 dropdowns, H28-H30 values) - reduced to 3
   ...Object.fromEntries(
-    Array.from({ length: 13 }, (_, i) => [`F${28 + i}`, { slotId: `veggie_${i}`, type: 'dropdown' }])
+    Array.from({ length: 3 }, (_, i) => [`F${28 + i}`, { slotId: `veggie_${i}`, type: 'dropdown' }])
   ),
   ...Object.fromEntries(
-    Array.from({ length: 13 }, (_, i) => [`H${28 + i}`, { slotId: `veggie_${i}`, type: 'value' }])
+    Array.from({ length: 3 }, (_, i) => [`H${28 + i}`, { slotId: `veggie_${i}`, type: 'value' }])
   ),
 
   // Eggs (K4-K5, L4-L5)
@@ -98,20 +98,20 @@ export const CELL_TO_SLOT = {
   L24: { slotId: 'fiberG_0', type: 'value' },
   L25: { slotId: 'fiberG_1', type: 'value' },
 
-  // Other veggies (K28-K34, L28-L34)
+  // Other veggies (K28-K30, L28-L30) - reduced to 3
   ...Object.fromEntries(
-    Array.from({ length: 7 }, (_, i) => [`K${28 + i}`, { slotId: `otherVeg_${i}`, type: 'dropdown' }])
+    Array.from({ length: 3 }, (_, i) => [`K${28 + i}`, { slotId: `otherVeg_${i}`, type: 'dropdown' }])
   ),
   ...Object.fromEntries(
-    Array.from({ length: 7 }, (_, i) => [`L${28 + i}`, { slotId: `otherVeg_${i}`, type: 'value' }])
+    Array.from({ length: 3 }, (_, i) => [`L${28 + i}`, { slotId: `otherVeg_${i}`, type: 'value' }])
   ),
 
-  // Direct data (K36-K40, L36-L40)
+  // Direct data (K36-K42, L36-L42) - expanded to 7
   ...Object.fromEntries(
-    Array.from({ length: 5 }, (_, i) => [`K${36 + i}`, { slotId: `direct_${i}`, type: 'dropdown' }])
+    Array.from({ length: 7 }, (_, i) => [`K${36 + i}`, { slotId: `direct_${i}`, type: 'dropdown' }])
   ),
   ...Object.fromEntries(
-    Array.from({ length: 5 }, (_, i) => [`L${36 + i}`, { slotId: `direct_${i}`, type: 'value' }])
+    Array.from({ length: 7 }, (_, i) => [`L${36 + i}`, { slotId: `direct_${i}`, type: 'value' }])
   ),
 
   // Special: recipe days
@@ -136,8 +136,8 @@ export const SLOT_DEFS = [
   })),
   // Water (special)
   { id: 'water_0', category: 'water', section: 'water', label: '물', unit: 'g' },
-  // Vegetables (13 slots, all 식품P)
-  ...Array.from({ length: 13 }, (_, i) => ({
+  // Vegetables (3 slots, all 식품P)
+  ...Array.from({ length: 3 }, (_, i) => ({
     id: `veggie_${i}`, category: '식품P', section: 'veggie', label: `채소류${i + 1}`, unit: 'g'
   })),
   // Eggs
@@ -165,11 +165,11 @@ export const SLOT_DEFS = [
   { id: 'fiberG_0', category: '식품MM', section: 'fiberG', label: '식이섬유(g)1', unit: 'g' },
   { id: 'fiberG_1', category: '식품MM', section: 'fiberG', label: '식이섬유(g)2', unit: 'g' },
   // Other veggies
-  ...Array.from({ length: 7 }, (_, i) => ({
+  ...Array.from({ length: 3 }, (_, i) => ({
     id: `otherVeg_${i}`, category: '식품Q', section: 'otherVeg', label: `기타야채${i + 1}`, unit: 'g'
   })),
   // Direct data
-  ...Array.from({ length: 5 }, (_, i) => ({
+  ...Array.from({ length: 7 }, (_, i) => ({
     id: `direct_${i}`, category: '식품R', section: 'direct', label: `직접데이터${i + 1}`, unit: 'g'
   })),
 ];

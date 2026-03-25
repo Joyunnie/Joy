@@ -71,8 +71,8 @@ function parseExcelData(workbook) {
   // Dropdown cells
   const dropdownCols = {
     'G': [4, 5, 6, 7, 8],
-    'F': [10, 11, 12, 13, 14, 15, 16, 17, 18, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40],
-    'K': [4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 19, 20, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34, 36, 37, 38, 39, 40],
+    'F': [10, 11, 12, 13, 14, 15, 16, 17, 18, 20, 21, 22, 23, 24, 25, 28, 29, 30],
+    'K': [4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 19, 20, 22, 23, 24, 25, 28, 29, 30, 36, 37, 38, 39, 40, 41, 42],
   };
 
   for (const [col, rows] of Object.entries(dropdownCols)) {
@@ -89,8 +89,8 @@ function parseExcelData(workbook) {
 
   // Value cells
   const valueCols = {
-    'H': [4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40],
-    'L': [4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 19, 20, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34, 36, 37, 38, 39, 40],
+    'H': [4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20, 21, 22, 23, 24, 25, 28, 29, 30],
+    'L': [4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 19, 20, 22, 23, 24, 25, 28, 29, 30, 36, 37, 38, 39, 40, 41, 42],
   };
 
   for (const [col, rows] of Object.entries(valueCols)) {
@@ -113,7 +113,7 @@ function parseExcelData(workbook) {
   return { basicInfo, slotStates, omega3Custom, nutrientAdjust };
 }
 
-export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nutrientAdjust, onLoadRecipe }) {
+export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nutrientAdjust, onLoadRecipe, resultRef }) {
   const [recipes, setRecipes] = useState(loadRecipes);
   const [name, setName] = useState('');
   const [open, setOpen] = useState(false);
@@ -226,6 +226,21 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
     window.location.reload();
   };
 
+  // --- Image Export ---
+  const handleImageExport = async () => {
+    if (!resultRef?.current) return;
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(resultRef.current, { scale: 2, useCORS: true, backgroundColor: '#f3f4f6' });
+      const link = document.createElement('a');
+      link.download = `recipe_${new Date().toISOString().slice(0, 10)}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (err) {
+      alert(`이미지 저장 실패: ${err.message}`);
+    }
+  };
+
   // --- Excel Import ---
   const handleExcelSelect = async (e) => {
     const file = e.target.files?.[0];
@@ -309,6 +324,12 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
               className="text-[9px] px-1.5 py-0.5 bg-orange-500 text-white rounded hover:bg-orange-600"
             >
               엑셀 가져오기
+            </button>
+            <button
+              onClick={handleImageExport}
+              className="text-[9px] px-1.5 py-0.5 bg-purple-500 text-white rounded hover:bg-purple-600"
+            >
+              이미지로 저장
             </button>
             <input
               ref={fileInputRef}
