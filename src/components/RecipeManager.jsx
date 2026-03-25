@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 const STORAGE_KEY = 'catfood_saved_recipes';
+const R_FOODS_KEY = 'catfood_r_foods';
+const CUSTOM_FOODS_KEY = 'catfood_custom_foods';
 
 function loadRecipes() {
   try {
@@ -16,6 +18,8 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
   const [recipes, setRecipes] = useState(loadRecipes);
   const [name, setName] = useState('');
   const [open, setOpen] = useState(false);
+  const [importMode, setImportMode] = useState(null); // null | 'merge' | 'overwrite'
+  const fileInputRef = useRef(null);
 
   useEffect(() => { setRecipes(loadRecipes()); }, []);
 
@@ -44,6 +48,79 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
 
   const handleLoad = (recipe) => {
     onLoadRecipe(recipe);
+  };
+
+  // --- Export ---
+  const handleExport = () => {
+    const data = {
+      version: 1,
+      exportDate: new Date().toISOString().slice(0, 10),
+      recipes: loadRecipes(),
+      customFoods: JSON.parse(localStorage.getItem(CUSTOM_FOODS_KEY) || '[]'),
+      rFoodOverrides: JSON.parse(localStorage.getItem(R_FOODS_KEY) || '{}'),
+      omega3Custom,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `catfood_backup_${data.exportDate}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // --- Import ---
+  const triggerImport = (mode) => {
+    setImportMode(mode);
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        applyImport(data, importMode);
+      } catch {
+        alert('올바른 JSON 파일이 아닙니다.');
+      }
+      // Reset file input so same file can be selected again
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setImportMode(null);
+    };
+    reader.readAsText(file);
+  };
+
+  const applyImport = (data, mode) => {
+    if (mode === 'overwrite') {
+      // Replace all data
+      if (data.recipes) localStorage.setItem(STORAGE_KEY, JSON.stringify(data.recipes));
+      if (data.customFoods) localStorage.setItem(CUSTOM_FOODS_KEY, JSON.stringify(data.customFoods));
+      if (data.rFoodOverrides) localStorage.setItem(R_FOODS_KEY, JSON.stringify(data.rFoodOverrides));
+    } else {
+      // Merge: add new recipes (skip same name), append custom foods
+      if (data.recipes) {
+        const existing = loadRecipes();
+        const existingNames = new Set(existing.map(r => r.name));
+        const merged = [...existing, ...data.recipes.filter(r => !existingNames.has(r.name))];
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+      }
+      if (data.customFoods) {
+        const existing = JSON.parse(localStorage.getItem(CUSTOM_FOODS_KEY) || '[]');
+        const existingNames = new Set(existing.map(f => f.name));
+        const merged = [...existing, ...data.customFoods.filter(f => !existingNames.has(f.name))];
+        localStorage.setItem(CUSTOM_FOODS_KEY, JSON.stringify(merged));
+      }
+      if (data.rFoodOverrides) {
+        const existing = JSON.parse(localStorage.getItem(R_FOODS_KEY) || '{}');
+        const merged = { ...existing, ...data.rFoodOverrides };
+        localStorage.setItem(R_FOODS_KEY, JSON.stringify(merged));
+      }
+    }
+    // Reload page to pick up all changes
+    window.location.reload();
   };
 
   return (
@@ -91,6 +168,35 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
               ))}
             </div>
           )}
+
+          {/* Export / Import */}
+          <div className="flex gap-1 border-t pt-1">
+            <button
+              onClick={handleExport}
+              className="text-[9px] px-1.5 py-0.5 bg-indigo-500 text-white rounded hover:bg-indigo-600"
+            >
+              내보내기
+            </button>
+            <button
+              onClick={() => triggerImport('merge')}
+              className="text-[9px] px-1.5 py-0.5 bg-teal-500 text-white rounded hover:bg-teal-600"
+            >
+              가져오기 (추가)
+            </button>
+            <button
+              onClick={() => triggerImport('overwrite')}
+              className="text-[9px] px-1.5 py-0.5 bg-red-400 text-white rounded hover:bg-red-500"
+            >
+              가져오기 (덮어쓰기)
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+          </div>
         </div>
       )}
     </div>
