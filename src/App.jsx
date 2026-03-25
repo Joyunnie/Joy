@@ -143,14 +143,14 @@ export default function App() {
               onReset={() => setOmega3Custom(initialOmega3)} />
             <NutrientAdjust values={nutrientAdjust} onUpdate={handleNutrientAdjustUpdate}
               onReset={() => setNutrientAdjust(initialNutrientAdjust)} />
-            <RecipeManager basicInfo={basicInfo} slotStates={slotStates}
-              omega3Custom={omega3Custom} nutrientAdjust={nutrientAdjust}
-              onLoadRecipe={handleLoadRecipe} />
-            <CustomIngredient onUpdate={handleCustomFoodUpdate} />
           </div>
 
           {/* Center column */}
-          <div className="w-72 shrink-0">
+          <div className="w-72 shrink-0 space-y-1">
+            <CustomIngredient onUpdate={handleCustomFoodUpdate} />
+            <RecipeManager basicInfo={basicInfo} slotStates={slotStates}
+              omega3Custom={omega3Custom} nutrientAdjust={nutrientAdjust}
+              onLoadRecipe={handleLoadRecipe} />
             <SupplementSection slotStates={slotStates} onSlotUpdate={handleSlotUpdate} />
           </div>
 

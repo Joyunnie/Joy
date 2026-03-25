@@ -46,6 +46,12 @@ export function addCustomFood(food) {
   customFoodMap[idx] = food;
 }
 
+export function updateCustomFood(index, food) {
+  customFoods = customFoods.map((cf, i) => i === index ? food : cf);
+  localStorage.setItem(CUSTOM_FOODS_KEY, JSON.stringify(customFoods));
+  customFoodMap[100 + index] = food;
+}
+
 export function removeCustomFood(index) {
   customFoods = customFoods.filter((_, i) => i !== index);
   localStorage.setItem(CUSTOM_FOODS_KEY, JSON.stringify(customFoods));
