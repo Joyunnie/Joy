@@ -17,6 +17,11 @@ export const NUTRIENT_KEYS = [
   '타우린(mg)', '비타민D(mcg)', '비타민E(mg)', '비타민K(mcg)', '탄수화물(g)',
 ];
 
+// Sections included in total grams (matches Excel SUM(H4:H8,H10:H18,H20:H25,H28:H40,L4:L5,L28:L40))
+const TOTAL_GRAMS_SECTIONS = new Set([
+  'calcium', 'meat', 'organ', 'water', 'veggie', 'egg', 'otherVeg', 'direct',
+]);
+
 // Calculate total nutrients across all slots
 export function calcTotalNutrients(slotStates, omega3Custom) {
   const totals = {};
@@ -73,8 +78,8 @@ export function calcTotalNutrients(slotStates, omega3Custom) {
       }
     }
 
-    // Count grams for total weight
-    if (def.unit === 'g') {
+    // Count grams for total weight (only sections in Excel SUM formula)
+    if (def.unit === 'g' && TOTAL_GRAMS_SECTIONS.has(def.section)) {
       totalGrams += amount;
     }
   }

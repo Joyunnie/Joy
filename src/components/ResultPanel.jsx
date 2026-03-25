@@ -128,7 +128,7 @@ export default function ResultPanel({ daily, totals, dailyCalories, sufficiency,
             dm={dmPct(calcium / 1000)} sufficiency={getSuff('칼슘(mg)')} suffRaw={getSuffRaw('칼슘(mg)')} />
           <Row label="인" value={fmt(phosphorus)} unit="mg"
             dm={dmPct(phosphorus / 1000)} sufficiency={getSuff('인(mg)')} suffRaw={getSuffRaw('인(mg)')} />
-          <Row label="Ca:P 비율" value={phosphorus > 0 ? `1 : ${(phosphorus / calcium).toFixed(2)}` : '-'} />
+          <Row label="인:칼슘비" value={phosphorus > 0 ? `1 : ${(calcium / phosphorus).toFixed(2)}` : '-'} />
           <Row label="뼈:살 비율" value={`${bonePct.toFixed(1)}% : ${meatPct.toFixed(1)}%`} />
 
           <tr><td colSpan={5} className="text-[9px] font-semibold pt-1 text-gray-600">비타민</td></tr>

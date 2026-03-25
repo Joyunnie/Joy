@@ -90,11 +90,13 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
   for (let i = 0; i < 13; i++) veggieTotal += getAmt(`veggie_${i}`);
   let otherVegTotal = 0;
   for (let i = 0; i < 7; i++) otherVegTotal += getAmt(`otherVeg_${i}`);
+  let directTotal = 0;
+  for (let i = 0; i < 5; i++) directTotal += getAmt(`direct_${i}`);
 
   const organDenom = rawBone + meatTotal + organTotal;
   const organPct = organDenom > 0 ? (organTotal / organDenom) * 100 : 0;
   const meatOnlyPct = organDenom > 0 ? 100 - organPct : 0;
-  const pureeTotal = veggieTotal + otherVegTotal;
+  const pureeTotal = veggieTotal + otherVegTotal + directTotal;
   const pureeDenom = rawBone + rmb + meatTotal + organTotal + pureeTotal;
   const pureePct = pureeDenom > 0 ? (pureeTotal / pureeDenom) * 100 : 0;
   const nonPureePct = pureeDenom > 0 ? 100 - pureePct : 0;
