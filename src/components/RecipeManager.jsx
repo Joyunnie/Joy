@@ -212,9 +212,9 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const XLSX = (await import('xlsx')).default;
+      const XLSX = await import('xlsx');
       const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data);
+      const workbook = XLSX.read(data, { type: 'array' });
       const parsed = parseExcelData(workbook);
       if (parsed) {
         onLoadRecipe(parsed);
