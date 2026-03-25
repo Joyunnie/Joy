@@ -118,7 +118,8 @@ function parseNutritionText(text) {
   const lines = text.split('\n');
 
   for (const line of lines) {
-    const parts = line.split('\t');
+    let parts = line.split('\t');
+    while (parts.length > 0 && parts[0].trim() === '') parts.shift();
     if (parts.length < 2) continue;
 
     const name = parts[0].trim();
@@ -158,7 +159,7 @@ function parseNutritionText(text) {
 
 export default function CustomIngredient({ onUpdate }) {
   const [open, setOpen] = useState(false);
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useState(true);
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('100g');
   const [nutrients, setNutrients] = useState({});
