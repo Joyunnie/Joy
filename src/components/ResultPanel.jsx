@@ -146,21 +146,24 @@ export default function ResultPanel({ daily, totals, dailyCalories, sufficiency,
           <Row label="인:칼슘비" value={phosphorus > 0 ? `1 : ${(calcium / phosphorus).toFixed(2)}` : '-'} />
           <Row label="뼈:살 비율" value={`${bonePct.toFixed(1)}% : ${meatPct.toFixed(1)}%`} />
 
-          <tr><td colSpan={5} className="text-[9px] font-semibold pt-1 text-gray-600">비타민</td></tr>
+          <tr><td colSpan={5} className="py-1"><div className="border-b border-gray-300"></div></td></tr>
+          <tr><td colSpan={5} className="text-[9px] font-semibold py-0.5 text-gray-700 bg-gray-100">비타민</td></tr>
           {vitaminRows.map(({ key, label, unit }) => (
             <Row key={key} label={label} value={fmt(daily[key])} unit={unit}
               sufficiency={getSuff(key)} suffRaw={getSuffRaw(key)}
               isUpperExceeded={isUE(key)} />
           ))}
 
-          <tr><td colSpan={5} className="text-[9px] font-semibold pt-1 text-gray-600">무기질</td></tr>
+          <tr><td colSpan={5} className="py-1"><div className="border-b border-gray-300"></div></td></tr>
+          <tr><td colSpan={5} className="text-[9px] font-semibold py-0.5 text-gray-700 bg-gray-100">무기질</td></tr>
           {mineralRows.map(({ key, label, unit }) => (
             <Row key={key} label={label} value={fmt(daily[key])} unit={unit}
               sufficiency={getSuff(key)} suffRaw={getSuffRaw(key)}
               isUpperExceeded={isUE(key)} />
           ))}
 
-          <tr><td colSpan={5} className="text-[9px] font-semibold pt-1 text-gray-600">타우린</td></tr>
+          <tr><td colSpan={5} className="py-1"><div className="border-b border-gray-300"></div></td></tr>
+          <tr><td colSpan={5} className="text-[9px] font-semibold py-0.5 text-gray-700 bg-gray-100">타우린</td></tr>
           <Row label="타우린" value={fmt(daily['타우린(mg)'])} unit="mg"
             sufficiency={getSuff('타우린(mg)')} suffRaw={getSuffRaw('타우린(mg)')}
             isUpperExceeded={isUE('타우린(mg)')} />
