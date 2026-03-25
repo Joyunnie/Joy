@@ -3,14 +3,25 @@ import { calcDMPercent } from '../engine/nutrients';
 const fmt = (v) => v != null && !isNaN(v) ? v.toFixed(1) : '-';
 const fmtPct = (v) => v != null && !isNaN(v) ? `${Math.round(v * 100)}%` : '-';
 
-function Row({ label, value, unit, extra, sufficiency, warning }) {
+function suffColor(v) {
+  if (v == null || isNaN(v)) return 'text-gray-400';
+  const pct = Math.round(v * 100);
+  if (pct === 0) return 'text-gray-400';
+  if (pct >= 300) return 'text-red-600 font-bold';
+  if (pct >= 200) return 'text-orange-500';
+  if (pct < 100) return 'text-red-600';
+  return 'text-green-600';
+}
+
+function Row({ label, value, unit, extra, sufficiency, suffRaw, warning }) {
+  const suffClass = suffColor(suffRaw);
   return (
     <tr className="border-b border-gray-100">
       <td className="text-[10px] py-0 pr-1">{label}</td>
       <td className="text-[10px] py-0 text-right pr-0.5">{value}{unit && <span className="text-gray-400 ml-0.5">{unit}</span>}</td>
       <td className="text-[10px] py-0 text-right pr-0.5 text-gray-500">{extra || ''}</td>
-      <td className="text-[10px] py-0 text-right pr-0.5">{sufficiency || ''}</td>
-      <td className="text-[10px] py-0">{warning && <span className={warning.type === 'blue' ? 'text-blue-600 font-bold' : 'text-red-600 font-bold'}>{warning.msg}</span>}</td>
+      <td className={`text-[10px] py-0 text-right pr-0.5 ${suffClass}`}>{sufficiency || ''}</td>
+      <td className="text-[10px] py-0">{warning && <span className="text-red-600 font-bold">{warning.msg}</span>}</td>
     </tr>
   );
 }
@@ -28,6 +39,7 @@ export default function ResultPanel({ daily, totals, dailyCalories, sufficiency,
   };
 
   const getSuff = (key) => sufficiency[key] != null ? fmtPct(sufficiency[key]) : '-';
+  const getSuffRaw = (key) => sufficiency[key] != null ? sufficiency[key] : null;
 
   const calcium = daily['칼슘(mg)'] || 0;
   const phosphorus = daily['인(mg)'] || 0;
@@ -104,26 +116,28 @@ export default function ResultPanel({ daily, totals, dailyCalories, sufficiency,
           <Row label="수분" value={fmt(waterG)} unit="g"
             extra={dailyGrams > 0 ? `${((waterG / dailyGrams) * 100).toFixed(1)}%` : ''} />
           <Row label="단백질" value={fmt(daily['단백질(g)'])} unit="g"
-            extra={dmPct(daily['단백질(g)'] || 0)} sufficiency={getSuff('단백질(g)')} />
+            extra={dmPct(daily['단백질(g)'] || 0)} sufficiency={getSuff('단백질(g)')} suffRaw={getSuffRaw('단백질(g)')} />
           <Row label="지방" value={fmt(daily['지방(g)'])} unit="g"
-            extra={dmPct(daily['지방(g)'] || 0)} sufficiency={getSuff('지방(g)')} />
+            extra={dmPct(daily['지방(g)'] || 0)} sufficiency={getSuff('지방(g)')} suffRaw={getSuffRaw('지방(g)')} />
           <Row label="탄수화물" value={fmt(daily['탄수화물(g)'])} unit="g"
             extra={dmPct(daily['탄수화물(g)'] || 0)} />
           <Row label="칼슘" value={fmt(calcium)} unit="mg"
-            extra={dmPct(calcium / 1000)} sufficiency={getSuff('칼슘(mg)')} />
+            extra={dmPct(calcium / 1000)} sufficiency={getSuff('칼슘(mg)')} suffRaw={getSuffRaw('칼슘(mg)')} />
           <Row label="인" value={fmt(phosphorus)} unit="mg"
-            extra={dmPct(phosphorus / 1000)} sufficiency={getSuff('인(mg)')} />
+            extra={dmPct(phosphorus / 1000)} sufficiency={getSuff('인(mg)')} suffRaw={getSuffRaw('인(mg)')} />
           <Row label="인:칼슘비" value={fmt(caPRatio)} />
           <Row label="뼈:살" value={fmt(boneRatio)} />
 
           <tr><td colSpan={5} className="text-[9px] font-semibold pt-1 text-gray-600">비타민</td></tr>
           {vitaminRows.map(({ key, label, unit }) => (
-            <Row key={key} label={label} value={fmt(daily[key])} unit={unit} sufficiency={getSuff(key)} />
+            <Row key={key} label={label} value={fmt(daily[key])} unit={unit}
+              sufficiency={getSuff(key)} suffRaw={getSuffRaw(key)} />
           ))}
 
           <tr><td colSpan={5} className="text-[9px] font-semibold pt-1 text-gray-600">무기질</td></tr>
           {mineralRows.map(({ key, label, unit }) => (
-            <Row key={key} label={label} value={fmt(daily[key])} unit={unit} sufficiency={getSuff(key)}
+            <Row key={key} label={label} value={fmt(daily[key])} unit={unit}
+              sufficiency={getSuff(key)} suffRaw={getSuffRaw(key)}
               warning={key === '셀레늄(mcg)' ? warnings.find(w => w.msg.includes('셀레늄')) : undefined} />
           ))}
         </tbody>

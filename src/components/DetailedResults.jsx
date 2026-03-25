@@ -3,6 +3,16 @@ import { useState } from 'react';
 const fmt = (v) => v != null && !isNaN(v) ? v.toFixed(1) : '-';
 const fmtPct = (v) => v != null && !isNaN(v) ? `${Math.round(v * 100)}%` : '-';
 
+function suffColor(v) {
+  if (v == null || isNaN(v)) return 'text-gray-400';
+  const pct = Math.round(v * 100);
+  if (pct === 0) return 'text-gray-400';
+  if (pct >= 300) return 'text-red-600 font-bold';
+  if (pct >= 200) return 'text-orange-500';
+  if (pct < 100) return 'text-red-600';
+  return 'text-green-600';
+}
+
 const aminoAcidKeys = [
   { key: '이소루신(mg)', label: '이소루신' },
   { key: '루신(mg)', label: '루신' },
@@ -58,6 +68,7 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
   if (!daily) return null;
 
   const getSuff = (key) => sufficiency[key] != null ? fmtPct(sufficiency[key]) : '-';
+  const getSuffRaw = (key) => sufficiency[key] != null ? sufficiency[key] : null;
 
   const epa = daily['EPA(mg)'] || 0;
   const dha = daily['DHA(mg)'] || 0;
@@ -98,13 +109,16 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
             </tr>
           </thead>
           <tbody>
-            {aminoAcidKeys.map(({ key, label }) => (
-              <tr key={key} className="border-b border-gray-100">
-                <td className="text-[10px] py-0">{label}</td>
-                <td className="text-[10px] py-0 text-right">{fmt(daily[key])}</td>
-                <td className="text-[10px] py-0 text-right">{getSuff(key)}</td>
-              </tr>
-            ))}
+            {aminoAcidKeys.map(({ key, label }) => {
+              const raw = getSuffRaw(key);
+              return (
+                <tr key={key} className="border-b border-gray-100">
+                  <td className="text-[10px] py-0">{label}</td>
+                  <td className="text-[10px] py-0 text-right">{fmt(daily[key])}</td>
+                  <td className={`text-[10px] py-0 text-right ${suffColor(raw)}`}>{getSuff(key)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </Accordion>
@@ -120,16 +134,16 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
           </thead>
           <tbody>
             {fattyAcidKeys.map(({ key, label, unit, isRatio, isComputed }) => {
-              let val, suff;
-              if (key === '_n3n6ratio') { val = n6 > 0 ? fmt(n3 / n6) : '-'; suff = '-'; }
-              else if (key === '_epaDha') { val = fmt(epa + dha); suff = sufficiency['EPA+DHA'] != null ? fmtPct(sufficiency['EPA+DHA']) : '-'; }
-              else if (key === '_epaDhaRatio') { val = dha > 0 ? fmt(epa / dha) : '-'; suff = '-'; }
-              else { val = fmt(daily[key]); suff = getSuff(key); }
+              let val, suff, raw;
+              if (key === '_n3n6ratio') { val = n6 > 0 ? fmt(n3 / n6) : '-'; suff = '-'; raw = null; }
+              else if (key === '_epaDha') { val = fmt(epa + dha); suff = sufficiency['EPA+DHA'] != null ? fmtPct(sufficiency['EPA+DHA']) : '-'; raw = sufficiency['EPA+DHA'] ?? null; }
+              else if (key === '_epaDhaRatio') { val = dha > 0 ? fmt(epa / dha) : '-'; suff = '-'; raw = null; }
+              else { val = fmt(daily[key]); suff = getSuff(key); raw = getSuffRaw(key); }
               return (
                 <tr key={key} className="border-b border-gray-100">
                   <td className="text-[10px] py-0">{label}</td>
                   <td className="text-[10px] py-0 text-right">{val}{unit && !isRatio ? <span className="text-gray-400 ml-0.5">{unit}</span> : ''}</td>
-                  <td className="text-[10px] py-0 text-right">{suff}</td>
+                  <td className={`text-[10px] py-0 text-right ${suffColor(raw)}`}>{suff}</td>
                 </tr>
               );
             })}

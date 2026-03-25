@@ -8,91 +8,96 @@ const COMMON_KEYS = [
   '비타민E(mg)', 'EPA(mg)', 'DHA(mg)', '타우린(mg)',
 ];
 
-// Mapping from food DB nutrient names to app nutrient keys
 const NUTRIENT_NAME_MAP = {
-  '에너지(kcal)': '칼로리(Kcal)',
-  '수분(g)': '수분(g)',
-  '단백질(g)': '단백질(g)',
-  '지방(g)': '지방(g)',
-  '탄수화물(g)': '탄수화물(g)',
-  '총 식이섬유(g)': null,
-  '칼슘(mg)': '칼슘(mg)',
-  '철(mg)': '철(mg)',
-  '인(mg)': '인(mg)',
-  '칼륨(mg)': '칼륨(mg)',
-  '나트륨(mg)': '나트륨(mg)',
-  '비타민 A(μg RAE)': '비타민A(mcg)',
-  '레티놀(μg)': null,
-  '베타카로틴(μg)': null,
-  '티아민(mg)': '비타민B1(mg)',
-  '리보플라빈(mg)': '비타민B2(mg)',
-  '니아신(mg)': '나이아신(mg)',
-  '비타민 C(mg)': null,
-  '비타민 D(μg)': '비타민D(mcg)',
-  '콜레스테롤(mg)': '콜레스테롤(mg)',
-  '총 포화 지방산(g)': { key: '포화지방산(mg)', multiply: 1000 },
-  '총 불포화 지방산(g)': { key: '불포화지방산(mg)', multiply: 1000 },
-  '마그네슘(mg)': '마그네슘(mg)',
-  '아연(mg)': '아연(mg)',
-  '구리(μg)': { key: '구리(mg)', multiply: 0.001 },
-  '망간(mg)': '망간(mg)',
-  '셀레늄(μg)': '셀레늄(mcg)',
-  '몰리브덴(μg)': null,
-  '요오드(μg)': '요오드(mcg)',
-  '비타민 B6(mg)': '비타민B6(mg)',
-  '비타민 B12(μg)': '비타민B12(mcg)',
-  '엽산(μg DFE)': '폴산(mcg)',
-  '판토텐산(mg)': '판토텐산(mg)',
-  '비타민 E(mg α-TE)': '비타민E(mg)',
-  '비타민 K(μg)': '비타민K(mcg)',
-  '이소류신(mg)': '이소루신(mg)',
-  '류신(mg)': '루신(mg)',
-  '라이신(mg)': '라이신(mg)',
-  '메티오닌(mg)': '메티오닌(mg)',
-  '시스테인(mg)': '시스테인(mg)',
-  '페닐알라닌(mg)': '페닐알라린(mg)',
-  '티로신(mg)': '티로신(mg)',
-  '트레오닌(mg)': '트레오닌(mg)',
-  '트립토판(mg)': '트립토판(mg)',
-  '발린(mg)': '발린(mg)',
-  '히스티딘(mg)': '히스티딘(mg)',
-  '아르기닌(mg)': '아르기닌(mg)',
-  '알라닌(mg)': '알라닌(mg)',
-  '아스파르트산(mg)': '아스파르트산(mg)',
-  '글루탐산(mg)': '글루탐산(mg)',
-  '글리신(mg)': '글리신(mg)',
-  '프롤린(mg)': '프롤린(mg)',
-  '세린(mg)': '세린(mg)',
-  '타우린(mg)': '타우린(mg)',
-  '총 지방산(g)': { key: '총지방산(mg)', multiply: 1000 },
-  'n-3 지방산(g)': { key: 'n-3(mg)', multiply: 1000 },
-  'n-6 지방산(g)': { key: 'n-6(mg)', multiply: 1000 },
-  '리놀레산(g)': { key: '리놀레산(mg)', multiply: 1000 },
-  '알파 리놀렌산(g)': { key: '알파리놀렌산(mg)', multiply: 1000 },
-  'EPA(mg)': 'EPA(mg)',
-  'DHA(mg)': 'DHA(mg)',
+  '에너지': { key: '칼로리(Kcal)' },
+  '단백질': { key: '단백질(g)' },
+  '지방': { key: '지방(g)' },
+  '탄수화물': { key: '탄수화물(g)' },
+  '수분': { key: '수분(g)' },
+  '나트륨': { key: '나트륨(mg)' },
+  '구리': { key: '구리(mg)', convert: 'mcg_to_mg' },
+  '마그네슘': { key: '마그네슘(mg)' },
+  '망간': { key: '망간(mg)' },
+  '셀레늄': { key: '셀레늄(mcg)' },
+  '아연': { key: '아연(mg)' },
+  '요오드': { key: '요오드(mcg)' },
+  '인': { key: '인(mg)' },
+  '철': { key: '철(mg)' },
+  '칼륨': { key: '칼륨(mg)' },
+  '칼슘': { key: '칼슘(mg)' },
+  '니아신': { key: '나이아신(mg)' },
+  '비타민 B1/티아민': { key: '비타민B1(mg)' },
+  '비타민 B2/리보플라빈': { key: '비타민B2(mg)' },
+  '비타민 B12': { key: '비타민B12(mcg)' },
+  '엽산': { key: '폴산(mcg)' },
+  '판토텐산': { key: '판토텐산(mg)' },
+  '비타민 A': { key: '비타민A(mcg)' },
+  '비타민 D': { key: '비타민D(mcg)' },
+  '비타민 E': { key: '비타민E(mg)' },
+  '비타민 K1': { key: '비타민K(mcg)' },
+  '피리독신': { key: '비타민B6(mg)' },
+  '글루탐산': { key: '글루탐산(mg)' },
+  '글리신': { key: '글리신(mg)' },
+  '라이신': { key: '라이신(mg)' },
+  '류신/루신': { key: '루신(mg)' },
+  '메티오닌': { key: '메티오닌(mg)' },
+  '발린': { key: '발린(mg)' },
+  '세린': { key: '세린(mg)' },
+  '시스테인': { key: '시스테인(mg)' },
+  '아르기닌': { key: '아르기닌(mg)' },
+  '아스파르트산': { key: '아스파르트산(mg)' },
+  '알라닌': { key: '알라닌(mg)' },
+  '이소류신/이소루신': { key: '이소루신(mg)' },
+  '타우린': { key: '타우린(mg)' },
+  '트레오닌': { key: '트레오닌(mg)' },
+  '트립토판': { key: '트립토판(mg)' },
+  '티로신': { key: '티로신(mg)' },
+  '페닐알라닌': { key: '페닐알라린(mg)' },
+  '프롤린': { key: '프롤린(mg)' },
+  '히스티딘': { key: '히스티딘(mg)' },
+  '포화지방산': { key: '포화지방산(mg)', convert: 'g_to_mg' },
+  '콜레스테롤': { key: '콜레스테롤(mg)' },
+  '불포화지방산': { key: '불포화지방산(mg)', convert: 'g_to_mg' },
+  '리놀레산(18:2 n-6)': { key: '리놀레산(mg)', convert: 'g_to_mg' },
+  '알파리놀렌산(18:3 n-3)': { key: '알파리놀렌산(mg)', convert: 'g_to_mg' },
+  '에이코사펜타에노산(EPA, 20:5 n-3)': { key: 'EPA(mg)' },
+  '도코사헥사에노산(DHA, 22:6 n-3)': { key: 'DHA(mg)' },
+  '오메가 3 지방산': { key: 'n-3(mg)', convert: 'g_to_mg' },
+  '오메가 6 지방산': { key: 'n-6(mg)', convert: 'g_to_mg' },
 };
 
-function parseNutrientText(text) {
+function parseNutritionText(text) {
   const result = {};
-  const lines = text.split('\n').filter(l => l.trim());
+  const lines = text.split('\n');
+
   for (const line of lines) {
-    // Tab-separated or multi-space separated
-    const parts = line.split(/\t+/).map(s => s.trim());
+    const parts = line.split('\t');
     if (parts.length < 2) continue;
-    const dbName = parts[0];
-    const rawVal = parts[parts.length - 1].replace(/,/g, '');
-    const numVal = parseFloat(rawVal);
-    if (isNaN(numVal)) continue;
 
-    const mapping = NUTRIENT_NAME_MAP[dbName];
-    if (mapping === null || mapping === undefined) continue;
+    const name = parts[0].trim();
+    const valueStr = parts[1].trim();
 
-    if (typeof mapping === 'string') {
-      result[mapping] = numVal;
-    } else if (typeof mapping === 'object' && mapping.key) {
-      result[mapping.key] = numVal * mapping.multiply;
+    // Extract number: "135.00㎉" → 135.00, "20.88g" → 20.88, "33.00㎍" → 33.00
+    const numMatch = valueStr.replace(/,/g, '').match(/([0-9]+\.?[0-9]*)/);
+    if (!numMatch) continue;
+    let value = parseFloat(numMatch[1]);
+
+    // Special case: line starts with exactly "지방산" (총지방산)
+    if (name === '지방산') {
+      if (valueStr.includes('g') && !valueStr.includes('㎎') && !valueStr.includes('㎍')) {
+        result['총지방산(mg)'] = value * 1000;
+      }
+      continue;
     }
+
+    const mapping = NUTRIENT_NAME_MAP[name];
+    if (!mapping) continue;
+
+    // Unit conversion
+    if (mapping.convert === 'mcg_to_mg') value = value / 1000;
+    if (mapping.convert === 'g_to_mg') value = value * 1000;
+
+    result[mapping.key] = value;
   }
   return result;
 }
@@ -105,13 +110,15 @@ export default function CustomIngredient({ onUpdate }) {
   const [nutrients, setNutrients] = useState({});
   const [customFoods, setCustomFoods] = useState(getCustomFoods());
   const [pasteText, setPasteText] = useState('');
-  const [editIndex, setEditIndex] = useState(null); // null = add mode, number = editing
+  const [parsePreview, setParsePreview] = useState(null);
+  const [editIndex, setEditIndex] = useState(null);
 
   const resetForm = () => {
     setName('');
     setUnit('100g');
     setNutrients({});
     setPasteText('');
+    setParsePreview(null);
     setEditIndex(null);
   };
 
@@ -145,12 +152,21 @@ export default function CustomIngredient({ onUpdate }) {
     delete nut['함량(g)'];
     setNutrients(nut);
     setEditIndex(idx);
+    setParsePreview(null);
+    setPasteText('');
   };
 
   const handleParse = () => {
     if (!pasteText.trim()) return;
-    const parsed = parseNutrientText(pasteText);
-    setNutrients(prev => ({ ...prev, ...parsed }));
+    const parsed = parseNutritionText(pasteText);
+    setParsePreview(parsed);
+  };
+
+  const handleApplyParse = () => {
+    if (!parsePreview) return;
+    setNutrients(prev => ({ ...prev, ...parsePreview }));
+    setParsePreview(null);
+    setPasteText('');
   };
 
   const displayKeys = showAll ? NUTRIENT_KEYS : COMMON_KEYS;
@@ -168,9 +184,9 @@ export default function CustomIngredient({ onUpdate }) {
             <div className="text-[9px] text-gray-500 mb-0.5">식품영양DB 텍스트 붙여넣기</div>
             <textarea
               className="w-full text-[9px] border border-gray-300 rounded px-1 py-0.5 h-16 resize-y font-mono"
-              placeholder={"에너지(kcal)\t150\n단백질(g)\t20.5\n지방(g)\t8.3"}
+              placeholder={"에너지\t135.00㎉\n단백질\t20.88g\n나트륨\t48.00㎎"}
               value={pasteText}
-              onChange={(e) => setPasteText(e.target.value)}
+              onChange={(e) => { setPasteText(e.target.value); setParsePreview(null); }}
             />
             <button
               onClick={handleParse}
@@ -179,6 +195,27 @@ export default function CustomIngredient({ onUpdate }) {
               파싱
             </button>
           </div>
+
+          {/* Parse preview */}
+          {parsePreview && (
+            <div className="border border-blue-200 bg-blue-50 rounded p-1">
+              <div className="text-[9px] font-semibold text-blue-700 mb-0.5">파싱 결과 ({Object.keys(parsePreview).length}개 항목)</div>
+              <div className="max-h-28 overflow-y-auto space-y-0">
+                {Object.entries(parsePreview).map(([key, val]) => (
+                  <div key={key} className="flex justify-between text-[9px]">
+                    <span className="text-gray-600">{key}</span>
+                    <span className="font-mono text-blue-800">{typeof val === 'number' ? (Number.isInteger(val) ? val : val.toFixed(4).replace(/0+$/, '').replace(/\.$/, '')) : val}</span>
+                  </div>
+                ))}
+              </div>
+              <button
+                onClick={handleApplyParse}
+                className="mt-0.5 text-[9px] px-1.5 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                적용
+              </button>
+            </div>
+          )}
 
           {/* Name + Unit */}
           <div className="flex gap-1">
@@ -209,7 +246,7 @@ export default function CustomIngredient({ onUpdate }) {
                 <label className="text-[9px] w-24 shrink-0 text-gray-600 truncate" title={key}>{key}</label>
                 <input
                   type="number"
-                  className="w-20 text-[10px] border border-gray-300 rounded px-0.5 py-0 text-right"
+                  className={`w-20 text-[10px] border rounded px-0.5 py-0 text-right ${nutrients[key] != null ? 'border-blue-400 bg-blue-50' : 'border-gray-300'}`}
                   value={nutrients[key] != null ? nutrients[key] : ''}
                   onChange={(e) => setNutrients(prev => ({
                     ...prev,
