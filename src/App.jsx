@@ -12,7 +12,6 @@ import CustomIngredient from './components/CustomIngredient';
 import { calcCalories } from './engine/calories';
 import { calcTotalNutrients, calcDailyNutrients, calcAllSufficiency } from './engine/nutrients';
 import { generateWarnings } from './engine/warnings';
-import { loadPreset } from './data/appConfig';
 
 const initialBasicInfo = {
   weight: 4,
@@ -83,25 +82,6 @@ export default function App() {
     setNutrientAdjust(prev => ({ ...prev, ...updates }));
   }, []);
 
-  const handleLoadPreset = useCallback((presetName) => {
-    const preset = loadPreset(presetName);
-    if (!preset) return;
-    const newSlots = {};
-    for (const [slotId, dropdownVal] of Object.entries(preset.slots)) {
-      newSlots[slotId] = { ...newSlots[slotId], dropdown: dropdownVal };
-    }
-    for (const [slotId, amountVal] of Object.entries(preset.values)) {
-      newSlots[slotId] = { ...newSlots[slotId], amount: amountVal };
-    }
-    if (newSlots.water_0?.amount) {
-      newSlots.water_0 = { ...newSlots.water_0, dropdown: 2 };
-    }
-    setSlotStates(newSlots);
-    if (preset.recipeDays != null) {
-      setBasicInfo(prev => ({ ...prev, recipeDays: preset.recipeDays }));
-    }
-  }, []);
-
   const handleReset = useCallback(() => {
     setSlotStates({});
   }, []);
@@ -125,12 +105,8 @@ export default function App() {
 
       <div className="p-1">
         <div className="flex gap-1 mb-1 flex-wrap items-center">
-          <button onClick={() => handleLoadPreset('피어슨')}
-            className="text-[10px] px-2 py-0.5 bg-green-600 text-white rounded hover:bg-green-700 font-semibold">피어슨</button>
-          <button onClick={() => handleLoadPreset('미쉘')}
-            className="text-[10px] px-2 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700 font-semibold">살편네</button>
           <button onClick={handleReset}
-            className="text-[10px] px-2 py-0.5 bg-gray-500 text-white rounded hover:bg-gray-600 font-semibold">초기화</button>
+            className="text-[10px] px-2 py-0.5 bg-gray-500 text-white rounded hover:bg-gray-600 font-semibold">레시피 초기화</button>
         </div>
 
         <div className="flex gap-1 items-start">

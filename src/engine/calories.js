@@ -11,10 +11,10 @@ export function calcCalories(type, weight, expectedWeight) {
 }
 
 export const CALORIE_LABELS = [
-  { value: 1, label: '중성화되지 않은 성묘 (활동적)' },
-  { value: 2, label: '중성화된 성묘 (일반)' },
-  { value: 3, label: '비만 성묘' },
-  { value: 4, label: '중성화되지 않은 성묘 (고활동)' },
-  { value: 5, label: '자묘 (저활동)' },
-  { value: 6, label: '자묘 (일반)' },
+  { value: 1, label: '중성화 되지 않은 마른 고양이' },
+  { value: 2, label: '중성화된 마른 고양이' },
+  { value: 3, label: '중성화된 비만 고양이' },
+  { value: 4, label: '중성화 되지 않은 비만 고양이' },
+  { value: 5, label: '중성화 된 자묘' },
+  { value: 6, label: '중성화 되지 않은 자묘' },
 ];

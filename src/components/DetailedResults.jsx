@@ -92,10 +92,12 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
   for (let i = 0; i < 7; i++) otherVegTotal += getAmt(`otherVeg_${i}`);
 
   const organDenom = rawBone + meatTotal + organTotal;
-  const organRatio = organDenom > 0 ? (organTotal / organDenom) * 100 : 0;
+  const organPct = organDenom > 0 ? (organTotal / organDenom) * 100 : 0;
+  const meatOnlyPct = organDenom > 0 ? 100 - organPct : 0;
   const pureeTotal = veggieTotal + otherVegTotal;
   const pureeDenom = rawBone + rmb + meatTotal + organTotal + pureeTotal;
-  const pureeRatio = pureeDenom > 0 ? (pureeTotal / pureeDenom) * 100 : 0;
+  const pureePct = pureeDenom > 0 ? (pureeTotal / pureeDenom) * 100 : 0;
+  const nonPureePct = pureeDenom > 0 ? 100 - pureePct : 0;
 
   return (
     <div className="space-y-1">
@@ -154,8 +156,8 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
       <div className="bg-white rounded p-1.5 shadow-sm border">
         <h3 className="font-bold text-[11px] mb-0.5 text-gray-800">비율 정보</h3>
         <div className="space-y-0 text-[10px]">
-          <div className="flex justify-between"><span>내장:육류</span><span className="font-semibold">{organRatio.toFixed(1)}%</span></div>
-          <div className="flex justify-between"><span>퓨레:육류</span><span className="font-semibold">{pureeRatio.toFixed(1)}%</span></div>
+          <div className="flex justify-between"><span>내장:육류</span><span className="font-semibold">{organPct.toFixed(1)}% : {meatOnlyPct.toFixed(1)}%</span></div>
+          <div className="flex justify-between"><span>퓨레:육류</span><span className="font-semibold">{pureePct.toFixed(1)}% : {nonPureePct.toFixed(1)}%</span></div>
         </div>
       </div>
     </div>

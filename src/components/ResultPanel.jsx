@@ -13,13 +13,13 @@ function suffColor(v) {
   return 'text-green-600';
 }
 
-function Row({ label, value, unit, extra, sufficiency, suffRaw, warning }) {
+function Row({ label, value, unit, dm, sufficiency, suffRaw, warning }) {
   const suffClass = suffColor(suffRaw);
   return (
     <tr className="border-b border-gray-100">
       <td className="text-[10px] py-0 pr-1">{label}</td>
       <td className="text-[10px] py-0 text-right pr-0.5">{value}{unit && <span className="text-gray-400 ml-0.5">{unit}</span>}</td>
-      <td className="text-[10px] py-0 text-right pr-0.5 text-gray-500">{extra || ''}</td>
+      <td className="text-[10px] py-0 text-right pr-0.5 text-gray-500">{dm || ''}</td>
       <td className={`text-[10px] py-0 text-right pr-0.5 ${suffClass}`}>{sufficiency || ''}</td>
       <td className="text-[10px] py-0">{warning && <span className="text-red-600 font-bold">{warning.msg}</span>}</td>
     </tr>
@@ -32,10 +32,11 @@ export default function ResultPanel({ daily, totals, dailyCalories, sufficiency,
   const dailyGrams = daily._dailyGrams || 0;
   const totalGrams = daily._totalGrams || 0;
   const waterG = daily['수분(g)'] || 0;
+  const dryMatter = dailyGrams - waterG;
 
   const dmPct = (nutrientG) => {
     const v = calcDMPercent(nutrientG, dailyGrams, waterG);
-    return v > 0 ? `DM${v.toFixed(1)}%` : '';
+    return v > 0 ? `${v.toFixed(1)}%` : '';
   };
 
   const getSuff = (key) => sufficiency[key] != null ? fmtPct(sufficiency[key]) : '-';
@@ -55,8 +56,10 @@ export default function ResultPanel({ daily, totals, dailyCalories, sufficiency,
   for (let i = 0; i < 9; i++) meatTotal += getAmt(`meat_${i}`);
   let organTotal = 0;
   for (let i = 0; i < 5; i++) organTotal += getAmt(`organ_${i}`);
+  const bonePart = rawBone + rmb * 0.6;
   const boneDenom = rawBone + rmb + meatTotal + organTotal;
-  const boneRatio = boneDenom > 0 ? (rawBone + rmb * 0.6) / boneDenom : 0;
+  const bonePct = boneDenom > 0 ? (bonePart / boneDenom) * 100 : 0;
+  const meatPct = boneDenom > 0 ? 100 - bonePct : 0;
 
   const vitaminRows = [
     { key: '비타민A(mcg)', label: 'A', unit: 'mcg' },
@@ -104,7 +107,7 @@ export default function ResultPanel({ daily, totals, dailyCalories, sufficiency,
           <tr className="border-b border-gray-300">
             <th className="text-[9px] text-left py-0">항목</th>
             <th className="text-[9px] text-right py-0">값</th>
-            <th className="text-[9px] text-right py-0">비고</th>
+            <th className="text-[9px] text-right py-0">DM%</th>
             <th className="text-[9px] text-right py-0">과부족</th>
             <th className="text-[9px] text-left py-0">경고</th>
           </tr>
@@ -114,19 +117,19 @@ export default function ResultPanel({ daily, totals, dailyCalories, sufficiency,
           <Row label="하루 섭취량" value={fmt(dailyGrams)} unit="g" />
           <Row label="칼로리" value={fmt(daily['칼로리(Kcal)'])} unit="Kcal" />
           <Row label="수분" value={fmt(waterG)} unit="g"
-            extra={dailyGrams > 0 ? `${((waterG / dailyGrams) * 100).toFixed(1)}%` : ''} />
+            dm={dailyGrams > 0 ? `${((waterG / dailyGrams) * 100).toFixed(1)}%` : ''} />
           <Row label="단백질" value={fmt(daily['단백질(g)'])} unit="g"
-            extra={dmPct(daily['단백질(g)'] || 0)} sufficiency={getSuff('단백질(g)')} suffRaw={getSuffRaw('단백질(g)')} />
+            dm={dmPct(daily['단백질(g)'] || 0)} sufficiency={getSuff('단백질(g)')} suffRaw={getSuffRaw('단백질(g)')} />
           <Row label="지방" value={fmt(daily['지방(g)'])} unit="g"
-            extra={dmPct(daily['지방(g)'] || 0)} sufficiency={getSuff('지방(g)')} suffRaw={getSuffRaw('지방(g)')} />
+            dm={dmPct(daily['지방(g)'] || 0)} sufficiency={getSuff('지방(g)')} suffRaw={getSuffRaw('지방(g)')} />
           <Row label="탄수화물" value={fmt(daily['탄수화물(g)'])} unit="g"
-            extra={dmPct(daily['탄수화물(g)'] || 0)} />
+            dm={dmPct(daily['탄수화물(g)'] || 0)} />
           <Row label="칼슘" value={fmt(calcium)} unit="mg"
-            extra={dmPct(calcium / 1000)} sufficiency={getSuff('칼슘(mg)')} suffRaw={getSuffRaw('칼슘(mg)')} />
+            dm={dmPct(calcium / 1000)} sufficiency={getSuff('칼슘(mg)')} suffRaw={getSuffRaw('칼슘(mg)')} />
           <Row label="인" value={fmt(phosphorus)} unit="mg"
-            extra={dmPct(phosphorus / 1000)} sufficiency={getSuff('인(mg)')} suffRaw={getSuffRaw('인(mg)')} />
-          <Row label="인:칼슘비" value={fmt(caPRatio)} />
-          <Row label="뼈:살" value={fmt(boneRatio)} />
+            dm={dmPct(phosphorus / 1000)} sufficiency={getSuff('인(mg)')} suffRaw={getSuffRaw('인(mg)')} />
+          <Row label="Ca:P 비율" value={fmt(caPRatio)} />
+          <Row label="뼈:살 비율" value={`${bonePct.toFixed(1)}% : ${meatPct.toFixed(1)}%`} />
 
           <tr><td colSpan={5} className="text-[9px] font-semibold pt-1 text-gray-600">비타민</td></tr>
           {vitaminRows.map(({ key, label, unit }) => (

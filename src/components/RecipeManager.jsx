@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { CELL_TO_SLOT } from '../data/appConfig';
 
 const STORAGE_KEY = 'catfood_saved_recipes';
 const R_FOODS_KEY = 'catfood_r_foods';
@@ -14,11 +15,109 @@ function saveRecipes(recipes) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(recipes));
 }
 
+// Excel cell ref helpers
+function cellRef(col, row) {
+  return `${col}${row}`;
+}
+
+function parseExcelData(workbook) {
+  const sheet = workbook.Sheets['레시피-결과'];
+  if (!sheet) {
+    alert("'레시피-결과' 시트를 찾을 수 없습니다.");
+    return null;
+  }
+
+  const getVal = (cell) => {
+    const c = sheet[cell];
+    if (!c) return null;
+    return c.v != null ? c.v : null;
+  };
+  const getNum = (cell) => {
+    const v = getVal(cell);
+    return typeof v === 'number' ? v : (v != null ? parseFloat(v) : null);
+  };
+
+  // Basic info
+  const weight = getNum('C4') || 4;
+  const calorieType = getNum('B8') || 2;
+  const expectedWeight = getNum('C11') || weight;
+  const recipeDays = getNum('C13') || 60;
+
+  const basicInfo = { weight, calorieType, expectedWeight, recipeDays };
+
+  // Omega3 custom: C26~C31
+  const omega3Custom = {
+    calories: getNum('C26') || '',
+    fat: getNum('C27') || '',
+    epa: getNum('C28') || '',
+    dha: getNum('C29') || '',
+    otherOmega3: getNum('C30') || '',
+    vitE: getNum('C31') || '',
+  };
+
+  // Nutrient adjust: C34~C38
+  const nutrientAdjust = {
+    protein: getNum('C34') || '',
+    fat: getNum('C35') || '',
+    calcium: getNum('C36') || '',
+    phosphorus: getNum('C37') || '',
+    sodium: getNum('C38') || '',
+  };
+
+  // Slot states from CELL_TO_SLOT mapping
+  const slotStates = {};
+
+  // Dropdown cells
+  const dropdownCols = {
+    'G': [4, 5, 6, 7, 8],
+    'F': [10, 11, 12, 13, 14, 15, 16, 17, 18, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40],
+    'K': [4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 19, 20, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34, 36, 37, 38, 39, 40],
+  };
+
+  for (const [col, rows] of Object.entries(dropdownCols)) {
+    for (const row of rows) {
+      const cell = cellRef(col, row);
+      const mapping = CELL_TO_SLOT[cell];
+      if (!mapping || mapping.type !== 'dropdown') continue;
+      const val = getNum(cell);
+      if (val != null && val > 1) {
+        slotStates[mapping.slotId] = { ...slotStates[mapping.slotId], dropdown: val };
+      }
+    }
+  }
+
+  // Value cells
+  const valueCols = {
+    'H': [4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40],
+    'L': [4, 5, 7, 8, 10, 11, 13, 14, 16, 17, 19, 20, 22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34, 36, 37, 38, 39, 40],
+  };
+
+  for (const [col, rows] of Object.entries(valueCols)) {
+    for (const row of rows) {
+      const cell = cellRef(col, row);
+      const mapping = CELL_TO_SLOT[cell];
+      if (!mapping || mapping.type !== 'value') continue;
+      const val = getNum(cell);
+      if (val != null && val > 0) {
+        slotStates[mapping.slotId] = { ...slotStates[mapping.slotId], amount: val };
+      }
+    }
+  }
+
+  // Water slot: set dropdown to 2 if it has amount
+  if (slotStates.water_0?.amount) {
+    slotStates.water_0 = { ...slotStates.water_0, dropdown: 2 };
+  }
+
+  return { basicInfo, slotStates, omega3Custom, nutrientAdjust };
+}
+
 export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nutrientAdjust, onLoadRecipe }) {
   const [recipes, setRecipes] = useState(loadRecipes);
   const [name, setName] = useState('');
   const [open, setOpen] = useState(false);
   const fileInputRef = useRef(null);
+  const excelInputRef = useRef(null);
 
   useEffect(() => { setRecipes(loadRecipes()); }, []);
 
@@ -68,7 +167,7 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
     URL.revokeObjectURL(url);
   };
 
-  // --- Import ---
+  // --- JSON Import ---
   const handleFileSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -85,7 +184,6 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
     reader.readAsText(file);
   };
 
-  // Merge helper: file items overwrite same-name existing, keep rest
   const mergeByName = (existing, incoming) => {
     const map = new Map(existing.map(item => [item.name, item]));
     for (const item of incoming) map.set(item.name, item);
@@ -107,6 +205,24 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
       localStorage.setItem(R_FOODS_KEY, JSON.stringify({ ...existing, ...data.rFoodOverrides }));
     }
     window.location.reload();
+  };
+
+  // --- Excel Import ---
+  const handleExcelSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const XLSX = (await import('xlsx')).default;
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data);
+      const parsed = parseExcelData(workbook);
+      if (parsed) {
+        onLoadRecipe(parsed);
+      }
+    } catch (err) {
+      alert(`엑셀 파일 읽기 실패: ${err.message}`);
+    }
+    if (excelInputRef.current) excelInputRef.current.value = '';
   };
 
   return (
@@ -155,8 +271,8 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
             </div>
           )}
 
-          {/* Export / Import */}
-          <div className="flex gap-1 border-t pt-1">
+          {/* Export / Import / Excel */}
+          <div className="flex gap-1 flex-wrap border-t pt-1">
             <button
               onClick={handleExport}
               className="text-[9px] px-1.5 py-0.5 bg-indigo-500 text-white rounded hover:bg-indigo-600"
@@ -169,12 +285,25 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
             >
               가져오기
             </button>
+            <button
+              onClick={() => excelInputRef.current?.click()}
+              className="text-[9px] px-1.5 py-0.5 bg-orange-500 text-white rounded hover:bg-orange-600"
+            >
+              엑셀 가져오기
+            </button>
             <input
               ref={fileInputRef}
               type="file"
               accept=".json"
               className="hidden"
               onChange={handleFileSelect}
+            />
+            <input
+              ref={excelInputRef}
+              type="file"
+              accept=".xlsx,.xlsm,.xls"
+              className="hidden"
+              onChange={handleExcelSelect}
             />
           </div>
         </div>
