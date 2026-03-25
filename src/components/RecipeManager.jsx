@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { CELL_TO_SLOT } from '../data/appConfig';
 import { getOverridesData, setOverridesData } from '../data/foodData';
 import { saveToGist } from './GistSync';
+import { calcCalories } from '../engine/calories';
 
 const STORAGE_KEY = 'catfood_saved_recipes';
 const OVERRIDES_KEY = 'catfood_overrides';
@@ -31,7 +32,17 @@ function parseExcelData(workbook) {
   const calorieType = getNum('B8') || 2;
   const expectedWeight = getNum('C11') || weight;
   const recipeDays = getNum('C13') || 60;
+  const c12Calories = getNum('C12');
   const basicInfo = { weight, calorieType, expectedWeight, recipeDays };
+
+  // C12 필요칼로리: 공식 계산값과 차이가 1 이상이면 직접 입력 모드
+  if (c12Calories != null) {
+    const formulaCal = calcCalories(calorieType, weight, expectedWeight);
+    if (Math.abs(c12Calories - formulaCal) >= 1) {
+      basicInfo.useCustomCalories = true;
+      basicInfo.customCalories = c12Calories;
+    }
+  }
 
   const omega3Custom = {
     calories: getNum('C26') || '', fat: getNum('C27') || '', epa: getNum('C28') || '',

@@ -139,15 +139,15 @@ export default function App() {
         <h1 className="text-sm font-bold">고양이 생식 레시피 계산기</h1>
       </header>
 
-      <div className="p-1">
+      <div className="max-w-[1400px] mx-auto p-1">
         <div className="flex gap-1 mb-1 flex-wrap items-center">
           <button onClick={handleReset}
             className="text-[10px] px-2 py-0.5 bg-gray-500 text-white rounded hover:bg-gray-600 font-semibold">레시피 초기화</button>
         </div>
 
         <div className="flex gap-1 items-start">
-          {/* Left column */}
-          <div className="w-72 shrink-0 space-y-1">
+          {/* Left column — 25% */}
+          <div className="w-1/4 min-w-[260px] max-w-[320px] shrink-0 space-y-1">
             <BasicInfo basicInfo={basicInfo} dailyCalories={dailyCalories} onUpdate={handleBasicInfoUpdate} />
             <MeatSection slotStates={slotStates} onSlotUpdate={handleSlotUpdate} />
             <VegetableSection slotStates={slotStates} onSlotUpdate={handleSlotUpdate} />
@@ -157,8 +157,8 @@ export default function App() {
               onReset={() => setNutrientAdjust(initialNutrientAdjust)} />
           </div>
 
-          {/* Center column */}
-          <div className="w-72 shrink-0 space-y-1">
+          {/* Center column — 35% */}
+          <div className="w-[35%] min-w-[280px] max-w-[420px] shrink-0 space-y-1">
             <GistSync onSyncComplete={handleSyncComplete} />
             <CustomIngredient onUpdate={handleCustomFoodUpdate} />
             <RecipeManager basicInfo={basicInfo} slotStates={slotStates}
@@ -168,8 +168,8 @@ export default function App() {
             <SupplementSection slotStates={slotStates} onSlotUpdate={handleSlotUpdate} />
           </div>
 
-          {/* Right column */}
-          <div className="flex-1 min-w-72 space-y-1" ref={resultRef}>
+          {/* Right column — 40% */}
+          <div className="w-[40%] min-w-[300px] max-w-[520px] space-y-1" ref={resultRef}>
             <ResultPanel daily={daily} totals={totals} dailyCalories={dailyCalories}
               sufficiency={sufficiency} warnings={warnings} slotStates={slotStates} />
             <DetailedResults daily={daily} sufficiency={sufficiency} slotStates={slotStates} />
