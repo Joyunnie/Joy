@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { NUTRIENT_KEYS } from '../engine/nutrients';
 import {
-  getAllManagedFoods, getDeletedOriginals,
-  addCustomFood, removeCustomFood, updateCustomFood,
-  updateOriginalRFood, deleteOriginalRFood, restoreOriginalRFood,
+  ALL_CATEGORY_KEYS, CATEGORY_LABELS,
+  getManagedItems, getDeletedItems,
+  addFood, updateFood, deleteFood, restoreFood,
 } from '../data/foodData';
 
 const COMMON_KEYS = [
@@ -12,7 +12,7 @@ const COMMON_KEYS = [
   '비타민E(mg)', 'EPA(mg)', 'DHA(mg)', '타우린(mg)',
 ];
 
-// --- Parsing ---
+// --- Parsing (unchanged) ---
 
 const NUTRIENT_NAME_MAP = {
   '에너지': '칼로리(Kcal)',
@@ -72,24 +72,20 @@ const NUTRIENT_NAME_MAP = {
   '오메가 6 지방산': 'n-6(mg)',
 };
 
-// Detect input unit from value string
+const UNIT_TO_GRAMS = { 'g': 1, 'mg': 0.001, 'mcg': 0.000001 };
+
 function detectUnit(valueStr) {
   if (valueStr.includes('㎉') || valueStr.toLowerCase().includes('kcal')) return 'Kcal';
   if (valueStr.includes('㎍') || valueStr.includes('μg') || valueStr.toLowerCase().includes('mcg')) return 'mcg';
   if (valueStr.includes('㎎') || valueStr.toLowerCase().includes('mg')) return 'mg';
-  // 'g' but not '㎎' or '㎍'
   if (/[0-9]g\b/i.test(valueStr) || valueStr.endsWith('g')) return 'g';
   return null;
 }
 
-// Extract target unit from nutrient key: '구리(mg)' → 'mg'
 function getTargetUnit(nutrientKey) {
   const match = nutrientKey.match(/\(([^)]+)\)/);
   return match ? match[1] : null;
 }
-
-// Convert between units
-const UNIT_TO_GRAMS = { 'g': 1, 'mg': 0.001, 'mcg': 0.000001 };
 
 function convertUnit(value, inputUnit, targetUnit) {
   if (inputUnit === targetUnit) return value;
@@ -100,15 +96,10 @@ function convertUnit(value, inputUnit, targetUnit) {
   return (value * inG) / outG;
 }
 
-// Find mapping: exact match first, then contains match
 function findMapping(name) {
-  // Exact match
   if (NUTRIENT_NAME_MAP[name]) return NUTRIENT_NAME_MAP[name];
-  // Contains match: check if any key is contained in name, or name contains key
   for (const [mapKey, targetKey] of Object.entries(NUTRIENT_NAME_MAP)) {
-    if (name.includes(mapKey) || mapKey.includes(name)) {
-      return targetKey;
-    }
+    if (name.includes(mapKey) || mapKey.includes(name)) return targetKey;
   }
   return null;
 }
@@ -116,40 +107,27 @@ function findMapping(name) {
 function parseNutritionText(text) {
   const result = {};
   const lines = text.split('\n');
-
   for (const line of lines) {
     let parts = line.split('\t');
     while (parts.length > 0 && parts[0].trim() === '') parts.shift();
     if (parts.length < 2) continue;
-
     const name = parts[0].trim();
     if (!name) continue;
     const valueStr = parts[1].trim();
-
     const numMatch = valueStr.replace(/,/g, '').match(/([0-9]+\.?[0-9]*)/);
     if (!numMatch) continue;
     let value = parseFloat(numMatch[1]);
-
     const inputUnit = detectUnit(valueStr);
-
-    // Special case: exactly "지방산" → 총지방산(mg)
     if (name === '지방산') {
       const targetUnit = getTargetUnit('총지방산(mg)');
-      if (inputUnit && targetUnit) {
-        value = convertUnit(value, inputUnit, targetUnit);
-      }
+      if (inputUnit && targetUnit) value = convertUnit(value, inputUnit, targetUnit);
       result['총지방산(mg)'] = value;
       continue;
     }
-
     const targetKey = findMapping(name);
     if (!targetKey) continue;
-
     const targetUnit = getTargetUnit(targetKey);
-    if (inputUnit && targetUnit) {
-      value = convertUnit(value, inputUnit, targetUnit);
-    }
-
+    if (inputUnit && targetUnit) value = convertUnit(value, inputUnit, targetUnit);
     result[targetKey] = value;
   }
   return result;
@@ -159,19 +137,21 @@ function parseNutritionText(text) {
 
 export default function CustomIngredient({ onUpdate }) {
   const [open, setOpen] = useState(false);
+  const [selectedCat, setSelectedCat] = useState('식품R');
   const [showAll, setShowAll] = useState(true);
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('100g');
   const [nutrients, setNutrients] = useState({});
-  const [managedFoods, setManagedFoods] = useState(getAllManagedFoods());
-  const [deletedOriginals, setDeletedOriginals] = useState(getDeletedOriginals());
   const [pasteText, setPasteText] = useState('');
   const [parsePreview, setParsePreview] = useState(null);
-  const [editTarget, setEditTarget] = useState(null); // { type, index }
+  const [editTarget, setEditTarget] = useState(null); // { type, index, catKey }
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const managedItems = getManagedItems(selectedCat);
+  const deletedItems = getDeletedItems(selectedCat);
 
   const refresh = () => {
-    setManagedFoods(getAllManagedFoods());
-    setDeletedOriginals(getDeletedOriginals());
+    setRefreshKey(k => k + 1);
     if (onUpdate) onUpdate();
   };
 
@@ -186,44 +166,33 @@ export default function CustomIngredient({ onUpdate }) {
 
   const handleSave = () => {
     if (!name.trim()) return;
-    const food = {
-      name: name.trim(),
-      nutrients: { '함량(g)': unit, ...nutrients },
-    };
+    const food = { name: name.trim(), nutrients: { '함량(g)': unit, ...nutrients } };
     if (editTarget) {
-      if (editTarget.type === 'original') {
-        updateOriginalRFood(editTarget.index, food);
-      } else {
-        updateCustomFood(editTarget.index, food);
-      }
+      updateFood(editTarget.catKey, editTarget.type, editTarget.index, food);
     } else {
-      addCustomFood(food);
+      addFood(selectedCat, food);
     }
     resetForm();
     refresh();
   };
 
   const handleRemove = (item) => {
-    if (item.type === 'original') {
-      deleteOriginalRFood(item.index);
-    } else {
-      removeCustomFood(item.index);
-    }
+    deleteFood(item.catKey, item.type, item.index);
     refresh();
   };
 
-  const handleRestore = (index) => {
-    restoreOriginalRFood(index);
+  const handleRestore = (item) => {
+    restoreFood(item.catKey, item.index);
     refresh();
   };
 
   const handleEdit = (item) => {
     setName(item.name);
-    setUnit(item.nutrients['함량(g)'] || '100g');
+    setUnit(item.nutrients?.['함량(g)'] || '100g');
     const nut = { ...item.nutrients };
     delete nut['함량(g)'];
     setNutrients(nut);
-    setEditTarget({ type: item.type, index: item.index });
+    setEditTarget({ type: item.type, index: item.index, catKey: item.catKey });
     setParsePreview(null);
     setPasteText('');
   };
@@ -251,6 +220,54 @@ export default function CustomIngredient({ onUpdate }) {
       </button>
       {open && (
         <div className="mt-1 space-y-1">
+          {/* Category selector */}
+          <select
+            className="w-full text-[10px] border border-gray-300 rounded px-1 py-0.5"
+            value={selectedCat}
+            onChange={(e) => { setSelectedCat(e.target.value); resetForm(); }}
+          >
+            {ALL_CATEGORY_KEYS.map(k => (
+              <option key={k} value={k}>{k} ({CATEGORY_LABELS[k]})</option>
+            ))}
+          </select>
+
+          {/* Items list for selected category */}
+          <div className="border rounded max-h-32 overflow-y-auto">
+            {managedItems.length === 0 && (
+              <div className="text-[9px] text-gray-400 p-1">항목 없음</div>
+            )}
+            {managedItems.map((item) => (
+              <div key={`${item.type}-${item.index}`} className="flex items-center gap-1 px-1 py-0.5 hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                <span className="flex-1 text-[10px] truncate">
+                  {item.type === 'original' && <span className="text-[8px] text-gray-400 mr-0.5">[기본]</span>}
+                  {item.name}
+                </span>
+                <button onClick={() => handleEdit(item)} className="text-[9px] text-blue-400 hover:text-blue-600 px-0.5 shrink-0">편집</button>
+                <button onClick={() => handleRemove(item)} className="text-[9px] text-red-400 hover:text-red-600 px-0.5 shrink-0">삭제</button>
+              </div>
+            ))}
+          </div>
+
+          {/* Deleted originals - restore */}
+          {deletedItems.length > 0 && (
+            <div className="border rounded p-1">
+              <div className="text-[9px] text-gray-400 mb-0.5">삭제된 기본 재료</div>
+              {deletedItems.map((item) => (
+                <div key={item.index} className="flex items-center gap-1 text-[10px] text-gray-400">
+                  <span className="flex-1 truncate line-through">{item.name}</span>
+                  <button onClick={() => handleRestore(item)} className="text-[9px] text-green-500 hover:text-green-700 px-0.5">복원</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Separator */}
+          <div className="border-t pt-1">
+            <div className="text-[9px] font-semibold text-gray-500 mb-0.5">
+              {editTarget ? `재료 수정 (${CATEGORY_LABELS[editTarget.catKey]})` : `새 재료 추가 → ${CATEGORY_LABELS[selectedCat]}`}
+            </div>
+          </div>
+
           {/* Paste-to-parse area */}
           <div>
             <div className="text-[9px] text-gray-500 mb-0.5">식품영양DB 텍스트 붙여넣기</div>
@@ -260,20 +277,13 @@ export default function CustomIngredient({ onUpdate }) {
               value={pasteText}
               onChange={(e) => { setPasteText(e.target.value); setParsePreview(null); }}
             />
-            <button
-              onClick={handleParse}
-              className="text-[9px] px-1.5 py-0.5 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              파싱
-            </button>
+            <button onClick={handleParse} className="text-[9px] px-1.5 py-0.5 bg-blue-500 text-white rounded hover:bg-blue-600">파싱</button>
           </div>
 
           {/* Parse preview */}
           {parsePreview && (
             <div className="border border-blue-200 bg-blue-50 rounded p-1">
-              <div className="text-[9px] font-semibold text-blue-700 mb-0.5">
-                파싱 결과 ({Object.keys(parsePreview).length}개 항목)
-              </div>
+              <div className="text-[9px] font-semibold text-blue-700 mb-0.5">파싱 결과 ({Object.keys(parsePreview).length}개 항목)</div>
               <div className="max-h-28 overflow-y-auto space-y-0">
                 {Object.entries(parsePreview).map(([key, val]) => (
                   <div key={key} className="flex justify-between text-[9px]">
@@ -282,12 +292,7 @@ export default function CustomIngredient({ onUpdate }) {
                   </div>
                 ))}
               </div>
-              <button
-                onClick={handleApplyParse}
-                className="mt-0.5 text-[9px] px-1.5 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                적용
-              </button>
+              <button onClick={handleApplyParse} className="mt-0.5 text-[9px] px-1.5 py-0.5 bg-blue-600 text-white rounded hover:bg-blue-700">적용</button>
             </div>
           )}
 
@@ -335,69 +340,16 @@ export default function CustomIngredient({ onUpdate }) {
 
           {/* Actions */}
           <div className="flex gap-1 items-center">
-            <button
-              onClick={() => setShowAll(!showAll)}
-              className="text-[9px] text-blue-600 hover:underline"
-            >
+            <button onClick={() => setShowAll(!showAll)} className="text-[9px] text-blue-600 hover:underline">
               {showAll ? '주요 영양소만' : `전체 ${NUTRIENT_KEYS.length}개 보기`}
             </button>
             {editTarget && (
-              <button onClick={resetForm} className="text-[9px] text-gray-500 hover:underline ml-1">
-                취소
-              </button>
+              <button onClick={resetForm} className="text-[9px] text-gray-500 hover:underline ml-1">취소</button>
             )}
-            <button
-              onClick={handleSave}
-              className="ml-auto text-[10px] px-1.5 py-0.5 bg-green-600 text-white rounded hover:bg-green-700"
-            >
+            <button onClick={handleSave} className="ml-auto text-[10px] px-1.5 py-0.5 bg-green-600 text-white rounded hover:bg-green-700">
               {editTarget ? '수정' : '등록'}
             </button>
           </div>
-
-          {/* Managed foods list */}
-          {managedFoods.length > 0 && (
-            <div className="border-t pt-1 mt-1">
-              <div className="text-[9px] font-semibold text-gray-500 mb-0.5">식품R 재료 목록</div>
-              {managedFoods.map((item, i) => (
-                <div key={`${item.type}-${item.index}`} className="flex items-center gap-1 text-[10px]">
-                  <span className="flex-1 truncate">
-                    {item.type === 'original' && <span className="text-[8px] text-gray-400 mr-0.5">[기본]</span>}
-                    {item.name}
-                  </span>
-                  <button
-                    onClick={() => handleEdit(item)}
-                    className="text-[9px] text-blue-400 hover:text-blue-600 px-0.5"
-                  >
-                    편집
-                  </button>
-                  <button
-                    onClick={() => handleRemove(item)}
-                    className="text-[9px] text-red-400 hover:text-red-600 px-0.5"
-                  >
-                    삭제
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Deleted originals - restore */}
-          {deletedOriginals.length > 0 && (
-            <div className="border-t pt-1 mt-1">
-              <div className="text-[9px] font-semibold text-gray-400 mb-0.5">삭제된 기본 재료</div>
-              {deletedOriginals.map((item) => (
-                <div key={item.index} className="flex items-center gap-1 text-[10px] text-gray-400">
-                  <span className="flex-1 truncate line-through">{item.name}</span>
-                  <button
-                    onClick={() => handleRestore(item.index)}
-                    className="text-[9px] text-green-500 hover:text-green-700 px-0.5"
-                  >
-                    복원
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
     </div>

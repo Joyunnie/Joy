@@ -3,191 +3,222 @@ import rawData from '../../food_data.json';
 export const foods = rawData.foods;
 export const categories = rawData.categories;
 
-// Build lookup maps: categoryKey -> { index -> food }
-const categoryFoodMap = {};
-for (const [catKey, catVal] of Object.entries(categories)) {
-  categoryFoodMap[catKey] = {};
-  for (const item of catVal.items) {
-    const food = foods.find(f => f.name === item.name);
-    if (food) {
-      categoryFoodMap[catKey][item.index] = food;
-    }
-  }
-}
-
 // Water is a special slot - always "물"
 const waterFood = foods.find(f => f.name === '물' && f.id === '0');
 
-// --- 식품R management ---
-// Original 식품R items from food_data.json (immutable reference)
-const ORIGINAL_R_ITEMS = categories['식품R'] ? [...categories['식품R'].items] : [];
-const originalRFoods = {}; // index -> food object (from food_data.json)
-for (const item of ORIGINAL_R_ITEMS) {
-  const food = foods.find(f => f.name === item.name);
-  if (food) {
-    originalRFoods[item.index] = { name: food.name, nutrients: { ...food.nutrients } };
-  }
-}
+// localStorage key for all category overrides
+const OVERRIDES_KEY = 'catfood_overrides';
 
-// localStorage keys
-const R_FOODS_KEY = 'catfood_r_foods'; // overrides for original 식품R items
-const CUSTOM_FOODS_KEY = 'catfood_custom_foods'; // user-added new items
-
-// rFoods: merged 식품R data (original + overrides from localStorage)
-// Key: original index (2-11), Value: food object or null (deleted)
-let rFoodOverrides = {};
-let customFoods = [];
-const foodLookupMap = {}; // dropdown index -> food object for 식품R
-
-function loadAllFoods() {
-  // Load overrides for original 식품R items
-  try {
-    rFoodOverrides = JSON.parse(localStorage.getItem(R_FOODS_KEY)) || {};
-  } catch { rFoodOverrides = {}; }
-
-  // Load user-added custom foods
-  try {
-    customFoods = JSON.parse(localStorage.getItem(CUSTOM_FOODS_KEY)) || [];
-  } catch { customFoods = []; }
-
-  rebuildLookup();
-}
-
-function rebuildLookup() {
-  Object.keys(foodLookupMap).forEach(k => delete foodLookupMap[k]);
-
-  // Original 식품R items (with possible overrides/deletions)
-  for (const item of ORIGINAL_R_ITEMS) {
-    if (rFoodOverrides[item.index] === null) continue; // deleted
-    if (rFoodOverrides[item.index]) {
-      foodLookupMap[item.index] = rFoodOverrides[item.index];
-    } else {
-      foodLookupMap[item.index] = originalRFoods[item.index];
-    }
-  }
-
-  // Custom foods: index >= 100
-  customFoods.forEach((cf, i) => {
-    foodLookupMap[100 + i] = cf;
-  });
-}
-
-loadAllFoods();
-
-// Get all manageable foods (original 식품R + custom) for the UI
-export function getAllManagedFoods() {
-  const result = [];
-  // Original 식품R items
-  for (const item of ORIGINAL_R_ITEMS) {
-    if (rFoodOverrides[item.index] === null) continue; // deleted
-    const food = rFoodOverrides[item.index] || originalRFoods[item.index];
+// Build original data maps (immutable reference)
+const originalItems = {}; // catKey -> [...items]
+const originalFoods = {}; // catKey -> { index -> { name, nutrients } }
+for (const [catKey, catVal] of Object.entries(categories)) {
+  originalItems[catKey] = [...catVal.items];
+  originalFoods[catKey] = {};
+  for (const item of catVal.items) {
+    const food = foods.find(f => f.name === item.name);
     if (food) {
-      result.push({ type: 'original', index: item.index, ...food });
+      originalFoods[catKey][item.index] = { name: food.name, nutrients: { ...food.nutrients } };
     }
   }
-  // Custom foods
-  customFoods.forEach((cf, i) => {
-    result.push({ type: 'custom', index: i, ...cf });
-  });
-  return result;
 }
 
-// Get deleted original items (for potential restore)
-export function getDeletedOriginals() {
+// Overrides structure per category:
+// { added: [{ name, nutrients }], modified: { [index]: { name, nutrients } }, deleted: [index] }
+let overrides = {};
+
+// Effective lookup: catKey -> { index -> food }
+const effectiveMap = {};
+
+function loadOverrides() {
+  try {
+    overrides = JSON.parse(localStorage.getItem(OVERRIDES_KEY)) || {};
+  } catch { overrides = {}; }
+  rebuildAll();
+}
+
+function saveOverrides() {
+  localStorage.setItem(OVERRIDES_KEY, JSON.stringify(overrides));
+}
+
+function getOverride(catKey) {
+  if (!overrides[catKey]) overrides[catKey] = { added: [], modified: {}, deleted: [] };
+  return overrides[catKey];
+}
+
+function rebuildAll() {
+  for (const catKey of Object.keys(categories)) {
+    rebuildCategory(catKey);
+  }
+}
+
+function rebuildCategory(catKey) {
+  effectiveMap[catKey] = {};
+  const ov = overrides[catKey] || { added: [], modified: {}, deleted: [] };
+
+  // Original items (with modifications/deletions)
+  for (const item of (originalItems[catKey] || [])) {
+    if (ov.deleted?.includes(item.index)) continue;
+    if (ov.modified?.[item.index]) {
+      effectiveMap[catKey][item.index] = ov.modified[item.index];
+    } else if (originalFoods[catKey]?.[item.index]) {
+      effectiveMap[catKey][item.index] = originalFoods[catKey][item.index];
+    }
+  }
+
+  // Added items: index starts at 100
+  if (ov.added) {
+    ov.added.forEach((food, i) => {
+      effectiveMap[catKey][100 + i] = food;
+    });
+  }
+}
+
+loadOverrides();
+
+// --- Category labels for UI ---
+export const CATEGORY_LABELS = {
+  '식품A': '생뼈류',
+  '식품AA': 'RMB',
+  '식품B': '본밀류',
+  '식품C': '달걀껍질',
+  '식품D': '기타칼슘',
+  '식품F': '고기류',
+  '식품FF': '내장류',
+  '식품G': '비타민B',
+  '식품H': '효모(스푼)',
+  '식품HH': '효모(g)',
+  '식품I': '비타민E',
+  '식품J': '타우린(캡슐)',
+  '식품JJ': '타우린(mg)',
+  '식품K': '오메가3',
+  '식품L': '난류',
+  '식품M': '식이섬유(tsp)',
+  '식품MM': '식이섬유(g)',
+  '식품P': '야채퓨레채소',
+  '식품Q': '야채퓨레기타',
+  '식품R': '직접넣는데이터',
+};
+
+export const ALL_CATEGORY_KEYS = Object.keys(CATEGORY_LABELS);
+
+// --- Public API for UI ---
+
+// Get all items for a category (original + added, excluding deleted)
+export function getManagedItems(catKey) {
+  const ov = overrides[catKey] || { added: [], modified: {}, deleted: [] };
   const result = [];
-  for (const item of ORIGINAL_R_ITEMS) {
-    if (rFoodOverrides[item.index] === null) {
-      const orig = originalRFoods[item.index];
-      if (orig) result.push({ index: item.index, name: orig.name });
+
+  // Original items
+  for (const item of (originalItems[catKey] || [])) {
+    if (ov.deleted?.includes(item.index)) continue;
+    const food = ov.modified?.[item.index] || originalFoods[catKey]?.[item.index];
+    if (food) {
+      result.push({ type: 'original', index: item.index, catKey, name: food.name, nutrients: food.nutrients });
     }
+  }
+
+  // Added items
+  if (ov.added) {
+    ov.added.forEach((food, i) => {
+      result.push({ type: 'added', index: i, catKey, name: food.name, nutrients: food.nutrients });
+    });
+  }
+
+  return result;
+}
+
+// Get deleted original items for a category
+export function getDeletedItems(catKey) {
+  const ov = overrides[catKey] || { added: [], modified: {}, deleted: [] };
+  const result = [];
+  for (const idx of (ov.deleted || [])) {
+    const orig = originalFoods[catKey]?.[idx];
+    if (orig) result.push({ index: idx, catKey, name: orig.name });
   }
   return result;
 }
 
-// Update an original 식품R item
-export function updateOriginalRFood(index, food) {
-  rFoodOverrides[index] = food;
-  localStorage.setItem(R_FOODS_KEY, JSON.stringify(rFoodOverrides));
-  rebuildLookup();
-  // Also update the categoryFoodMap so getFoodByCategory picks it up
-  if (categoryFoodMap['식품R']) {
-    categoryFoodMap['식품R'][index] = food;
+// Add a new food to a category
+export function addFood(catKey, food) {
+  const ov = getOverride(catKey);
+  ov.added.push(food);
+  saveOverrides();
+  rebuildCategory(catKey);
+}
+
+// Update an existing food
+export function updateFood(catKey, type, index, food) {
+  const ov = getOverride(catKey);
+  if (type === 'original') {
+    if (!ov.modified) ov.modified = {};
+    ov.modified[index] = food;
+  } else {
+    // type === 'added'
+    if (ov.added && ov.added[index]) {
+      ov.added[index] = food;
+    }
   }
+  saveOverrides();
+  rebuildCategory(catKey);
 }
 
-// Delete an original 식품R item
-export function deleteOriginalRFood(index) {
-  rFoodOverrides[index] = null; // mark as deleted
-  localStorage.setItem(R_FOODS_KEY, JSON.stringify(rFoodOverrides));
-  rebuildLookup();
-  if (categoryFoodMap['식품R']) {
-    delete categoryFoodMap['식품R'][index];
+// Delete a food
+export function deleteFood(catKey, type, index) {
+  const ov = getOverride(catKey);
+  if (type === 'original') {
+    if (!ov.deleted) ov.deleted = [];
+    if (!ov.deleted.includes(index)) ov.deleted.push(index);
+    // Also remove any modification
+    if (ov.modified) delete ov.modified[index];
+  } else {
+    // type === 'added'
+    if (ov.added) ov.added = ov.added.filter((_, i) => i !== index);
   }
+  saveOverrides();
+  rebuildCategory(catKey);
 }
 
-// Restore a deleted original 식품R item
-export function restoreOriginalRFood(index) {
-  delete rFoodOverrides[index];
-  localStorage.setItem(R_FOODS_KEY, JSON.stringify(rFoodOverrides));
-  rebuildLookup();
-  if (categoryFoodMap['식품R'] && originalRFoods[index]) {
-    categoryFoodMap['식품R'][index] = originalRFoods[index];
+// Restore a deleted original
+export function restoreFood(catKey, index) {
+  const ov = getOverride(catKey);
+  if (ov.deleted) {
+    ov.deleted = ov.deleted.filter(i => i !== index);
   }
+  saveOverrides();
+  rebuildCategory(catKey);
 }
 
-// Custom food CRUD
-export function getCustomFoods() {
-  return customFoods;
-}
-
-export function addCustomFood(food) {
-  customFoods = [...customFoods, food];
-  localStorage.setItem(CUSTOM_FOODS_KEY, JSON.stringify(customFoods));
-  rebuildLookup();
-}
-
-export function updateCustomFood(index, food) {
-  customFoods = customFoods.map((cf, i) => i === index ? food : cf);
-  localStorage.setItem(CUSTOM_FOODS_KEY, JSON.stringify(customFoods));
-  rebuildLookup();
-}
-
-export function removeCustomFood(index) {
-  customFoods = customFoods.filter((_, i) => i !== index);
-  localStorage.setItem(CUSTOM_FOODS_KEY, JSON.stringify(customFoods));
-  rebuildLookup();
-}
+// --- Core lookup functions (used by calculation engine) ---
 
 export function getFoodByCategory(categoryKey, dropdownIndex) {
   if (!dropdownIndex || dropdownIndex <= 1) return null;
   if (categoryKey === 'water') return waterFood;
-  // 식품R: check merged lookup
-  if (categoryKey === '식품R') {
-    return foodLookupMap[dropdownIndex] || null;
-  }
-  const catMap = categoryFoodMap[categoryKey];
+  const catMap = effectiveMap[categoryKey];
   if (!catMap) return null;
   return catMap[dropdownIndex] || null;
 }
 
 export function getCategoryItems(categoryKey) {
-  const cat = categories[categoryKey];
-  if (!cat) return [];
-
-  if (categoryKey === '식품R') {
-    const items = [];
-    // Original items (excluding deleted)
-    for (const item of ORIGINAL_R_ITEMS) {
-      if (rFoodOverrides[item.index] === null) continue;
-      const food = rFoodOverrides[item.index] || originalRFoods[item.index];
-      items.push({ index: item.index, name: food ? food.name : item.name });
-    }
-    // Custom foods
-    customFoods.forEach((cf, i) => {
-      items.push({ index: 100 + i, name: cf.name });
-    });
-    return items;
+  if (categoryKey === 'water') return [{ index: 2, name: '물' }];
+  const catMap = effectiveMap[categoryKey];
+  if (!catMap) {
+    const cat = categories[categoryKey];
+    return cat ? [...cat.items] : [];
   }
+  return Object.entries(catMap).map(([idx, food]) => ({
+    index: Number(idx),
+    name: food.name,
+  })).sort((a, b) => a.index - b.index);
+}
 
-  return [...cat.items];
+// --- For export/import ---
+export function getOverridesData() {
+  return overrides;
+}
+
+export function setOverridesData(data) {
+  overrides = data;
+  saveOverrides();
+  rebuildAll();
 }

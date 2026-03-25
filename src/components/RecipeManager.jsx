@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { CELL_TO_SLOT } from '../data/appConfig';
 
+import { getOverridesData, setOverridesData } from '../data/foodData';
+
 const STORAGE_KEY = 'catfood_saved_recipes';
-const R_FOODS_KEY = 'catfood_r_foods';
-const CUSTOM_FOODS_KEY = 'catfood_custom_foods';
+const OVERRIDES_KEY = 'catfood_overrides';
 
 function loadRecipes() {
   try {
@@ -154,8 +155,7 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
       version: 1,
       exportDate: new Date().toISOString().slice(0, 10),
       recipes: loadRecipes(),
-      customFoods: JSON.parse(localStorage.getItem(CUSTOM_FOODS_KEY) || '[]'),
-      rFoodOverrides: JSON.parse(localStorage.getItem(R_FOODS_KEY) || '{}'),
+      overrides: getOverridesData(),
       omega3Custom,
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -195,14 +195,33 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
       const merged = mergeByName(loadRecipes(), data.recipes);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
     }
-    if (data.customFoods) {
-      const existing = JSON.parse(localStorage.getItem(CUSTOM_FOODS_KEY) || '[]');
-      const merged = mergeByName(existing, data.customFoods);
-      localStorage.setItem(CUSTOM_FOODS_KEY, JSON.stringify(merged));
-    }
-    if (data.rFoodOverrides) {
-      const existing = JSON.parse(localStorage.getItem(R_FOODS_KEY) || '{}');
-      localStorage.setItem(R_FOODS_KEY, JSON.stringify({ ...existing, ...data.rFoodOverrides }));
+    if (data.overrides) {
+      const existing = getOverridesData();
+      // Merge per-category overrides
+      const merged = { ...existing };
+      for (const [catKey, catOv] of Object.entries(data.overrides)) {
+        if (!merged[catKey]) {
+          merged[catKey] = catOv;
+        } else {
+          const m = merged[catKey];
+          // Merge added by name
+          if (catOv.added) {
+            if (!m.added) m.added = [];
+            const existingNames = new Set(m.added.map(f => f.name));
+            for (const f of catOv.added) {
+              if (existingNames.has(f.name)) {
+                const idx = m.added.findIndex(e => e.name === f.name);
+                if (idx >= 0) m.added[idx] = f;
+              } else {
+                m.added.push(f);
+              }
+            }
+          }
+          if (catOv.modified) m.modified = { ...(m.modified || {}), ...catOv.modified };
+          if (catOv.deleted) m.deleted = [...new Set([...(m.deleted || []), ...catOv.deleted])];
+        }
+      }
+      setOverridesData(merged);
     }
     window.location.reload();
   };
