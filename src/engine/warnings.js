@@ -33,9 +33,10 @@ export function generateWarnings(daily, dailyCalories, isKitten, slotStates, nut
   // 3. Calcium DM% > 4%
   const calciumMg = daily['칼슘(mg)'] || 0;
   const calciumG = calciumMg / 1000;
-  const calciumDM = calcDMPercent(calciumG, dailyGrams, waterG);
-  if (calciumDM > 4) {
-    warnings.push({ type: 'red', msg: '▶칼슘 높음' });
+  const dryMatter = dailyGrams - waterG;
+  const calciumDmRatio = dryMatter > 0 ? calciumG / dryMatter : 0;
+  if (calciumDmRatio > 0.04) {
+    warnings.push({ type: 'red', msg: '▶칼슘 DM% 높음' });
   }
 
   // 4. Ca:P ratio
@@ -50,51 +51,27 @@ export function generateWarnings(daily, dailyCalories, isKitten, slotStates, nut
     }
   }
 
-  // 5. Upper limit warnings for all nutrients
-  const checkUpperLimit = (nutrientKey, nrcCat, nrcKey, label) => {
-    const entry = nrc[nrcCat]?.[nrcKey];
-    if (!entry) return;
-    const upperLimit = getNrcUpperLimit(entry, isKitten);
-    if (upperLimit == null) return;
-    const nrcVal = getNrcValue(entry, isKitten);
-    if (nrcVal == null || nrcVal === 0) return;
-    const suff = calcSufficiency(daily[nutrientKey] || 0, nrcVal, dailyCalories);
-    if (suff == null) return;
-
-    // Upper limit is expressed as the NRC upper value / NRC min value ratio
-    const upperSuff = upperLimit / nrcVal;
-    if (suff > upperSuff) {
-      warnings.push({ type: 'red', msg: `▶${label} 높음` });
-    }
-  };
-
-  // Check all nutrients with upper limits
+  // 5. Upper limit warnings for all nutrients with NRC upper limits
   for (const [nutrientKey, mapping] of Object.entries(NRC_MAPPING)) {
     const entry = nrc[mapping.cat]?.[mapping.key];
     if (!entry) continue;
     const upperLimit = getNrcUpperLimit(entry, isKitten);
     if (upperLimit == null) continue;
-    const nrcVal = getNrcValue(entry, isKitten);
-    if (nrcVal == null || nrcVal === 0) continue;
     const dailyAmount = daily[nutrientKey] || 0;
-    const requirement = (nrcVal / 1000) * dailyCalories;
-    if (requirement <= 0) continue;
-    const suff = dailyAmount / requirement;
     const upperRequirement = (upperLimit / 1000) * dailyCalories;
-    if (dailyAmount > upperRequirement) {
-      const label = mapping.key;
-      warnings.push({ type: 'red', msg: `▶${label} 높음` });
+    if (upperRequirement > 0 && dailyAmount > upperRequirement) {
+      warnings.push({ type: 'red', msg: `▶${mapping.key} 높음`, nutrientKey });
     }
   }
 
-  // 6. Selenium > 228%
-  const seleniumEntry = nrc['무기질']?.['셀레늄'];
-  if (seleniumEntry) {
-    const nrcVal = getNrcValue(seleniumEntry, isKitten);
+  // 6. Vitamin K fish base warning
+  const vitKEntry = nrc['기본영양']?.['비타민K'];
+  if (vitKEntry) {
+    const nrcVal = getNrcValue(vitKEntry, isKitten);
     if (nrcVal) {
-      const suff = calcSufficiency(daily['셀레늄(mcg)'] || 0, nrcVal, dailyCalories);
-      if (suff != null && suff > 2.28) {
-        warnings.push({ type: 'red', msg: '▶셀레늄 높음', highlight: true });
+      const suff = calcSufficiency(daily['비타민K(mcg)'] || 0, nrcVal, dailyCalories);
+      if (suff != null && suff < 1) {
+        warnings.push({ type: 'red', msg: '▶생선베이스 일 때 주의' });
       }
     }
   }

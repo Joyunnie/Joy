@@ -227,9 +227,10 @@ export function getNrcEntry(nutrientKey) {
   return nrc[mapping.cat]?.[mapping.key] || null;
 }
 
-// Calculate all sufficiency values
+// Calculate all sufficiency values + upper limit exceedance
 export function calcAllSufficiency(daily, dailyCalories, isKitten) {
   const result = {};
+  const upperExceeded = {}; // nutrientKey -> true if upper limit exceeded
   for (const [nutrientKey, mapping] of Object.entries(NRC_MAPPING)) {
     const nrcEntry = nrc[mapping.cat]?.[mapping.key];
     if (!nrcEntry) continue;
@@ -238,6 +239,14 @@ export function calcAllSufficiency(daily, dailyCalories, isKitten) {
     const suff = calcSufficiency(daily[nutrientKey] || 0, nrcVal, dailyCalories);
     if (suff != null) {
       result[nutrientKey] = suff;
+    }
+    // Check upper limit
+    const upperVal = getNrcUpperLimit(nrcEntry, isKitten);
+    if (upperVal != null && dailyCalories > 0) {
+      const upperReq = (upperVal / 1000) * dailyCalories;
+      if ((daily[nutrientKey] || 0) > upperReq) {
+        upperExceeded[nutrientKey] = true;
+      }
     }
   }
   // EPA+DHA combined
@@ -250,5 +259,6 @@ export function calcAllSufficiency(daily, dailyCalories, isKitten) {
       if (suff != null) result['EPA+DHA'] = suff;
     }
   }
+  result._upperExceeded = upperExceeded;
   return result;
 }

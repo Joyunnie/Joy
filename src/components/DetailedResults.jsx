@@ -3,13 +3,12 @@ import { useState } from 'react';
 const fmt = (v) => v != null && !isNaN(v) ? v.toFixed(1) : '-';
 const fmtPct = (v) => v != null && !isNaN(v) ? `${Math.round(v * 100)}%` : '-';
 
-function suffColor(v) {
+function suffColor(v, isUpperExceeded) {
   if (v == null || isNaN(v)) return 'text-gray-400';
   const pct = Math.round(v * 100);
   if (pct === 0) return 'text-gray-400';
-  if (pct >= 300) return 'text-red-600 font-bold';
-  if (pct >= 200) return 'text-orange-500';
   if (pct < 100) return 'text-red-600';
+  if (isUpperExceeded) return 'text-red-600 font-bold';
   return 'text-green-600';
 }
 
@@ -66,6 +65,8 @@ function Accordion({ title, defaultOpen = false, children }) {
 export default function DetailedResults({ daily, sufficiency, slotStates }) {
   if (!daily) return null;
 
+  const upperExceeded = sufficiency._upperExceeded || {};
+  const isUE = (key) => !!upperExceeded[key];
   const getSuff = (key) => sufficiency[key] != null ? fmtPct(sufficiency[key]) : '-';
   const getSuffRaw = (key) => sufficiency[key] != null ? sufficiency[key] : null;
 
@@ -118,7 +119,7 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
                 <tr key={key} className="border-b border-gray-100">
                   <td className="text-[10px] py-0">{label}</td>
                   <td className="text-[10px] py-0 text-right">{fmt(daily[key])}</td>
-                  <td className={`text-[10px] py-0 text-right ${suffColor(raw)}`}>{getSuff(key)}</td>
+                  <td className={`text-[10px] py-0 text-right ${suffColor(raw, isUE(key))}`}>{getSuff(key)}</td>
                 </tr>
               );
             })}
@@ -149,7 +150,7 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
                   <tr key={key} className="border-b border-gray-100">
                     <td className="text-[10px] py-0">{label}</td>
                     <td className="text-[10px] py-0 text-right">{val}{unit && !isRatio ? <span className="text-gray-400 ml-0.5">{unit}</span> : ''}</td>
-                    <td className={`text-[10px] py-0 text-right ${suffColor(raw)}`}>{suff}</td>
+                    <td className={`text-[10px] py-0 text-right ${suffColor(raw, isUE(key))}`}>{suff}</td>
                   </tr>
                 );
               })}
