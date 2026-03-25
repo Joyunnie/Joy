@@ -19,6 +19,8 @@ const initialBasicInfo = {
   calorieType: 2,
   expectedWeight: 4,
   recipeDays: 60,
+  useCustomCalories: false,
+  customCalories: '',
 };
 
 const initialOmega3 = {
@@ -52,10 +54,14 @@ export default function App() {
     localStorage.setItem(OMEGA3_STORAGE_KEY, JSON.stringify(omega3Custom));
   }, [omega3Custom]);
 
-  const dailyCalories = useMemo(() =>
+  const formulaCalories = useMemo(() =>
     calcCalories(basicInfo.calorieType, basicInfo.weight, basicInfo.expectedWeight),
     [basicInfo.calorieType, basicInfo.weight, basicInfo.expectedWeight]
   );
+
+  const dailyCalories = basicInfo.useCustomCalories && basicInfo.customCalories > 0
+    ? Number(basicInfo.customCalories)
+    : formulaCalories;
 
   const isKitten = basicInfo.calorieType === 5 || basicInfo.calorieType === 6;
 

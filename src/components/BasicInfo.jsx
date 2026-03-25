@@ -49,7 +49,25 @@ export default function BasicInfo({ basicInfo, dailyCalories, onUpdate }) {
         </div>
         <div className="flex items-center gap-1 bg-blue-50 px-1 py-0.5 rounded">
           <label className="text-[10px] w-20 shrink-0 font-semibold">필요칼로리</label>
-          <span className="text-[10px] font-bold text-blue-700">{dailyCalories.toFixed(1)} Kcal</span>
+          {basicInfo.useCustomCalories ? (
+            <input type="number"
+              className="w-16 text-[10px] border border-blue-400 rounded px-0.5 py-0 h-5 text-right font-bold text-blue-700 bg-white"
+              value={basicInfo.customCalories}
+              onChange={(e) => onUpdate({ customCalories: e.target.value === '' ? '' : Number(e.target.value) })}
+              min={0} step={0.1}
+              placeholder="Kcal"
+            />
+          ) : (
+            <span className="text-[10px] font-bold text-blue-700">{dailyCalories.toFixed(1)}</span>
+          )}
+          <span className="text-[10px] text-blue-700">Kcal</span>
+          <label className="flex items-center gap-0.5 ml-auto cursor-pointer">
+            <input type="checkbox" className="w-2.5 h-2.5"
+              checked={!!basicInfo.useCustomCalories}
+              onChange={(e) => onUpdate({ useCustomCalories: e.target.checked })}
+            />
+            <span className="text-[9px] text-gray-500">직접 입력</span>
+          </label>
         </div>
       </div>
     </div>
