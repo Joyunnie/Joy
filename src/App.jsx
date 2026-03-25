@@ -10,6 +10,8 @@ import DetailedResults from './components/DetailedResults';
 import RecipeManager from './components/RecipeManager';
 import CustomIngredient from './components/CustomIngredient';
 import NutrientRecommendation from './components/NutrientRecommendation';
+import GistSync from './components/GistSync';
+import Inventory from './components/Inventory';
 import { calcCalories } from './engine/calories';
 import { calcTotalNutrients, calcDailyNutrients, calcAllSufficiency } from './engine/nutrients';
 import { generateWarnings } from './engine/warnings';
@@ -125,6 +127,12 @@ export default function App() {
     setRefreshKey(k => k + 1);
   }, []);
 
+  const handleSyncComplete = useCallback(() => {
+    // Reload omega3 from localStorage after sync
+    setOmega3Custom(loadOmega3());
+    setRefreshKey(k => k + 1);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-100">
       <header className="bg-amber-600 text-white py-1 px-3 shadow-md">
@@ -151,10 +159,12 @@ export default function App() {
 
           {/* Center column */}
           <div className="w-72 shrink-0 space-y-1">
+            <GistSync onSyncComplete={handleSyncComplete} />
             <CustomIngredient onUpdate={handleCustomFoodUpdate} />
             <RecipeManager basicInfo={basicInfo} slotStates={slotStates}
               omega3Custom={omega3Custom} nutrientAdjust={nutrientAdjust}
               onLoadRecipe={handleLoadRecipe} resultRef={resultRef} />
+            <Inventory onUpdate={handleCustomFoodUpdate} />
             <SupplementSection slotStates={slotStates} onSlotUpdate={handleSlotUpdate} />
           </div>
 
