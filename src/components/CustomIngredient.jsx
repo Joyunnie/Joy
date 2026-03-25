@@ -172,7 +172,7 @@ function parseHorizontalLine(line) {
   let nutIdx = 0;
   while (colIdx < parts.length && nutIdx < nutrientCols.length) {
     const raw = parts[colIdx].replace(/,/g, '');
-    const num = parseFloat(raw);
+    const num = raw === '' ? 0 : parseFloat(raw);
     if (!isNaN(num) && num !== 0) {
       nutrients[nutrientCols[nutIdx]] = num;
     }
