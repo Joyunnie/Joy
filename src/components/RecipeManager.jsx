@@ -1,8 +1,49 @@
 import { useState, useEffect, useRef } from 'react';
-import { CELL_TO_SLOT } from '../data/appConfig';
-import { getOverridesData, setOverridesData } from '../data/foodData';
+import { CELL_TO_SLOT, SLOT_DEFS } from '../data/appConfig';
+import { getOverridesData, setOverridesData, getCategoryItems } from '../data/foodData';
 import { saveToGist } from './GistSync';
 import { calcCalories } from '../engine/calories';
+
+// 계산 데이터 시트 A열 행 → slotId 매핑
+const CALC_SHEET_ROW_TO_SLOT = {
+  4: 'calcium_0', 5: 'calcium_1', 6: 'calcium_2', 7: 'calcium_3', 8: 'calcium_4',
+  10: 'meat_0', 11: 'meat_1', 12: 'meat_2', 13: 'meat_3', 14: 'meat_4',
+  15: 'meat_5', 16: 'meat_6', 17: 'meat_7', 18: 'meat_8',
+  20: 'organ_0', 21: 'organ_1', 22: 'organ_2', 23: 'organ_3', 24: 'organ_4',
+  25: 'water_0',
+  28: 'egg_0', 29: 'egg_1',
+  31: 'vitB_0', 32: 'vitB_1',
+  34: 'yeastTsp_0', 35: 'yeastG_0',
+  37: 'vitE_0', 38: 'vitE_1',
+  40: 'tauCap_0', 41: 'tauMg_0',
+  43: 'omega_0', 44: 'omega_1',
+  46: 'fiberTsp_0', 47: 'fiberTsp_1',
+  48: 'fiberG_0', 49: 'fiberG_1',
+  52: 'otherVeg_0', 55: 'otherVeg_1', 58: 'otherVeg_2',
+  60: 'veggie_0', 64: 'veggie_1', 68: 'veggie_2',
+  74: 'direct_0', 75: 'direct_1', 76: 'direct_2', 77: 'direct_3',
+  78: 'direct_4', 79: 'direct_5', 80: 'direct_6',
+};
+
+// slotId → category key 빌드
+const SLOT_TO_CATEGORY = {};
+for (const def of SLOT_DEFS) {
+  SLOT_TO_CATEGORY[def.id] = def.category;
+}
+
+function findDropdownIndexByName(categoryKey, foodName) {
+  if (!foodName || !categoryKey) return 0;
+  const items = getCategoryItems(categoryKey);
+  // 정확한 매칭
+  const exact = items.find(item => item.name === foodName);
+  if (exact) return exact.index;
+  // 부분 매칭 (괄호 등 미세 차이 대응)
+  const partial = items.find(item =>
+    item.name.includes(foodName) || foodName.includes(item.name)
+  );
+  if (partial) return partial.index;
+  return 0;
+}
 
 const STORAGE_KEY = 'catfood_saved_recipes';
 const OVERRIDES_KEY = 'catfood_overrides';
@@ -53,21 +94,33 @@ function parseExcelData(workbook) {
     phosphorus: getNum('C37') || '', sodium: getNum('C38') || '',
   };
 
+  // 계산 데이터 시트에서 식품명 읽기 (이름 기반 매칭)
+  const calcSheet = workbook.Sheets['계산 데이터 시트'];
+  const getCalcVal = (cell) => { const c = calcSheet?.[cell]; return c?.v != null ? c.v : null; };
+
   const slotStates = {};
-  const dropdownCols = {
-    'G': [4,5,6,7,8],
-    'F': [10,11,12,13,14,15,16,17,18,20,21,22,23,24,25,28,29,30],
-    'K': [4,5,7,8,10,11,13,14,16,17,19,20,22,23,24,25,28,29,30,36,37,38,39,40,41,42],
-  };
-  for (const [col, rows] of Object.entries(dropdownCols)) {
-    for (const row of rows) {
-      const cell = cellRef(col, row);
-      const mapping = CELL_TO_SLOT[cell];
-      if (!mapping || mapping.type !== 'dropdown') continue;
-      const val = getNum(cell);
-      if (val != null && val > 1) slotStates[mapping.slotId] = { ...slotStates[mapping.slotId], dropdown: val };
+  const notFound = []; // 매칭 안 된 재료 목록
+
+  // 1) 계산 데이터 시트 A열에서 식품명 → 이름 기반 드롭다운 매칭
+  for (const [rowStr, slotId] of Object.entries(CALC_SHEET_ROW_TO_SLOT)) {
+    const row = Number(rowStr);
+    const foodName = getCalcVal(`A${row}`);
+    if (!foodName || typeof foodName !== 'string' || !foodName.trim()) continue;
+    const trimmedName = foodName.trim();
+    if (slotId === 'water_0') continue; // 물은 별도 처리
+
+    const categoryKey = SLOT_TO_CATEGORY[slotId];
+    if (!categoryKey) continue;
+
+    const dropdownIdx = findDropdownIndexByName(categoryKey, trimmedName);
+    if (dropdownIdx > 0) {
+      slotStates[slotId] = { ...slotStates[slotId], dropdown: dropdownIdx };
+    } else {
+      notFound.push(trimmedName);
     }
   }
+
+  // 2) 레시피-결과 시트에서 값(amount) 읽기
   const valueCols = {
     'H': [4,5,6,7,8,10,11,12,13,14,15,16,17,18,20,21,22,23,24,25,28,29,30],
     'L': [4,5,7,8,10,11,13,14,16,17,19,20,22,23,24,25,28,29,30,36,37,38,39,40,41,42],
@@ -81,7 +134,16 @@ function parseExcelData(workbook) {
       if (val != null && val > 0) slotStates[mapping.slotId] = { ...slotStates[mapping.slotId], amount: val };
     }
   }
+
+  // 물 슬롯 처리
   if (slotStates.water_0?.amount) slotStates.water_0 = { ...slotStates.water_0, dropdown: 2 };
+
+  // 매칭 안 된 재료 알림
+  const uniqueNotFound = [...new Set(notFound)];
+  if (uniqueNotFound.length > 0) {
+    alert(`다음 재료를 찾을 수 없습니다. 커스텀 재료로 먼저 등록해주세요:\n${uniqueNotFound.join(', ')}`);
+  }
+
   return { basicInfo, slotStates, omega3Custom, nutrientAdjust };
 }
 
