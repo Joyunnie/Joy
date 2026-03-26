@@ -144,12 +144,12 @@ export default function NutrientRecommendation({ sufficiency, daily, dailyCalori
                   {recommendations.map((rec, i) => (
                     <div key={i} className="flex items-center text-[9px] text-gray-600 pl-1">
                       <span className="truncate flex-1">{i + 1}. {rec.name}</span>
-                      <span className="shrink-0 ml-1 text-blue-600 font-mono">{fmt(rec.needed)}g</span>
                       <button
                         onClick={() => addToBlacklist(rec.name)}
-                        className="shrink-0 ml-0.5 text-[8px] text-red-400 hover:text-red-600 px-0.5"
+                        className="shrink-0 text-[8px] text-red-400 hover:text-red-600 px-0.5 mx-0.5"
                         title="추천 제외"
                       >✕</button>
+                      <span className="shrink-0 text-blue-600 font-mono">{fmt(rec.needed)}g</span>
                     </div>
                   ))}
                 </div>
