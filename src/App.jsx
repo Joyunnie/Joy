@@ -145,7 +145,7 @@ export default function App() {
             className="text-[10px] px-2 py-0.5 bg-gray-500 text-white rounded hover:bg-gray-600 font-semibold">레시피 초기화</button>
         </div>
 
-        <div className="flex gap-1 items-start">
+        <div className="flex gap-1 items-start justify-center">
           {/* Left column — 25% */}
           <div className="w-1/4 min-w-[260px] max-w-[320px] shrink-0 space-y-1">
             <BasicInfo basicInfo={basicInfo} dailyCalories={dailyCalories} onUpdate={handleBasicInfoUpdate} />
