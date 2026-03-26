@@ -7,6 +7,7 @@ import DashboardPage from './pages/DashboardPage.tsx';
 import InventoryPage from './pages/InventoryPage.tsx';
 import AlertsPage from './pages/AlertsPage.tsx';
 import PredictionsPage from './pages/PredictionsPage.tsx';
+import ThresholdsPage from './pages/ThresholdsPage.tsx';
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
               <Route path="/inventory" element={<InventoryPage />} />
               <Route path="/predictions" element={<PredictionsPage />} />
               <Route path="/alerts" element={<AlertsPage />} />
+              <Route path="/thresholds" element={<ThresholdsPage />} />
             </Route>
           </Route>
         </Routes>

@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import engine
-from app.routers import alerts, auth, drugs, inventory, narcotics, otc, predictions, sync
+from app.routers import alerts, auth, drugs, inventory, narcotics, otc, predictions, sync, thresholds
 
 
 @asynccontextmanager
@@ -35,6 +35,7 @@ app.include_router(predictions.router, prefix="/api/v1/predictions", tags=["app-
 app.include_router(otc.router)
 app.include_router(narcotics.router)
 app.include_router(drugs.router)
+app.include_router(thresholds.router)
 
 
 @app.get("/health")

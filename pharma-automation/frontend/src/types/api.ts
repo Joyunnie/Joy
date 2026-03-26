@@ -154,6 +154,35 @@ export interface AlertReadResponse {
   read_at: string;
 }
 
+// --- Thresholds ---
+
+export interface ThresholdItemResponse {
+  id: number;
+  pharmacy_id: number;
+  drug_id: number;
+  drug_name: string | null;
+  drug_category: string | null;
+  min_quantity: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ThresholdListResponse {
+  items: ThresholdItemResponse[];
+  total: number;
+}
+
+export interface ThresholdCreateRequest {
+  drug_id: number;
+  min_quantity: number;
+}
+
+export interface ThresholdUpdateRequest {
+  min_quantity: number;
+  is_active: boolean;
+}
+
 // --- JWT payload ---
 
 export interface JwtPayload {

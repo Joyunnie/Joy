@@ -271,6 +271,20 @@ async def narcotic_drug_seed(seed_data):
 
 
 @pytest_asyncio.fixture(autouse=False)
+async def cleanup_thresholds(seed_data):
+    """Threshold 테스트 전 기존 drug_thresholds 정리."""
+    async with seed_session_factory() as db:
+        pharmacy_id = seed_data["pharmacy_id"]
+        await db.execute(
+            DrugThreshold.__table__.delete().where(
+                DrugThreshold.pharmacy_id == pharmacy_id
+            )
+        )
+        await db.commit()
+    yield
+
+
+@pytest_asyncio.fixture(autouse=False)
 async def cleanup_narcotics(seed_data):
     """Narcotics 테스트 전 기존 narcotics 관련 데이터 정리."""
     async with seed_session_factory() as db:
