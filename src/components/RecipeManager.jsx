@@ -332,6 +332,32 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
     } catch (err) { alert(`레시피 카드 저장 실패: ${err.message}`); }
   };
 
+  const shareImage = async (imageBlob, filename) => {
+    if (navigator.share && navigator.canShare) {
+      const file = new File([imageBlob], filename, { type: 'image/png' });
+      const shareData = { files: [file], title: '고양이 생식 레시피' };
+      if (navigator.canShare(shareData)) {
+        try { await navigator.share(shareData); return; }
+        catch (e) { if (e.name === 'AbortError') return; }
+      }
+    }
+    const url = URL.createObjectURL(imageBlob);
+    const link = document.createElement('a');
+    link.href = url; link.download = filename; link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleShare = async () => {
+    const target = cardRef.current || resultRef?.current;
+    if (!target) return;
+    try {
+      const { toBlob } = await import('html-to-image');
+      const blob = await toBlob(target, { backgroundColor: '#ffffff' });
+      if (!blob) { alert('이미지 생성 실패'); return; }
+      await shareImage(blob, `recipe_${new Date().toISOString().slice(0, 10)}.png`);
+    } catch (err) { alert(`공유 실패: ${err.message}`); }
+  };
+
   const handleExcelSelect = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -399,6 +425,8 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
               className="text-[9px] px-1.5 py-0.5 bg-purple-500 text-white rounded hover:bg-purple-600">이미지로 저장</button>
             <button onClick={handleCardExport}
               className="text-[9px] px-1.5 py-0.5 bg-pink-500 text-white rounded hover:bg-pink-600">레시피 카드</button>
+            <button onClick={handleShare}
+              className="text-[9px] px-1.5 py-0.5 bg-blue-500 text-white rounded hover:bg-blue-600">공유</button>
             <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleFileSelect} />
             <input ref={excelInputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={handleExcelSelect} />
           </div>
