@@ -32,78 +32,92 @@ const HORIZONTAL_COLUMNS = [
 // --- USDA (English vertical) format ---
 
 const USDA_NAME_MAP = {
-  'Water': { key: '수분(g)' },
+  'Water': '수분(g)',
   'Energy': { key: '칼로리(Kcal)', unitFilter: 'kcal' },
-  'Protein': { key: '단백질(g)' },
-  'Total lipid (fat)': { key: '지방(g)' },
-  'Carbohydrate, by difference': { key: '탄수화물(g)' },
-  'Calcium, Ca': { key: '칼슘(mg)' },
-  'Iron, Fe': { key: '철(mg)' },
-  'Magnesium, Mg': { key: '마그네슘(mg)' },
-  'Phosphorus, P': { key: '인(mg)' },
-  'Potassium, K': { key: '칼륨(mg)' },
-  'Sodium, Na': { key: '나트륨(mg)' },
-  'Zinc, Zn': { key: '아연(mg)' },
-  'Copper, Cu': { key: '구리(mg)' },
-  'Manganese, Mn': { key: '망간(mg)' },
-  'Selenium, Se': { key: '셀레늄(mcg)' },
-  'Iodine, I': { key: '요오드(mcg)' },
-  'Thiamin': { key: '비타민B1(mg)' },
-  'Riboflavin': { key: '비타민B2(mg)' },
-  'Niacin': { key: '나이아신(mg)' },
-  'Pantothenic acid': { key: '판토텐산(mg)' },
-  'Vitamin B-6': { key: '비타민B6(mg)' },
-  'Folate, total': { key: '폴산(mcg)' },
-  'Vitamin B-12': { key: '비타민B12(mcg)' },
-  'Vitamin A, RAE': { key: '비타민A(mcg)' },
-  'Vitamin E (alpha-tocopherol)': { key: '비타민E(mg)' },
+  'Protein': '단백질(g)',
+  'Total lipid (fat)': '지방(g)',
+  'Carbohydrate, by difference': '탄수화물(g)',
+  'Calcium, Ca': '칼슘(mg)',
+  'Iron, Fe': '철(mg)',
+  'Magnesium, Mg': '마그네슘(mg)',
+  'Phosphorus, P': '인(mg)',
+  'Potassium, K': '칼륨(mg)',
+  'Sodium, Na': '나트륨(mg)',
+  'Zinc, Zn': '아연(mg)',
+  'Copper, Cu': '구리(mg)',
+  'Manganese, Mn': '망간(mg)',
+  'Selenium, Se': '셀레늄(mcg)',
+  'Iodine, I': '요오드(mcg)',
+  'Thiamin': '비타민B1(mg)',
+  'Riboflavin': '비타민B2(mg)',
+  'Niacin': '나이아신(mg)',
+  'Pantothenic acid': '판토텐산(mg)',
+  'Vitamin B-6': '비타민B6(mg)',
+  'Folate, total': '폴산(mcg)',
+  'Vitamin B-12': '비타민B12(mcg)',
+  'Vitamin A, RAE': '비타민A(mcg)',
+  'Vitamin E (alpha-tocopherol)': '비타민E(mg)',
   'Vitamin D (D2 + D3)': { key: '비타민D(mcg)', unitFilter: 'µg' },
-  'Vitamin K (phylloquinone)': { key: '비타민K(mcg)' },
-  'Vitamin C, total ascorbic acid': { key: '비타민C(mg)' },
-  'Cholesterol': { key: '콜레스테롤(mg)' },
-  'Fatty acids, total saturated': { key: '포화지방산(mg)', convert: 'g_to_mg' },
-  'Fatty acids, total monounsaturated': { key: '_mono_mg', convert: 'g_to_mg' },
-  'Fatty acids, total polyunsaturated': { key: '_poly_mg', convert: 'g_to_mg' },
-  'Tryptophan': { key: '트립토판(mg)', convert: 'g_to_mg' },
-  'Threonine': { key: '트레오닌(mg)', convert: 'g_to_mg' },
-  'Isoleucine': { key: '이소루신(mg)', convert: 'g_to_mg' },
-  'Leucine': { key: '루신(mg)', convert: 'g_to_mg' },
-  'Lysine': { key: '라이신(mg)', convert: 'g_to_mg' },
-  'Methionine': { key: '메티오닌(mg)', convert: 'g_to_mg' },
-  'Cystine': { key: '시스테인(mg)', convert: 'g_to_mg' },
-  'Phenylalanine': { key: '페닐알라린(mg)', convert: 'g_to_mg' },
-  'Tyrosine': { key: '티로신(mg)', convert: 'g_to_mg' },
-  'Valine': { key: '발린(mg)', convert: 'g_to_mg' },
-  'Arginine': { key: '아르기닌(mg)', convert: 'g_to_mg' },
-  'Histidine': { key: '히스티딘(mg)', convert: 'g_to_mg' },
-  'Alanine': { key: '알라닌(mg)', convert: 'g_to_mg' },
-  'Aspartic acid': { key: '아스파르트산(mg)', convert: 'g_to_mg' },
-  'Glutamic acid': { key: '글루탐산(mg)', convert: 'g_to_mg' },
-  'Glycine': { key: '글리신(mg)', convert: 'g_to_mg' },
-  'Proline': { key: '프롤린(mg)', convert: 'g_to_mg' },
-  'Serine': { key: '세린(mg)', convert: 'g_to_mg' },
-  'PUFA 20:5 n-3 (EPA)': { key: 'EPA(mg)', convert: 'g_to_mg' },
-  'PUFA 22:6 n-3 (DHA)': { key: 'DHA(mg)', convert: 'g_to_mg' },
-  '20:5 n-3 (EPA)': { key: 'EPA(mg)', convert: 'g_to_mg' },
-  '22:6 n-3 (DHA)': { key: 'DHA(mg)', convert: 'g_to_mg' },
-  'PUFA 18:2 n-6 c,c': { key: '리놀레산(mg)', convert: 'g_to_mg' },
-  '18:2 n-6 c,c': { key: '리놀레산(mg)', convert: 'g_to_mg' },
-  'PUFA 18:3 n-3 c,c,c (ALA)': { key: '알파리놀렌산(mg)', convert: 'g_to_mg' },
-  '18:3 n-3 c,c,c (ALA)': { key: '알파리놀렌산(mg)', convert: 'g_to_mg' },
-  'PUFA 22:5 n-3 (DPA)': { key: '_dpa_mg', convert: 'g_to_mg' },
-  '22:5 n-3 (DPA)': { key: '_dpa_mg', convert: 'g_to_mg' },
-  'PUFA 20:4 n-6': { key: '_ara_mg', convert: 'g_to_mg' },
-  '20:4 n-6': { key: '_ara_mg', convert: 'g_to_mg' },
+  'Vitamin K (phylloquinone)': '비타민K(mcg)',
+  'Vitamin C, total ascorbic acid': '비타민C(mg)',
+  'Cholesterol': '콜레스테롤(mg)',
+  'Fatty acids, total saturated': '포화지방산(mg)',
+  'Fatty acids, total monounsaturated': '_mono(mg)',
+  'Fatty acids, total polyunsaturated': '_poly(mg)',
+  'Tryptophan': '트립토판(mg)',
+  'Threonine': '트레오닌(mg)',
+  'Isoleucine': '이소루신(mg)',
+  'Leucine': '루신(mg)',
+  'Lysine': '라이신(mg)',
+  'Methionine': '메티오닌(mg)',
+  'Cystine': '시스테인(mg)',
+  'Phenylalanine': '페닐알라린(mg)',
+  'Tyrosine': '티로신(mg)',
+  'Valine': '발린(mg)',
+  'Arginine': '아르기닌(mg)',
+  'Histidine': '히스티딘(mg)',
+  'Alanine': '알라닌(mg)',
+  'Aspartic acid': '아스파르트산(mg)',
+  'Glutamic acid': '글루탐산(mg)',
+  'Glycine': '글리신(mg)',
+  'Proline': '프롤린(mg)',
+  'Serine': '세린(mg)',
+  'PUFA 20:5 n-3 (EPA)': 'EPA(mg)',
+  'PUFA 22:6 n-3 (DHA)': 'DHA(mg)',
+  '20:5 n-3 (EPA)': 'EPA(mg)',
+  '22:6 n-3 (DHA)': 'DHA(mg)',
+  'PUFA 18:2 n-6 c,c': '리놀레산(mg)',
+  '18:2 n-6 c,c': '리놀레산(mg)',
+  'PUFA 18:3 n-3 c,c,c (ALA)': '알파리놀렌산(mg)',
+  '18:3 n-3 c,c,c (ALA)': '알파리놀렌산(mg)',
+  'PUFA 22:5 n-3 (DPA)': '_dpa(mg)',
+  '22:5 n-3 (DPA)': '_dpa(mg)',
+  'PUFA 20:4 n-6': '_ara(mg)',
+  '20:4 n-6': '_ara(mg)',
 };
 
 // USDA 영문 키워드 감지용
 const USDA_KEYWORDS = ['Energy', 'Protein', 'Water', 'Calcium, Ca', 'Iron, Fe', 'Thiamin', 'Riboflavin', 'Sodium, Na', 'Total lipid'];
 
 function findUsdaMapping(name) {
-  if (USDA_NAME_MAP[name]) return USDA_NAME_MAP[name];
-  for (const [mapKey, mapping] of Object.entries(USDA_NAME_MAP)) {
-    if (name.includes(mapKey) || mapKey.includes(name)) return mapping;
+  const entry = USDA_NAME_MAP[name];
+  if (entry) return typeof entry === 'string' ? { key: entry } : entry;
+  for (const [mapKey, val] of Object.entries(USDA_NAME_MAP)) {
+    if (name.includes(mapKey) || mapKey.includes(name)) {
+      return typeof val === 'string' ? { key: val } : val;
+    }
   }
+  return null;
+}
+
+// USDA 단위 문자열 → 내부 단위 정규화
+function normalizeUsdaUnit(unitStr) {
+  const u = unitStr.toLowerCase().trim();
+  if (u === 'kcal' || u === '㎉') return 'Kcal';
+  if (u === 'µg' || u === 'ug' || u === 'mcg' || u === '㎍') return 'mcg';
+  if (u === 'mg' || u === '㎎') return 'mg';
+  if (u === 'g') return 'g';
+  if (u === 'iu') return 'IU';
   return null;
 }
 
@@ -113,7 +127,6 @@ function parseUsdaText(text) {
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
-    // 날짜 줄 무시
     if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(trimmed)) continue;
     const parts = trimmed.split('\t');
     if (parts.length < 2) continue;
@@ -122,7 +135,7 @@ function parseUsdaText(text) {
     const valStr = parts[1].trim().replace(/,/g, '');
     const value = parseFloat(valStr);
     if (isNaN(value)) continue;
-    const unitStr = (parts[2] || '').trim().toLowerCase();
+    const rawUnit = (parts[2] || '').trim();
 
     const mapping = findUsdaMapping(name);
     if (!mapping) continue;
@@ -130,31 +143,29 @@ function parseUsdaText(text) {
     // unitFilter 체크 (Energy: kcal만, Vitamin D: µg만)
     if (mapping.unitFilter) {
       const filterLower = mapping.unitFilter.toLowerCase();
-      if (!unitStr.includes(filterLower) && !(filterLower === 'µg' && (unitStr === 'ug' || unitStr === 'mcg'))) continue;
+      const unitLower = rawUnit.toLowerCase();
+      if (!unitLower.includes(filterLower) && !(filterLower === 'µg' && (unitLower === 'ug' || unitLower === 'mcg'))) continue;
     }
 
+    // 자동 단위 감지 + 변환 (기존 convertUnit 재사용)
+    const inputUnit = normalizeUsdaUnit(rawUnit);
+    const targetUnit = getTargetUnit(mapping.key);
     let finalValue = value;
-    // g → mg 변환
-    if (mapping.convert === 'g_to_mg' && (unitStr === 'g' || unitStr === '')) {
-      finalValue = value * 1000;
-    }
-    // µg/mcg → mcg 동일 취급
-    if (unitStr === 'µg' || unitStr === 'ug') {
-      // 이미 mcg 단위이므로 변환 불필요
+    if (inputUnit && targetUnit) {
+      finalValue = convertUnit(value, inputUnit, targetUnit);
     }
 
-    // 임시 키(_mono_mg, _poly_mg 등)도 일단 저장
     if (mapping.key && finalValue !== 0) {
       result[mapping.key] = (result[mapping.key] || 0) + finalValue;
     }
   }
 
   // 불포화지방산 합산: mono + poly
-  const mono = result['_mono_mg'] || 0;
-  const poly = result['_poly_mg'] || 0;
+  const mono = result['_mono(mg)'] || 0;
+  const poly = result['_poly(mg)'] || 0;
   if (mono + poly > 0) result['불포화지방산(mg)'] = mono + poly;
-  delete result['_mono_mg'];
-  delete result['_poly_mg'];
+  delete result['_mono(mg)'];
+  delete result['_poly(mg)'];
 
   // 총지방산 = 포화 + 불포화
   const sat = result['포화지방산(mg)'] || 0;
@@ -165,15 +176,15 @@ function parseUsdaText(text) {
   const ala = result['알파리놀렌산(mg)'] || 0;
   const epa = result['EPA(mg)'] || 0;
   const dha = result['DHA(mg)'] || 0;
-  const dpa = result['_dpa_mg'] || 0;
+  const dpa = result['_dpa(mg)'] || 0;
   if (ala + epa + dha + dpa > 0) result['n-3(mg)'] = ala + epa + dha + dpa;
-  delete result['_dpa_mg'];
+  delete result['_dpa(mg)'];
 
   // n-6 합산: 리놀레산 + 아라키돈산
   const linoleic = result['리놀레산(mg)'] || 0;
-  const ara = result['_ara_mg'] || 0;
+  const ara = result['_ara(mg)'] || 0;
   if (linoleic + ara > 0) result['n-6(mg)'] = linoleic + ara;
-  delete result['_ara_mg'];
+  delete result['_ara(mg)'];
 
   return result;
 }
