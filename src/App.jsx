@@ -157,7 +157,8 @@ export default function App() {
             <GistSync onSyncComplete={handleSyncComplete} />
             <RecipeManager basicInfo={basicInfo} slotStates={slotStates}
               omega3Custom={omega3Custom} nutrientAdjust={nutrientAdjust}
-              onLoadRecipe={handleLoadRecipe} resultRef={resultRef} />
+              onLoadRecipe={handleLoadRecipe} resultRef={resultRef}
+              daily={daily} totals={totals} dailyCalories={dailyCalories} />
             <CustomIngredient onUpdate={handleCustomFoodUpdate} />
             <Inventory onUpdate={handleCustomFoodUpdate} />
             <SupplementSection slotStates={slotStates} onSlotUpdate={handleSlotUpdate} />

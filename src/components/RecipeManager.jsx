@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { CELL_TO_SLOT, SLOT_DEFS } from '../data/appConfig';
-import { getOverridesData, setOverridesData, getCategoryItems } from '../data/foodData';
+import { getOverridesData, setOverridesData, getCategoryItems, getFoodByCategory } from '../data/foodData';
 import { saveToGist } from './GistSync';
 import { calcCalories } from '../engine/calories';
 
@@ -147,15 +147,43 @@ function parseExcelData(workbook) {
   return { basicInfo, slotStates, omega3Custom, nutrientAdjust };
 }
 
-export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nutrientAdjust, onLoadRecipe, resultRef }) {
+const CALORIE_TYPE_LABELS = {
+  1: '비활동적 성묘', 2: '일반 성묘', 3: '활동적 성묘',
+  4: '다이어트', 5: '자묘(~6개월)', 6: '자묘(7~12개월)',
+};
+
+// slotId → SLOT_DEFS entry lookup
+const SLOT_DEF_MAP = {};
+for (const def of SLOT_DEFS) SLOT_DEF_MAP[def.id] = def;
+
+export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nutrientAdjust, onLoadRecipe, resultRef, daily, totals, dailyCalories }) {
   const [recipes, setRecipes] = useState(loadRecipes);
   const [name, setName] = useState('');
   const [memo, setMemo] = useState('');
   const [open, setOpen] = useState(false);
   const fileInputRef = useRef(null);
   const excelInputRef = useRef(null);
+  const cardRef = useRef(null);
 
   useEffect(() => { setRecipes(loadRecipes()); }, []);
+
+  const sortedRecipes = useMemo(() =>
+    [...recipes].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0)),
+    [recipes]
+  );
+
+  // 레시피 카드용 재료 목록
+  const activeIngredients = useMemo(() => {
+    const items = [];
+    for (const def of SLOT_DEFS) {
+      const slot = slotStates[def.id];
+      if (!slot?.amount || slot.amount <= 0) continue;
+      const food = getFoodByCategory(def.category, slot.dropdown);
+      const foodName = food?.name || def.label;
+      items.push({ label: def.label, name: foodName, amount: slot.amount, unit: def.unit });
+    }
+    return items;
+  }, [slotStates]);
 
   const handleSave = () => {
     const trimmed = name.trim();
@@ -163,6 +191,7 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
     const recipe = {
       name: trimmed,
       date: new Date().toISOString().slice(0, 10),
+      timestamp: Date.now(),
       memo: memo.trim(),
       basicInfo, slotStates, omega3Custom, nutrientAdjust,
     };
@@ -188,6 +217,7 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
     updated[idx] = {
       ...target,
       date: new Date().toISOString().slice(0, 10),
+      timestamp: Date.now(),
       memo: memo.trim() || target.memo || '',
       basicInfo, slotStates, omega3Custom, nutrientAdjust,
     };
@@ -268,6 +298,17 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
     } catch (err) { alert(`이미지 저장 실패: ${err.message}`); }
   };
 
+  const handleCardExport = async () => {
+    if (!cardRef.current) return;
+    try {
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(cardRef.current, { backgroundColor: '#ffffff' });
+      const link = document.createElement('a');
+      link.download = `recipe_card_${new Date().toISOString().slice(0, 10)}.png`;
+      link.href = dataUrl; link.click();
+    } catch (err) { alert(`레시피 카드 저장 실패: ${err.message}`); }
+  };
+
   const handleExcelSelect = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -302,22 +343,25 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
             className="w-full text-[9px] border border-gray-300 rounded px-1 py-0.5 h-8 resize-y"
             placeholder="메모 (선택)" value={memo}
             onChange={(e) => setMemo(e.target.value)} />
-          {recipes.length > 0 && (
+          {sortedRecipes.length > 0 && (
             <div className="max-h-36 overflow-y-auto border rounded">
-              {recipes.map((r, i) => (
-                <div key={i} className="px-1 py-0.5 hover:bg-gray-50 border-b border-gray-100 last:border-0">
-                  <div className="flex items-center gap-1">
-                    <button onClick={() => handleLoad(r)}
-                      className="flex-1 text-left text-[10px] text-blue-700 hover:underline truncate">{r.name}</button>
-                    <span className="text-[9px] text-gray-400 shrink-0">{r.date}</span>
-                    <button onClick={() => handleOverwrite(i)}
-                      className="text-[9px] text-amber-500 hover:text-amber-700 shrink-0 px-0.5">덮어쓰기</button>
-                    <button onClick={() => handleDelete(i)}
-                      className="text-[9px] text-red-400 hover:text-red-600 shrink-0 px-0.5">✕</button>
+              {sortedRecipes.map((r) => {
+                const origIdx = recipes.indexOf(r);
+                return (
+                  <div key={r.name + (r.timestamp || r.date)} className="px-1 py-0.5 hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => handleLoad(r)}
+                        className="flex-1 text-left text-[10px] text-blue-700 hover:underline truncate">{r.name}</button>
+                      <span className="text-[9px] text-gray-400 shrink-0">{r.date}</span>
+                      <button onClick={() => handleOverwrite(origIdx)}
+                        className="text-[9px] text-amber-500 hover:text-amber-700 shrink-0 px-0.5">덮어쓰기</button>
+                      <button onClick={() => handleDelete(origIdx)}
+                        className="text-[9px] text-red-400 hover:text-red-600 shrink-0 px-0.5">✕</button>
+                    </div>
+                    {r.memo && <div className="text-[9px] text-gray-400 truncate pl-1">{r.memo}</div>}
                   </div>
-                  {r.memo && <div className="text-[9px] text-gray-400 truncate pl-1">{r.memo}</div>}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -330,11 +374,57 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
               className="text-[9px] px-1.5 py-0.5 bg-orange-500 text-white rounded hover:bg-orange-600">엑셀 가져오기</button>
             <button onClick={handleImageExport}
               className="text-[9px] px-1.5 py-0.5 bg-purple-500 text-white rounded hover:bg-purple-600">이미지로 저장</button>
+            <button onClick={handleCardExport}
+              className="text-[9px] px-1.5 py-0.5 bg-pink-500 text-white rounded hover:bg-pink-600">레시피 카드</button>
             <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleFileSelect} />
             <input ref={excelInputRef} type="file" accept=".xlsx,.xlsm,.xls" className="hidden" onChange={handleExcelSelect} />
           </div>
         </div>
       )}
+
+      {/* Hidden recipe card for image capture */}
+      <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
+        <div ref={cardRef} style={{ width: 480, padding: 20, fontFamily: 'sans-serif', background: '#fff' }}>
+          <div style={{ borderBottom: '2px solid #d97706', paddingBottom: 8, marginBottom: 12 }}>
+            <div style={{ fontSize: 16, fontWeight: 'bold', color: '#92400e' }}>고양이 생식 레시피</div>
+            <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>
+              {new Date().toISOString().slice(0, 10)} 생성
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontSize: 11, marginBottom: 12 }}>
+            <div><span style={{ color: '#6b7280' }}>체중:</span> {basicInfo.weight}kg</div>
+            <div><span style={{ color: '#6b7280' }}>칼로리 타입:</span> {CALORIE_TYPE_LABELS[basicInfo.calorieType] || basicInfo.calorieType}</div>
+            <div><span style={{ color: '#6b7280' }}>하루 필요 칼로리:</span> {dailyCalories?.toFixed(1) || '-'} Kcal</div>
+            <div><span style={{ color: '#6b7280' }}>레시피 일수:</span> {basicInfo.recipeDays}일</div>
+            <div><span style={{ color: '#6b7280' }}>총량:</span> {totals?._totalGrams?.toFixed(1) || '-'}g</div>
+            <div><span style={{ color: '#6b7280' }}>하루 섭취량:</span> {daily?._dailyGrams?.toFixed(1) || '-'}g</div>
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 'bold', color: '#374151', marginBottom: 4, borderBottom: '1px solid #e5e7eb', paddingBottom: 2 }}>
+            재료 목록
+          </div>
+          <table style={{ width: '100%', fontSize: 10, borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                <th style={{ textAlign: 'left', padding: '2px 4px', color: '#6b7280' }}>재료</th>
+                <th style={{ textAlign: 'right', padding: '2px 4px', color: '#6b7280' }}>사용량</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeIngredients.map((item, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                  <td style={{ padding: '2px 4px' }}>{item.name}</td>
+                  <td style={{ textAlign: 'right', padding: '2px 4px', fontFamily: 'monospace' }}>
+                    {item.amount}{item.unit}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {activeIngredients.length === 0 && (
+            <div style={{ fontSize: 10, color: '#9ca3af', textAlign: 'center', padding: 8 }}>재료 없음</div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
