@@ -260,11 +260,11 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
   const handleImageExport = async () => {
     if (!resultRef?.current) return;
     try {
-      const html2canvas = (await import('html2canvas')).default;
-      const canvas = await html2canvas(resultRef.current, { scale: 2, useCORS: true, backgroundColor: '#f3f4f6' });
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(resultRef.current, { backgroundColor: '#ffffff' });
       const link = document.createElement('a');
       link.download = `recipe_${new Date().toISOString().slice(0, 10)}.png`;
-      link.href = canvas.toDataURL('image/png'); link.click();
+      link.href = dataUrl; link.click();
     } catch (err) { alert(`이미지 저장 실패: ${err.message}`); }
   };
 
