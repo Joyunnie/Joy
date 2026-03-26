@@ -4,6 +4,7 @@ import {
   ALL_CATEGORY_KEYS, CATEGORY_LABELS,
   getManagedItems, getDeletedItems,
   addFood, updateFood, deleteFood, restoreFood,
+  getCategoryItems, getItemOrder, setItemOrder,
 } from '../data/foodData';
 
 const COMMON_KEYS = [
@@ -400,9 +401,25 @@ export default function CustomIngredient({ onUpdate }) {
   const [editTarget, setEditTarget] = useState(null); // { type, index, catKey }
   const [horizontalResults, setHorizontalResults] = useState(null); // [{name, nutrients}, ...]
   const [refreshKey, setRefreshKey] = useState(0);
+  const [reorderMode, setReorderMode] = useState(false);
 
   const managedItems = getManagedItems(selectedCat);
   const deletedItems = getDeletedItems(selectedCat);
+
+  // Get current dropdown items for reordering
+  const dropdownItems = reorderMode ? getCategoryItems(selectedCat) : [];
+
+  const handleMoveItem = (idx, direction) => {
+    const items = getCategoryItems(selectedCat);
+    const indices = items.map(item => item.index);
+    if (idx < 0 || idx >= indices.length) return;
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= indices.length) return;
+    [indices[idx], indices[newIdx]] = [indices[newIdx], indices[idx]];
+    setItemOrder(selectedCat, indices);
+    setRefreshKey(k => k + 1);
+    if (onUpdate) onUpdate();
+  };
 
   const refresh = () => {
     setRefreshKey(k => k + 1);
@@ -535,6 +552,40 @@ export default function CustomIngredient({ onUpdate }) {
               </div>
             ))}
           </div>
+
+          {/* Reorder mode */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setReorderMode(!reorderMode)}
+              className={`text-[9px] px-1.5 py-0.5 rounded ${reorderMode ? 'bg-amber-500 text-white' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}
+            >
+              {reorderMode ? '순서 변경 완료' : '드롭다운 순서 변경'}
+            </button>
+          </div>
+          {reorderMode && (
+            <div className="border rounded max-h-40 overflow-y-auto">
+              {dropdownItems.length === 0 && (
+                <div className="text-[9px] text-gray-400 p-1">항목 없음</div>
+              )}
+              {dropdownItems.map((item, idx) => (
+                <div key={item.index} className="flex items-center gap-0.5 px-1 py-0.5 hover:bg-amber-50 border-b border-gray-100 last:border-0">
+                  <div className="flex flex-col shrink-0">
+                    <button
+                      onClick={() => handleMoveItem(idx, -1)}
+                      disabled={idx === 0}
+                      className="text-[9px] leading-none text-gray-400 hover:text-amber-600 disabled:opacity-20 px-0.5"
+                    >▲</button>
+                    <button
+                      onClick={() => handleMoveItem(idx, 1)}
+                      disabled={idx === dropdownItems.length - 1}
+                      className="text-[9px] leading-none text-gray-400 hover:text-amber-600 disabled:opacity-20 px-0.5"
+                    >▼</button>
+                  </div>
+                  <span className="text-[10px] truncate">{item.label || item.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Deleted originals - restore */}
           {deletedItems.length > 0 && (

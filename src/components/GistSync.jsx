@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getOverridesData, setOverridesData } from '../data/foodData';
+import { getOverridesData, setOverridesData, getItemOrderData, setItemOrderData } from '../data/foodData';
 
 const TOKEN_KEY = 'catfood_gist_token';
 const GIST_ID_KEY = 'catfood_gist_id';
@@ -64,6 +64,7 @@ function gatherLocalData() {
     lastSync: new Date().toISOString(),
     recipes,
     customFoods: getOverridesData(),
+    itemOrder: getItemOrderData(),
     omega3Custom,
     inventory,
     recommendBlacklist,
@@ -100,6 +101,9 @@ function applyRemoteData(remote) {
       if (catOv.deleted) m.deleted = [...new Set([...(m.deleted || []), ...catOv.deleted])];
     }
     setOverridesData(merged);
+  }
+  if (remote.itemOrder) {
+    setItemOrderData(remote.itemOrder);
   }
   if (remote.inventory) {
     localStorage.setItem(INVENTORY_KEY, JSON.stringify(remote.inventory));

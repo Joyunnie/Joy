@@ -19,8 +19,6 @@ const CALC_SHEET_ROW_TO_SLOT = {
   28: 'egg_0', 29: 'egg_1',
   40: 'tauCap_0', 41: 'tauMg_0',
   43: 'omega_0', 44: 'omega_1',
-  46: 'fiberTsp_0', 47: 'fiberTsp_1',
-  48: 'fiberG_0', 49: 'fiberG_1',
   52: 'otherVeg_0', 55: 'otherVeg_1', 58: 'otherVeg_2',
   60: 'veggie_0', 64: 'veggie_1', 68: 'veggie_2',
   74: 'direct_0', 75: 'direct_1', 76: 'direct_2', 77: 'direct_3',

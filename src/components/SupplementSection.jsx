@@ -7,8 +7,7 @@ const sectionGroups = [
   { title: '타우린(캡슐)', sections: ['tauCap'] },
   { title: '타우린(mg)', sections: ['tauMg'] },
   { title: '오메가3', sections: ['omega'] },
-  { title: '식이섬유(tsp)', sections: ['fiberTsp'] },
-  { title: '식이섬유(g)', sections: ['fiberG'] },
+  { title: '미네랄', sections: ['mineral'] },
   { title: '기타 야채퓨레', sections: ['otherVeg'] },
   { title: '직접 넣는 데이터', sections: ['direct'] },
 ];

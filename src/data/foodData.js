@@ -142,8 +142,7 @@ export const CATEGORY_LABELS = {
   '식품JJ': '타우린(mg)',
   '식품K': '오메가3',
   '식품L': '난류',
-  '식품M': '식이섬유 및 기타미네랄(tsp)',
-  '식품MM': '식이섬유 및 기타미네랄',
+  '미네랄': '미네랄',
   '식품P': '야채퓨레(채소)',
   '식품Q': '야채퓨레(기타)',
   '식품R': '직접 넣는 데이터',
@@ -275,7 +274,7 @@ export function getCategoryItems(categoryKey) {
   const merged = MERGED_CATEGORIES[categoryKey];
   if (merged) {
     // For merged categories, include source sub-category label and unit
-    return Object.entries(catMap).map(([idx, food]) => {
+    const items = Object.entries(catMap).map(([idx, food]) => {
       const mergedIdx = Number(idx);
       const srcIdx = Math.floor(mergedIdx / 1000);
       const srcKey = merged.sources[srcIdx];
@@ -287,11 +286,74 @@ export function getCategoryItems(categoryKey) {
         unit: merged.unitMap?.[srcKey],
       };
     }).sort((a, b) => a.index - b.index);
+    return applyOrder(items, categoryKey);
   }
-  return Object.entries(catMap).map(([idx, food]) => ({
-    index: Number(idx),
-    name: food.name,
-  })).sort((a, b) => a.index - b.index);
+  // Check for per-item unit info from food_data.json
+  const catDef = categories[categoryKey];
+  const itemUnitMap = {};
+  if (catDef) {
+    for (const item of catDef.items) {
+      if (item.unit) itemUnitMap[item.index] = item.unit;
+    }
+  }
+  const items = Object.entries(catMap).map(([idx, food]) => {
+    const numIdx = Number(idx);
+    return {
+      index: numIdx,
+      name: food.name,
+      ...(itemUnitMap[numIdx] ? { unit: itemUnitMap[numIdx] } : {}),
+    };
+  }).sort((a, b) => a.index - b.index);
+  return applyOrder(items, categoryKey);
+}
+
+// --- Item ordering ---
+const ORDER_KEY = 'catfood_item_order';
+let itemOrder = {};
+
+function loadItemOrder() {
+  try { itemOrder = JSON.parse(localStorage.getItem(ORDER_KEY)) || {}; } catch { itemOrder = {}; }
+}
+
+function saveItemOrder() {
+  localStorage.setItem(ORDER_KEY, JSON.stringify(itemOrder));
+}
+
+loadItemOrder();
+
+// Get custom order for a category (array of indices in desired order)
+export function getItemOrder(catKey) {
+  return itemOrder[catKey] || null;
+}
+
+// Set custom order for a category
+export function setItemOrder(catKey, order) {
+  itemOrder[catKey] = order;
+  saveItemOrder();
+}
+
+// Get all order data (for Gist sync)
+export function getItemOrderData() {
+  return itemOrder;
+}
+
+// Set all order data (from Gist sync)
+export function setItemOrderData(data) {
+  itemOrder = data || {};
+  saveItemOrder();
+}
+
+// Apply ordering to items list
+function applyOrder(items, catKey) {
+  const order = itemOrder[catKey];
+  if (!order || order.length === 0) return items;
+  const orderMap = new Map(order.map((idx, pos) => [idx, pos]));
+  return [...items].sort((a, b) => {
+    const posA = orderMap.has(a.index) ? orderMap.get(a.index) : 9999;
+    const posB = orderMap.has(b.index) ? orderMap.get(b.index) : 9999;
+    if (posA !== posB) return posA - posB;
+    return a.index - b.index;
+  });
 }
 
 // --- For export/import ---

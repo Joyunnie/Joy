@@ -86,17 +86,8 @@ export const CELL_TO_SLOT = {
   L19: { slotId: 'omega_0', type: 'value' },
   L20: { slotId: 'omega_1', type: 'value' },
 
-  // Fiber tsp (K22-K23, L22-L23)
-  K22: { slotId: 'fiberTsp_0', type: 'dropdown' },
-  K23: { slotId: 'fiberTsp_1', type: 'dropdown' },
-  L22: { slotId: 'fiberTsp_0', type: 'value' },
-  L23: { slotId: 'fiberTsp_1', type: 'value' },
-
-  // Fiber g (K24-K25, L24-L25)
-  K24: { slotId: 'fiberG_0', type: 'dropdown' },
-  K25: { slotId: 'fiberG_1', type: 'dropdown' },
-  L24: { slotId: 'fiberG_0', type: 'value' },
-  L25: { slotId: 'fiberG_1', type: 'value' },
+  // Mineral (K22-K25 kept for legacy preset compat, no active slots)
+  // Old fiber slots removed - mineral uses its own section without cell mapping
 
   // Other veggies (K28-K30, L28-L30)
   ...Object.fromEntries(
@@ -151,12 +142,10 @@ export const SLOT_DEFS = [
   // Omega3
   { id: 'omega_0', category: '식품K', section: 'omega', label: '오메가3-1', unit: '겔' },
   { id: 'omega_1', category: '식품K', section: 'omega', label: '오메가3-2', unit: '겔' },
-  // Fiber tsp
-  { id: 'fiberTsp_0', category: '식품M', section: 'fiberTsp', label: '식이섬유(tsp)1', unit: 'tsp' },
-  { id: 'fiberTsp_1', category: '식품M', section: 'fiberTsp', label: '식이섬유(tsp)2', unit: 'tsp' },
-  // Fiber g
-  { id: 'fiberG_0', category: '식품MM', section: 'fiberG', label: '식이섬유(g)1', unit: 'g' },
-  { id: 'fiberG_1', category: '식품MM', section: 'fiberG', label: '식이섬유(g)2', unit: 'g' },
+  // Mineral (10 slots)
+  ...Array.from({ length: 10 }, (_, i) => ({
+    id: `mineral_${i}`, category: '미네랄', section: 'mineral', label: `미네랄${i + 1}`, unit: ''
+  })),
   // Other veggies
   ...Array.from({ length: 3 }, (_, i) => ({
     id: `otherVeg_${i}`, category: '식품Q', section: 'otherVeg', label: `기타야채${i + 1}`, unit: 'g'
