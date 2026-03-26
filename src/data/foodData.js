@@ -50,6 +50,7 @@ function rebuildAll() {
   for (const catKey of Object.keys(categories)) {
     rebuildCategory(catKey);
   }
+  rebuildMerged();
 }
 
 function rebuildCategory(catKey) {
@@ -74,21 +75,69 @@ function rebuildCategory(catKey) {
   }
 }
 
+// --- Merged categories: combine multiple sub-categories into one dropdown ---
+// Index scheme: sourceIndex * 1000 + originalIndex
+export const MERGED_CATEGORIES = {
+  '칼슘류': {
+    sources: ['식품A', '식품AA', '식품B', '식품C', '식품D'],
+    unitMap: { '식품A': 'g', '식품AA': 'g', '식품B': 'g', '식품C': 'g', '식품D': 'g' },
+  },
+  '비타민': {
+    sources: ['식품G', '식품H', '식품HH', '식품I'],
+    unitMap: { '식품G': '캡슐', '식품H': 'tsp', '식품HH': 'g', '식품I': '캡슐' },
+  },
+};
+
+// Reverse lookup: sub-category → merged category key
+const SUB_TO_MERGED = {};
+for (const [mergedKey, config] of Object.entries(MERGED_CATEGORIES)) {
+  for (const src of config.sources) SUB_TO_MERGED[src] = mergedKey;
+}
+
+// Build merged effectiveMaps
+function rebuildMerged() {
+  for (const [mergedKey, config] of Object.entries(MERGED_CATEGORIES)) {
+    effectiveMap[mergedKey] = {};
+    config.sources.forEach((srcKey, srcIdx) => {
+      const srcMap = effectiveMap[srcKey];
+      if (!srcMap) return;
+      for (const [idx, food] of Object.entries(srcMap)) {
+        effectiveMap[mergedKey][srcIdx * 1000 + Number(idx)] = food;
+      }
+    });
+  }
+}
+
+// Get source sub-category key from a merged dropdown index
+export function getMergedSource(mergedCatKey, dropdownIndex) {
+  const config = MERGED_CATEGORIES[mergedCatKey];
+  if (!config) return null;
+  const srcIdx = Math.floor(dropdownIndex / 1000);
+  return config.sources[srcIdx] || null;
+}
+
 loadOverrides();
 
 // --- Category labels for UI ---
-export const CATEGORY_LABELS = {
+// Individual sub-category labels (used internally)
+const SUB_CATEGORY_LABELS = {
   '식품A': '생뼈류',
   '식품AA': 'RMB',
   '식품B': '본밀류',
   '식품C': '달걀껍질가루',
   '식품D': '기타칼슘',
-  '식품F': '고기류',
-  '식품FF': '내장류',
   '식품G': '비타민B',
   '식품H': '효모(스푼)',
   '식품HH': '효모(g)',
   '식품I': '비타민E',
+};
+
+// Public labels: merged + non-merged categories
+export const CATEGORY_LABELS = {
+  '칼슘류': '칼슘류',
+  '식품F': '고기류',
+  '식품FF': '내장류',
+  '비타민': '비타민',
   '식품J': '타우린(캡슐)',
   '식품JJ': '타우린(mg)',
   '식품K': '오메가3',
@@ -106,6 +155,12 @@ export const ALL_CATEGORY_KEYS = Object.keys(CATEGORY_LABELS);
 
 // Get all items for a category (original + added, excluding deleted)
 export function getManagedItems(catKey) {
+  // Merged category: combine items from all sub-categories
+  const merged = MERGED_CATEGORIES[catKey];
+  if (merged) {
+    return merged.sources.flatMap(srcKey => getManagedItems(srcKey));
+  }
+
   const ov = overrides[catKey] || { added: [], modified: {}, deleted: [] };
   const result = [];
 
@@ -130,6 +185,11 @@ export function getManagedItems(catKey) {
 
 // Get deleted original items for a category
 export function getDeletedItems(catKey) {
+  const merged = MERGED_CATEGORIES[catKey];
+  if (merged) {
+    return merged.sources.flatMap(srcKey => getDeletedItems(srcKey));
+  }
+
   const ov = overrides[catKey] || { added: [], modified: {}, deleted: [] };
   const result = [];
   for (const idx of (ov.deleted || [])) {
@@ -141,10 +201,13 @@ export function getDeletedItems(catKey) {
 
 // Add a new food to a category
 export function addFood(catKey, food) {
-  const ov = getOverride(catKey);
+  const merged = MERGED_CATEGORIES[catKey];
+  const actualKey = merged ? merged.sources[0] : catKey;
+  const ov = getOverride(actualKey);
   ov.added.push(food);
   saveOverrides();
-  rebuildCategory(catKey);
+  rebuildCategory(actualKey);
+  if (merged) rebuildMerged();
 }
 
 // Update an existing food
@@ -161,6 +224,7 @@ export function updateFood(catKey, type, index, food) {
   }
   saveOverrides();
   rebuildCategory(catKey);
+  if (SUB_TO_MERGED[catKey]) rebuildMerged();
 }
 
 // Delete a food
@@ -177,6 +241,7 @@ export function deleteFood(catKey, type, index) {
   }
   saveOverrides();
   rebuildCategory(catKey);
+  if (SUB_TO_MERGED[catKey]) rebuildMerged();
 }
 
 // Restore a deleted original
@@ -187,6 +252,7 @@ export function restoreFood(catKey, index) {
   }
   saveOverrides();
   rebuildCategory(catKey);
+  if (SUB_TO_MERGED[catKey]) rebuildMerged();
 }
 
 // --- Core lookup functions (used by calculation engine) ---
@@ -205,6 +271,22 @@ export function getCategoryItems(categoryKey) {
   if (!catMap) {
     const cat = categories[categoryKey];
     return cat ? [...cat.items] : [];
+  }
+  const merged = MERGED_CATEGORIES[categoryKey];
+  if (merged) {
+    // For merged categories, include source sub-category label and unit
+    return Object.entries(catMap).map(([idx, food]) => {
+      const mergedIdx = Number(idx);
+      const srcIdx = Math.floor(mergedIdx / 1000);
+      const srcKey = merged.sources[srcIdx];
+      const subLabel = SUB_CATEGORY_LABELS[srcKey] || srcKey;
+      return {
+        index: mergedIdx,
+        name: food.name,
+        label: `[${subLabel}] ${food.name}`,
+        unit: merged.unitMap?.[srcKey],
+      };
+    }).sort((a, b) => a.index - b.index);
   }
   return Object.entries(catMap).map(([idx, food]) => ({
     index: Number(idx),

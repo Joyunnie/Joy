@@ -4,17 +4,19 @@ import { getOverridesData, setOverridesData, getCategoryItems, getFoodByCategory
 import { saveToGist } from './GistSync';
 import { calcCalories } from '../engine/calories';
 
-// 계산 데이터 시트 A열 행 → slotId 매핑
+// Excel import: grouped rows for merged/reduced slots
+// Each group reads food names from calc sheet, matches in merged category, fills slots sequentially
+const EXCEL_GROUPS = [
+  { rows: [4, 5, 6, 7, 8], slotPrefix: 'calcium', maxSlots: 3, category: '칼슘류', valCol: 'H' },
+  { rows: [10, 11, 12, 13, 14, 15, 16, 17, 18], slotPrefix: 'meat', maxSlots: 7, category: '식품F', valCol: 'H' },
+  { rows: [31, 32, 34, 35, 37, 38], slotPrefix: 'vitamin', maxSlots: 6, category: '비타민', valCol: 'L' },
+];
+
+// 1:1 row → slotId mapping for unchanged slots
 const CALC_SHEET_ROW_TO_SLOT = {
-  4: 'calcium_0', 5: 'calcium_1', 6: 'calcium_2', 7: 'calcium_3', 8: 'calcium_4',
-  10: 'meat_0', 11: 'meat_1', 12: 'meat_2', 13: 'meat_3', 14: 'meat_4',
-  15: 'meat_5', 16: 'meat_6', 17: 'meat_7', 18: 'meat_8',
   20: 'organ_0', 21: 'organ_1', 22: 'organ_2', 23: 'organ_3', 24: 'organ_4',
   25: 'water_0',
   28: 'egg_0', 29: 'egg_1',
-  31: 'vitB_0', 32: 'vitB_1',
-  34: 'yeastTsp_0', 35: 'yeastG_0',
-  37: 'vitE_0', 38: 'vitE_1',
   40: 'tauCap_0', 41: 'tauMg_0',
   43: 'omega_0', 44: 'omega_1',
   46: 'fiberTsp_0', 47: 'fiberTsp_1',
@@ -23,6 +25,12 @@ const CALC_SHEET_ROW_TO_SLOT = {
   60: 'veggie_0', 64: 'veggie_1', 68: 'veggie_2',
   74: 'direct_0', 75: 'direct_1', 76: 'direct_2', 77: 'direct_3',
   78: 'direct_4', 79: 'direct_5', 80: 'direct_6',
+};
+
+// Value cells for 1:1 slots (same as before, minus calcium/meat/vitamin)
+const EXCEL_VALUE_ROWS = {
+  'H': [20,21,22,23,24,25,28,29,30],
+  'L': [4,5,16,17,19,20,22,23,24,25,28,29,30,36,37,38,39,40,41,42],
 };
 
 // slotId → category key 빌드
@@ -101,7 +109,28 @@ function parseExcelData(workbook) {
   const slotStates = {};
   const notFound = []; // 매칭 안 된 재료 목록
 
-  // 1) 계산 데이터 시트 A열에서 식품명 → 이름 기반 드롭다운 매칭
+  // 1a) 그룹 슬롯: 이름+값을 읽어서 빈 슬롯에 순서대로 할당
+  for (const group of EXCEL_GROUPS) {
+    let slotIdx = 0;
+    for (const row of group.rows) {
+      if (slotIdx >= group.maxSlots) break;
+      const foodName = getCalcVal(`A${row}`);
+      if (!foodName || typeof foodName !== 'string' || !foodName.trim()) continue;
+      const trimmedName = foodName.trim();
+      const dropdownIdx = findDropdownIndexByName(group.category, trimmedName);
+      const amount = getNum(cellRef(group.valCol, row));
+      if (dropdownIdx > 0 || (amount != null && amount > 0)) {
+        const slotId = `${group.slotPrefix}_${slotIdx}`;
+        if (dropdownIdx > 0) slotStates[slotId] = { ...slotStates[slotId], dropdown: dropdownIdx };
+        if (amount != null && amount > 0) slotStates[slotId] = { ...slotStates[slotId], amount };
+        slotIdx++;
+      } else if (dropdownIdx === 0 && trimmedName) {
+        notFound.push(trimmedName);
+      }
+    }
+  }
+
+  // 1b) 1:1 슬롯: 기존 방식으로 이름 매칭
   for (const [rowStr, slotId] of Object.entries(CALC_SHEET_ROW_TO_SLOT)) {
     const row = Number(rowStr);
     const foodName = getCalcVal(`A${row}`);
@@ -120,16 +149,12 @@ function parseExcelData(workbook) {
     }
   }
 
-  // 2) 레시피-결과 시트에서 값(amount) 읽기
-  const valueCols = {
-    'H': [4,5,6,7,8,10,11,12,13,14,15,16,17,18,20,21,22,23,24,25,28,29,30],
-    'L': [4,5,7,8,10,11,13,14,16,17,19,20,22,23,24,25,28,29,30,36,37,38,39,40,41,42],
-  };
-  for (const [col, rows] of Object.entries(valueCols)) {
+  // 2) 레시피-결과 시트에서 값(amount) 읽기 (1:1 슬롯만, 그룹 슬롯은 위에서 처리)
+  for (const [col, rows] of Object.entries(EXCEL_VALUE_ROWS)) {
     for (const row of rows) {
       const cell = cellRef(col, row);
       const mapping = CELL_TO_SLOT[cell];
-      if (!mapping || mapping.type !== 'value') continue;
+      if (!mapping || mapping.type !== 'value' || !mapping.slotId) continue;
       const val = getNum(cell);
       if (val != null && val > 0) slotStates[mapping.slotId] = { ...slotStates[mapping.slotId], amount: val };
     }

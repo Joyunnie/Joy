@@ -1,4 +1,4 @@
-import { getFoodByCategory } from '../data/foodData';
+import { getFoodByCategory, getMergedSource } from '../data/foodData';
 import { SLOT_DEFS, nrc } from '../data/appConfig';
 
 // All nutrient keys (excluding 함량(g))
@@ -139,16 +139,20 @@ export function calcRatios(slotStates) {
     const s = slotStates[id];
     return (s && s.amount > 0 && s.dropdown > 1) ? s.amount : 0;
   };
-  const getAmtRaw = (id) => {
-    const s = slotStates[id];
-    return (s && s.amount > 0) ? s.amount : 0;
-  };
 
-  const rawBone = getAmt('calcium_0'); // 생뼈류
-  const rmb = getAmt('calcium_3'); // RMB
+  // Calcium slots: identify rawBone (식품A) and RMB (식품AA) by merged source
+  let rawBone = 0;
+  let rmb = 0;
+  for (let i = 0; i < 3; i++) {
+    const s = slotStates[`calcium_${i}`];
+    if (!s || !s.amount || s.amount <= 0 || !s.dropdown || s.dropdown <= 1) continue;
+    const src = getMergedSource('칼슘류', s.dropdown);
+    if (src === '식품A') rawBone += s.amount;
+    else if (src === '식품AA') rmb += s.amount;
+  }
 
   let meatTotal = 0;
-  for (let i = 0; i < 9; i++) meatTotal += getAmt(`meat_${i}`);
+  for (let i = 0; i < 7; i++) meatTotal += getAmt(`meat_${i}`);
 
   let organTotal = 0;
   for (let i = 0; i < 5; i++) organTotal += getAmt(`organ_${i}`);
@@ -172,7 +176,7 @@ export function calcRatios(slotStates) {
   const pureeDenom = rawBone + rmb + meatTotal + organTotal + pureeTotal;
   const pureeRatio = pureeDenom > 0 ? pureeTotal / pureeDenom : 0;
 
-  return { boneRatio, organRatio, pureeRatio };
+  return { boneRatio, organRatio, pureeRatio, boneMeatDenom, organDenom, pureeDenom };
 }
 
 // NRC key mapping: nutrient display name -> NRC category + key

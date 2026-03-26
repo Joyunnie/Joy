@@ -3,10 +3,7 @@ import { SLOT_DEFS } from '../data/appConfig';
 
 const sectionGroups = [
   { title: '난류', sections: ['egg'] },
-  { title: '비타민B', sections: ['vitB'] },
-  { title: '효모(스푼)', sections: ['yeastTsp'] },
-  { title: '효모(g)', sections: ['yeastG'] },
-  { title: '비타민E', sections: ['vitE'] },
+  { title: '비타민', sections: ['vitamin'] },
   { title: '타우린(캡슐)', sections: ['tauCap'] },
   { title: '타우린(mg)', sections: ['tauMg'] },
   { title: '오메가3', sections: ['omega'] },

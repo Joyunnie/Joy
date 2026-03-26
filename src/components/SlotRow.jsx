@@ -5,6 +5,10 @@ export default function SlotRow({ slotDef, dropdown, amount, onDropdownChange, o
     ? [{ index: 2, name: '물' }]
     : getCategoryItems(slotDef.category);
 
+  // Dynamic unit: use selected item's unit if available (for merged categories)
+  const selectedItem = items.find(i => i.index === (dropdown || 0));
+  const displayUnit = selectedItem?.unit || slotDef.unit;
+
   return (
     <div className="flex items-center gap-0.5">
       <select
@@ -14,7 +18,7 @@ export default function SlotRow({ slotDef, dropdown, amount, onDropdownChange, o
       >
         <option value={0}>선택</option>
         {items.map((item) => (
-          <option key={item.index} value={item.index}>{item.name}</option>
+          <option key={item.index} value={item.index}>{item.label || item.name}</option>
         ))}
       </select>
       <input
@@ -26,7 +30,7 @@ export default function SlotRow({ slotDef, dropdown, amount, onDropdownChange, o
         step="any"
         placeholder="0"
       />
-      <span className="text-[9px] text-gray-400 w-5">{slotDef.unit}</span>
+      <span className="text-[9px] text-gray-400 w-5">{displayUnit}</span>
     </div>
   );
 }

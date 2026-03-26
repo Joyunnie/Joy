@@ -1,4 +1,4 @@
-import { calcDMPercent } from '../engine/nutrients';
+import { calcDMPercent, calcRatios } from '../engine/nutrients';
 
 const fmt = (v) => v != null && !isNaN(v) ? v.toFixed(1) : '-';
 const fmtPct = (v) => v != null && !isNaN(v) ? `${Math.round(v * 100)}%` : '-';
@@ -58,20 +58,9 @@ export default function ResultPanel({ daily, totals, dailyCalories, sufficiency,
   const calcium = daily['칼슘(mg)'] || 0;
   const phosphorus = daily['인(mg)'] || 0;
 
-  const getAmt = (id) => {
-    const s = slotStates[id];
-    return (s && s.amount > 0) ? s.amount : 0;
-  };
-  const rawBone = getAmt('calcium_0');
-  const rmb = getAmt('calcium_3');
-  let meatTotal = 0;
-  for (let i = 0; i < 9; i++) meatTotal += getAmt(`meat_${i}`);
-  let organTotal = 0;
-  for (let i = 0; i < 5; i++) organTotal += getAmt(`organ_${i}`);
-  const bonePart = rawBone + rmb * 0.6;
-  const boneDenom = rawBone + rmb + meatTotal + organTotal;
-  const bonePct = boneDenom > 0 ? (bonePart / boneDenom) * 100 : 0;
-  const meatPct = boneDenom > 0 ? 100 - bonePct : 0;
+  const ratios = calcRatios(slotStates);
+  const bonePct = ratios.boneMeatDenom > 0 ? ratios.boneRatio * 100 : 0;
+  const meatPct = ratios.boneMeatDenom > 0 ? 100 - bonePct : 0;
 
   // Calcium DM% > 4% special check
   const calciumDmRatio = dryMatter > 0 ? ((calcium / 1000) / dryMatter) : 0;

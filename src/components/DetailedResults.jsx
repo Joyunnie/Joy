@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { calcRatios } from '../engine/nutrients';
 
 const fmt = (v) => v != null && !isNaN(v) ? v.toFixed(1) : '-';
 const fmtPct = (v) => v != null && !isNaN(v) ? `${Math.round(v * 100)}%` : '-';
@@ -84,31 +85,11 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
   const n3 = daily['n-3(mg)'] || 0;
   const n6 = daily['n-6(mg)'] || 0;
 
-  const getAmt = (id) => {
-    const s = slotStates[id];
-    return (s && s.amount > 0) ? s.amount : 0;
-  };
-
-  const rawBone = getAmt('calcium_0');
-  const rmb = getAmt('calcium_3');
-  let meatTotal = 0;
-  for (let i = 0; i < 9; i++) meatTotal += getAmt(`meat_${i}`);
-  let organTotal = 0;
-  for (let i = 0; i < 5; i++) organTotal += getAmt(`organ_${i}`);
-  let veggieTotal = 0;
-  for (let i = 0; i < 3; i++) veggieTotal += getAmt(`veggie_${i}`);
-  let otherVegTotal = 0;
-  for (let i = 0; i < 3; i++) otherVegTotal += getAmt(`otherVeg_${i}`);
-  let directTotal = 0;
-  for (let i = 0; i < 7; i++) directTotal += getAmt(`direct_${i}`);
-
-  const organDenom = rawBone + meatTotal + organTotal;
-  const organPct = organDenom > 0 ? (organTotal / organDenom) * 100 : 0;
-  const meatOnlyPct = organDenom > 0 ? 100 - organPct : 0;
-  const pureeTotal = veggieTotal + otherVegTotal + directTotal;
-  const pureeDenom = rawBone + rmb + meatTotal + organTotal + pureeTotal;
-  const pureePct = pureeDenom > 0 ? (pureeTotal / pureeDenom) * 100 : 0;
-  const nonPureePct = pureeDenom > 0 ? 100 - pureePct : 0;
+  const ratios = calcRatios(slotStates);
+  const organPct = ratios.organDenom > 0 ? ratios.organRatio * 100 : 0;
+  const meatOnlyPct = ratios.organDenom > 0 ? 100 - organPct : 0;
+  const pureePct = ratios.pureeDenom > 0 ? ratios.pureeRatio * 100 : 0;
+  const nonPureePct = ratios.pureeDenom > 0 ? 100 - pureePct : 0;
 
   return (
     <div className="space-y-1">
