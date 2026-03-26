@@ -143,11 +143,7 @@ export default function App() {
         <div className="flex gap-1 items-start justify-center">
           {/* Left column — 25% */}
           <div className="w-1/4 min-w-[260px] max-w-[320px] shrink-0 space-y-1">
-            <div>
-              <button onClick={handleReset}
-                className="text-[10px] px-2 py-0.5 bg-gray-500 text-white rounded hover:bg-gray-600 font-semibold">레시피 초기화</button>
-            </div>
-            <BasicInfo basicInfo={basicInfo} dailyCalories={dailyCalories} onUpdate={handleBasicInfoUpdate} />
+            <BasicInfo basicInfo={basicInfo} dailyCalories={dailyCalories} onUpdate={handleBasicInfoUpdate} onReset={handleReset} />
             <MeatSection slotStates={slotStates} onSlotUpdate={handleSlotUpdate} />
             <VegetableSection slotStates={slotStates} onSlotUpdate={handleSlotUpdate} />
             <Omega3Register values={omega3Custom} onUpdate={handleOmega3Update}

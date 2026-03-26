@@ -1,9 +1,15 @@
 import { CALORIE_LABELS } from '../engine/calories';
 
-export default function BasicInfo({ basicInfo, dailyCalories, onUpdate }) {
+export default function BasicInfo({ basicInfo, dailyCalories, onUpdate, onReset }) {
   return (
     <div className="bg-white rounded p-1.5 shadow-sm border">
-      <h3 className="font-bold text-[11px] mb-1 text-gray-800">기본 정보</h3>
+      <div className="flex items-center justify-between mb-1">
+        <h3 className="font-bold text-[11px] text-gray-800">기본 정보</h3>
+        {onReset && (
+          <button onClick={onReset}
+            className="text-[10px] px-2 py-0.5 bg-gray-500 text-white rounded hover:bg-gray-600 font-semibold">레시피 초기화</button>
+        )}
+      </div>
       <div className="space-y-1">
         <div className="flex items-center gap-1">
           <label className="text-[10px] w-20 shrink-0">체중 (kg)</label>
