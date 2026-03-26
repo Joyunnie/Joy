@@ -21,8 +21,7 @@ const CALC_SHEET_ROW_TO_SLOT = {
   43: 'omega_0', 44: 'omega_1',
   52: 'otherVeg_0', 55: 'otherVeg_1', 58: 'otherVeg_2',
   60: 'veggie_0', 64: 'veggie_1', 68: 'veggie_2',
-  74: 'direct_0', 75: 'direct_1', 76: 'direct_2', 77: 'direct_3',
-  78: 'direct_4', 79: 'direct_5', 80: 'direct_6',
+  74: 'direct_0', 75: 'direct_1', 76: 'direct_2',
 };
 
 // Value cells for 1:1 slots (same as before, minus calcium/meat/vitamin)

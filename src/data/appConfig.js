@@ -97,12 +97,12 @@ export const CELL_TO_SLOT = {
     Array.from({ length: 3 }, (_, i) => [`L${28 + i}`, { slotId: `otherVeg_${i}`, type: 'value' }])
   ),
 
-  // Direct data (K36-K42, L36-L42)
+  // Direct data (K36-K38, L36-L38)
   ...Object.fromEntries(
-    Array.from({ length: 7 }, (_, i) => [`K${36 + i}`, { slotId: `direct_${i}`, type: 'dropdown' }])
+    Array.from({ length: 3 }, (_, i) => [`K${36 + i}`, { slotId: `direct_${i}`, type: 'dropdown' }])
   ),
   ...Object.fromEntries(
-    Array.from({ length: 7 }, (_, i) => [`L${36 + i}`, { slotId: `direct_${i}`, type: 'value' }])
+    Array.from({ length: 3 }, (_, i) => [`L${36 + i}`, { slotId: `direct_${i}`, type: 'value' }])
   ),
 
   // Special: recipe days
@@ -142,16 +142,16 @@ export const SLOT_DEFS = [
   // Omega3
   { id: 'omega_0', category: '식품K', section: 'omega', label: '오메가3-1', unit: '겔' },
   { id: 'omega_1', category: '식품K', section: 'omega', label: '오메가3-2', unit: '겔' },
-  // Mineral (10 slots)
-  ...Array.from({ length: 10 }, (_, i) => ({
+  // Mineral (7 slots)
+  ...Array.from({ length: 7 }, (_, i) => ({
     id: `mineral_${i}`, category: '미네랄', section: 'mineral', label: `미네랄${i + 1}`, unit: ''
   })),
   // Other veggies
   ...Array.from({ length: 3 }, (_, i) => ({
     id: `otherVeg_${i}`, category: '식품Q', section: 'otherVeg', label: `기타야채${i + 1}`, unit: 'g'
   })),
-  // Direct data
-  ...Array.from({ length: 7 }, (_, i) => ({
+  // Direct data (3 slots)
+  ...Array.from({ length: 3 }, (_, i) => ({
     id: `direct_${i}`, category: '식품R', section: 'direct', label: `직접데이터${i + 1}`, unit: 'g'
   })),
 ];
