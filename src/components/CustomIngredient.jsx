@@ -156,6 +156,11 @@ function parseUsdaText(text) {
   delete result['_mono_mg'];
   delete result['_poly_mg'];
 
+  // 총지방산 = 포화 + 불포화
+  const sat = result['포화지방산(mg)'] || 0;
+  const unsat = result['불포화지방산(mg)'] || 0;
+  if (sat + unsat > 0) result['총지방산(mg)'] = sat + unsat;
+
   // n-3 합산: ALA + EPA + DHA + DPA
   const ala = result['알파리놀렌산(mg)'] || 0;
   const epa = result['EPA(mg)'] || 0;
