@@ -422,24 +422,15 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
           <div style={{ fontSize: 14, fontWeight: 'bold', color: '#374151', marginBottom: 4, borderBottom: '1px solid #e5e7eb', paddingBottom: 2 }}>
             재료 목록
           </div>
-          <table style={{ width: '100%', fontSize: 16, borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                <th style={{ textAlign: 'left', padding: '3px 6px', color: '#6b7280', fontSize: 14 }}>재료</th>
-                <th style={{ textAlign: 'right', padding: '3px 6px', color: '#6b7280', fontSize: 14 }}>사용량</th>
-              </tr>
-            </thead>
-            <tbody>
-              {activeIngredients.map((item, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: '3px 6px' }}>{item.name}</td>
-                  <td style={{ textAlign: 'right', padding: '3px 6px' }}>
-                    {item.amount}{item.unit}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div>
+            {activeIngredients.map((item, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'baseline', margin: '4px 0', fontSize: 16 }}>
+                <span style={{ whiteSpace: 'nowrap' }}>{item.name}</span>
+                <span style={{ flex: 1, borderBottom: '1px dotted #ccc', margin: '0 8px', minWidth: 20 }}></span>
+                <span style={{ whiteSpace: 'nowrap' }}>{item.amount}{item.unit}</span>
+              </div>
+            ))}
+          </div>
           {activeIngredients.length === 0 && (
             <div style={{ fontSize: 14, color: '#9ca3af', textAlign: 'center', padding: 8 }}>재료 없음</div>
           )}
