@@ -402,6 +402,7 @@ export default function CustomIngredient({ onUpdate }) {
   const [horizontalResults, setHorizontalResults] = useState(null); // [{name, nutrients}, ...]
   const [refreshKey, setRefreshKey] = useState(0);
   const [reorderMode, setReorderMode] = useState(false);
+  const [showDeleted, setShowDeleted] = useState(false);
 
   const managedItems = getManagedItems(selectedCat);
   const deletedItems = getDeletedItems(selectedCat);
@@ -587,16 +588,23 @@ export default function CustomIngredient({ onUpdate }) {
             </div>
           )}
 
-          {/* Deleted originals - restore */}
+          {/* Deleted originals - restore (accordion) */}
           {deletedItems.length > 0 && (
-            <div className="border rounded p-1">
-              <div className="text-[9px] text-gray-400 mb-0.5">삭제된 기본 재료</div>
-              {deletedItems.map((item) => (
-                <div key={item.index} className="flex items-center gap-1 text-[10px] text-gray-400">
-                  <span className="flex-1 truncate line-through">{item.name}</span>
-                  <button onClick={() => handleRestore(item)} className="text-[9px] text-green-500 hover:text-green-700 px-0.5">복원</button>
+            <div className="border rounded">
+              <button onClick={() => setShowDeleted(!showDeleted)} className="flex items-center gap-1 w-full text-left px-1 py-0.5">
+                <span className="text-[9px] text-gray-400">삭제된 기본 재료 ({deletedItems.length}개)</span>
+                <span className="text-[9px] text-gray-400 ml-auto">{showDeleted ? '▲' : '▼'}</span>
+              </button>
+              {showDeleted && (
+                <div className="px-1 pb-1">
+                  {deletedItems.map((item) => (
+                    <div key={item.index} className="flex items-center gap-1 text-[10px] text-gray-400">
+                      <span className="flex-1 truncate line-through">{item.name}</span>
+                      <button onClick={() => handleRestore(item)} className="text-[9px] text-green-500 hover:text-green-700 px-0.5">복원</button>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           )}
 
