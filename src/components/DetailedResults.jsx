@@ -17,7 +17,7 @@ function suffColor(v, isUpperExceeded) {
   const pct = Math.round(v * 100);
   if (pct === 0) return 'text-gray-400';
   if (pct < 100) return 'text-red-600';
-  if (isUpperExceeded) return 'text-red-600 font-bold';
+  if (isUpperExceeded) return 'text-red-600';
   return 'text-green-600';
 }
 
@@ -119,16 +119,19 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
               <th className="text-[9px] text-left py-0">항목</th>
               <th className="text-[9px] text-right py-0">mg</th>
               <th className="text-[9px] text-right py-0">과부족</th>
+              <th className="text-[9px] py-0"></th>
             </tr>
           </thead>
           <tbody>
             {aminoAcidKeys.map(({ key, label }) => {
               const raw = getSuffRaw(key);
+              const sLbl = suffLabel(raw, isUE(key));
               return (
                 <tr key={key} className="border-b border-gray-100">
                   <td className="text-[10px] py-0">{label}</td>
                   <td className="text-[10px] py-0 text-right">{fmt(daily[key])}</td>
-                  <td className={`text-[10px] py-0 text-right ${suffColor(raw, isUE(key))}`}>{getSuff(key)}{suffLabel(raw, isUE(key)) && <span className="text-[8px]">{suffLabel(raw, isUE(key))}</span>}</td>
+                  <td className={`text-[10px] py-0 text-right ${suffColor(raw, isUE(key))}`} style={{minWidth: '48px'}}>{getSuff(key)}</td>
+                  <td className="text-[9px] py-0 text-left pl-0.5 text-red-600" style={{minWidth: '36px'}}>{sLbl || ''}</td>
                 </tr>
               );
             })}
@@ -146,6 +149,7 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
                 <th className="text-[9px] text-left py-0">항목</th>
                 <th className="text-[9px] text-right py-0">값</th>
                 <th className="text-[9px] text-right py-0">과부족</th>
+                <th className="text-[9px] py-0"></th>
               </tr>
             </thead>
             <tbody>
@@ -155,11 +159,13 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
                 else if (key === '_epaDha') { val = fmt(epa + dha); suff = sufficiency['EPA+DHA'] != null ? fmtPct(sufficiency['EPA+DHA']) : '-'; raw = sufficiency['EPA+DHA'] ?? null; }
                 else if (key === '_epaDhaRatio') { val = dha > 0 ? fmt(epa / dha) : '-'; suff = '-'; raw = null; }
                 else { val = fmt(daily[key]); suff = getSuff(key); raw = getSuffRaw(key); }
+                const sLbl = suffLabel(raw, isUE(key));
                 return (
                   <tr key={key} className="border-b border-gray-100">
                     <td className="text-[10px] py-0">{label}</td>
                     <td className="text-[10px] py-0 text-right">{val}{unit && !isRatio ? <span className="text-gray-400 ml-0.5">{unit}</span> : ''}</td>
-                    <td className={`text-[10px] py-0 text-right ${suffColor(raw, isUE(key))}`}>{suff}{suffLabel(raw, isUE(key)) && <span className="text-[8px]">{suffLabel(raw, isUE(key))}</span>}</td>
+                    <td className={`text-[10px] py-0 text-right ${suffColor(raw, isUE(key))}`} style={{minWidth: '48px'}}>{suff}</td>
+                    <td className="text-[9px] py-0 text-left pl-0.5 text-red-600" style={{minWidth: '36px'}}>{sLbl || ''}</td>
                   </tr>
                 );
               })}

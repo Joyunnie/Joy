@@ -18,7 +18,7 @@ function suffColor(v, isUpperExceeded) {
   const pct = Math.round(v * 100);
   if (pct === 0) return 'text-gray-400';
   if (pct < 100) return 'text-red-600';
-  if (isUpperExceeded) return 'text-red-600 font-bold';
+  if (isUpperExceeded) return 'text-red-600';
   return 'text-green-600';
 }
 
@@ -30,10 +30,8 @@ function Row({ label, value, unit, dm, sufficiency, suffRaw, isUpperExceeded, wa
       <td className="text-[10px] py-0 pr-1">{label}</td>
       <td className="text-[10px] py-0 text-right pr-0.5">{value}{unit && <span className="text-gray-400 ml-0.5">{unit}</span>}</td>
       <td className="text-[10px] py-0 text-right pr-0.5 text-gray-500">{dm || ''}</td>
-      <td className={`text-[10px] py-0 text-right pr-0.5 ${suffClass}`}>
-        {sufficiency || ''}{sLabel && <span className="text-[8px]">{sLabel}</span>}
-      </td>
-      <td className="text-[10px] py-0">{warning && <span className="text-red-600 font-bold">{warning}</span>}</td>
+      <td className={`text-[10px] py-0 text-right ${suffClass}`} style={{minWidth: '48px'}}>{sufficiency || ''}</td>
+      <td className="text-[9px] py-0 text-left pl-0.5 text-red-600" style={{minWidth: '36px'}}>{sLabel || ''}</td>
     </tr>
   );
 }
@@ -132,7 +130,7 @@ export default function ResultPanel({ daily, totals, dailyCalories, sufficiency,
             <th className="text-[9px] text-right py-0">값</th>
             <th className="text-[9px] text-right py-0">DM%</th>
             <th className="text-[9px] text-right py-0">과부족</th>
-            <th className="text-[9px] text-left py-0">경고</th>
+            <th className="text-[9px] py-0"></th>
           </tr>
         </thead>
         <tbody>
