@@ -10,8 +10,11 @@ from app.models.tables import (
     DrugThreshold,
     InventoryAuditLog,
     OtcInventory,
+    ShelfLayout,
 )
 from app.schemas.otc import (
+    BatchLocationRemoveRequest,
+    BatchLocationRequest,
     OtcCreateRequest,
     OtcItemResponse,
     OtcListResponse,
@@ -169,6 +172,8 @@ async def list_otc_items(
     pharmacy_id: int,
     low_stock_only: bool = False,
     search: str | None = None,
+    layout_id: int | None = None,
+    unplaced_for_layout: int | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> OtcListResponse:
@@ -192,6 +197,38 @@ async def list_otc_items(
 
     if search:
         base = base.where(Drug.name.ilike(f"%{search}%"))
+
+    if layout_id is not None:
+        # 특정 레이아웃에 배치된 약만 필터
+        layout_result = await db.execute(
+            select(ShelfLayout).where(
+                and_(ShelfLayout.id == layout_id, ShelfLayout.pharmacy_id == pharmacy_id)
+            )
+        )
+        layout = layout_result.scalar_one_or_none()
+        if layout:
+            loc_field = (
+                OtcInventory.display_location
+                if layout.location_type == "DISPLAY"
+                else OtcInventory.storage_location
+            )
+            base = base.where(loc_field.like(f"{layout_id}:%"))
+
+    if unplaced_for_layout is not None:
+        # 특정 레이아웃 type에 아직 미배치된 약만 필터
+        layout_result = await db.execute(
+            select(ShelfLayout).where(
+                and_(ShelfLayout.id == unplaced_for_layout, ShelfLayout.pharmacy_id == pharmacy_id)
+            )
+        )
+        layout = layout_result.scalar_one_or_none()
+        if layout:
+            loc_field = (
+                OtcInventory.display_location
+                if layout.location_type == "DISPLAY"
+                else OtcInventory.storage_location
+            )
+            base = base.where(loc_field.is_(None))
 
     if low_stock_only:
         base = base.where(
@@ -329,3 +366,108 @@ async def delete_otc_item(
     db.add(audit)
 
     await db.delete(inv)
+
+
+async def batch_update_locations(
+    db: AsyncSession,
+    pharmacy_id: int,
+    req: BatchLocationRequest,
+) -> list[OtcItemResponse]:
+    """여러 약품의 위치를 일괄 업데이트."""
+    # layout 조회
+    layout_result = await db.execute(
+        select(ShelfLayout).where(
+            and_(ShelfLayout.id == req.layout_id, ShelfLayout.pharmacy_id == pharmacy_id)
+        )
+    )
+    layout = layout_result.scalar_one_or_none()
+    if not layout:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Shelf layout not found",
+        )
+
+    # 범위 검증 + 중복 칸 검증
+    seen_positions: set[tuple[int, int]] = set()
+    for a in req.assignments:
+        if a.row >= layout.rows or a.col >= layout.cols:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Position ({a.row},{a.col}) is out of bounds for {layout.rows}x{layout.cols} layout",
+            )
+        pos = (a.row, a.col)
+        if pos in seen_positions:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Duplicate position ({a.row},{a.col})",
+            )
+        seen_positions.add(pos)
+
+    loc_field_key = (
+        "display_location" if layout.location_type == "DISPLAY" else "storage_location"
+    )
+
+    results: list[OtcItemResponse] = []
+    for a in req.assignments:
+        inv_result = await db.execute(
+            select(OtcInventory).where(
+                and_(
+                    OtcInventory.id == a.item_id,
+                    OtcInventory.pharmacy_id == pharmacy_id,
+                )
+            )
+        )
+        inv = inv_result.scalar_one_or_none()
+        if not inv:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"OTC inventory item {a.item_id} not found",
+            )
+
+        loc_value = f"{req.layout_id}:{a.row},{a.col}"
+        setattr(inv, loc_field_key, loc_value)
+
+        drug_name, min_qty = await _get_drug_and_threshold(db, pharmacy_id, inv.drug_id)
+        results.append(_build_item_response(inv, drug_name, min_qty))
+
+    return results
+
+
+async def batch_remove_locations(
+    db: AsyncSession,
+    pharmacy_id: int,
+    req: BatchLocationRemoveRequest,
+) -> None:
+    """여러 약품의 위치를 null로 초기화."""
+    layout_result = await db.execute(
+        select(ShelfLayout).where(
+            and_(ShelfLayout.id == req.layout_id, ShelfLayout.pharmacy_id == pharmacy_id)
+        )
+    )
+    layout = layout_result.scalar_one_or_none()
+    if not layout:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Shelf layout not found",
+        )
+
+    loc_field_key = (
+        "display_location" if layout.location_type == "DISPLAY" else "storage_location"
+    )
+
+    for item_id in req.item_ids:
+        inv_result = await db.execute(
+            select(OtcInventory).where(
+                and_(
+                    OtcInventory.id == item_id,
+                    OtcInventory.pharmacy_id == pharmacy_id,
+                )
+            )
+        )
+        inv = inv_result.scalar_one_or_none()
+        if not inv:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"OTC inventory item {item_id} not found",
+            )
+        setattr(inv, loc_field_key, None)

@@ -183,6 +183,52 @@ export interface ThresholdUpdateRequest {
   is_active: boolean;
 }
 
+// --- Shelf Layouts ---
+
+export interface ShelfLayoutResponse {
+  id: number;
+  pharmacy_id: number;
+  name: string;
+  location_type: 'DISPLAY' | 'STORAGE';
+  rows: number;
+  cols: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ShelfLayoutListResponse {
+  items: ShelfLayoutResponse[];
+}
+
+export interface ShelfLayoutCreateRequest {
+  name: string;
+  location_type: 'DISPLAY' | 'STORAGE';
+  rows: number;
+  cols: number;
+}
+
+export interface ShelfLayoutUpdateRequest {
+  name: string;
+  rows: number;
+  cols: number;
+}
+
+export interface LocationAssignment {
+  item_id: number;
+  row: number;
+  col: number;
+}
+
+export interface BatchLocationRequest {
+  layout_id: number;
+  assignments: LocationAssignment[];
+}
+
+export interface BatchLocationRemoveRequest {
+  layout_id: number;
+  item_ids: number[];
+}
+
 // --- JWT payload ---
 
 export interface JwtPayload {

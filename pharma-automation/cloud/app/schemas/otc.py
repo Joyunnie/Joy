@@ -38,3 +38,22 @@ class OtcItemResponse(BaseModel):
 class OtcListResponse(BaseModel):
     items: list[OtcItemResponse]
     total: int
+
+
+# --- Batch Location ---
+
+
+class LocationAssignment(BaseModel):
+    item_id: int
+    row: int = Field(..., ge=0)
+    col: int = Field(..., ge=0)
+
+
+class BatchLocationRequest(BaseModel):
+    layout_id: int
+    assignments: list[LocationAssignment] = Field(..., max_length=100)
+
+
+class BatchLocationRemoveRequest(BaseModel):
+    layout_id: int
+    item_ids: list[int] = Field(..., max_length=100)

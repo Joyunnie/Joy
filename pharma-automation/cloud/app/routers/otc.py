@@ -5,6 +5,8 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.tables import User
 from app.schemas.otc import (
+    BatchLocationRemoveRequest,
+    BatchLocationRequest,
     OtcCreateRequest,
     OtcItemResponse,
     OtcListResponse,
@@ -29,6 +31,8 @@ async def list_otc_items(
     user: User = Depends(get_current_user),
     low_stock_only: bool = Query(False),
     search: str | None = Query(None),
+    layout_id: int | None = Query(None),
+    unplaced_for_layout: int | None = Query(None),
     limit: int = Query(50, le=200),
     offset: int = Query(0),
     db: AsyncSession = Depends(get_db),
@@ -36,6 +40,7 @@ async def list_otc_items(
     return await otc_service.list_otc_items(
         db, user.pharmacy_id,
         low_stock_only=low_stock_only, search=search,
+        layout_id=layout_id, unplaced_for_layout=unplaced_for_layout,
         limit=limit, offset=offset,
     )
 
@@ -68,4 +73,23 @@ async def delete_otc_item(
     db: AsyncSession = Depends(get_db),
 ):
     await otc_service.delete_otc_item(db, user.pharmacy_id, user.id, item_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/batch-location", response_model=list[OtcItemResponse])
+async def batch_update_locations(
+    req: BatchLocationRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await otc_service.batch_update_locations(db, user.pharmacy_id, req)
+
+
+@router.post("/batch-location-remove", status_code=status.HTTP_204_NO_CONTENT)
+async def batch_remove_locations(
+    req: BatchLocationRemoveRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await otc_service.batch_remove_locations(db, user.pharmacy_id, req)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

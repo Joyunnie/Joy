@@ -19,6 +19,7 @@ from app.models.tables import (
     NarcoticsTransaction,
     OtcInventory,
     Pharmacy,
+    ShelfLayout,
     User,
 )
 
@@ -268,6 +269,20 @@ async def _ensure_narcotic_drug_seed(pharmacy_id: int):
 async def narcotic_drug_seed(seed_data):
     """마약류 약품 + threshold 시드."""
     return await _ensure_narcotic_drug_seed(seed_data["pharmacy_id"])
+
+
+@pytest_asyncio.fixture(autouse=False)
+async def cleanup_shelf_layouts(seed_data):
+    """Shelf layout 테스트 전 기존 shelf_layouts 정리."""
+    async with seed_session_factory() as db:
+        pharmacy_id = seed_data["pharmacy_id"]
+        await db.execute(
+            ShelfLayout.__table__.delete().where(
+                ShelfLayout.pharmacy_id == pharmacy_id
+            )
+        )
+        await db.commit()
+    yield
 
 
 @pytest_asyncio.fixture(autouse=False)

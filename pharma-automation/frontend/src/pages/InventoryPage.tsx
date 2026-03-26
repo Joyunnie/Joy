@@ -78,10 +78,16 @@ export default function InventoryPage() {
         <h2 className="text-xl font-bold text-gray-800">OTC 재고</h2>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => navigate('/shelf')}
+            className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            약장 보기
+          </button>
+          <button
             onClick={() => navigate('/thresholds')}
             className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
           >
-            최소수량 설정
+            최소수량
           </button>
           <button
             onClick={() => setAddOpen(true)}

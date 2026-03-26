@@ -110,7 +110,19 @@ CREATE TABLE drug_thresholds (
     UNIQUE(pharmacy_id, drug_id)
 );
 
--- 8. patient_visit_history: 환자 방문 이력
+-- 8. shelf_layouts: 약장/창고 레이아웃 (격자 구조)
+CREATE TABLE shelf_layouts (
+    id BIGSERIAL PRIMARY KEY,
+    pharmacy_id BIGINT NOT NULL REFERENCES pharmacies(id),
+    name VARCHAR(50) NOT NULL,
+    location_type VARCHAR(10) NOT NULL CHECK (location_type IN ('DISPLAY', 'STORAGE')),
+    rows INTEGER NOT NULL DEFAULT 4,
+    cols INTEGER NOT NULL DEFAULT 6,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- 9. patient_visit_history: 환자 방문 이력
 -- source 의미:
 --   PM20_SYNC: PM+20 DB에서 동기화된 방문 기록
 --   DISPENSE_EVENT: ATDPS 조제 완료 이벤트로 자동 생성 (원본 데이터는 PM+20 처방)

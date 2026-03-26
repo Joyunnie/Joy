@@ -134,7 +134,21 @@ class DrugThreshold(Base):
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
 
 
-# 8. patient_visit_history
+# 8. shelf_layouts
+class ShelfLayout(Base):
+    __tablename__ = "shelf_layouts"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
+    name: Mapped[str] = mapped_column(String(50))
+    location_type: Mapped[str] = mapped_column(String(10))  # DISPLAY | STORAGE
+    rows: Mapped[int] = mapped_column(Integer, default=4)
+    cols: Mapped[int] = mapped_column(Integer, default=6)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
+
+
+# 9. patient_visit_history
 class PatientVisitHistory(Base):
     __tablename__ = "patient_visit_history"
     __table_args__ = (
