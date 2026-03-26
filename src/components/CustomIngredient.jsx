@@ -29,6 +29,160 @@ const HORIZONTAL_COLUMNS = [
   'n-3(mg)', 'n-6(mg)', '리놀레산(mg)', '알파리놀렌산(mg)', 'EPA(mg)', 'DHA(mg)',
 ];
 
+// --- USDA (English vertical) format ---
+
+const USDA_NAME_MAP = {
+  'Water': { key: '수분(g)' },
+  'Energy': { key: '칼로리(Kcal)', unitFilter: 'kcal' },
+  'Protein': { key: '단백질(g)' },
+  'Total lipid (fat)': { key: '지방(g)' },
+  'Carbohydrate, by difference': { key: '탄수화물(g)' },
+  'Calcium, Ca': { key: '칼슘(mg)' },
+  'Iron, Fe': { key: '철(mg)' },
+  'Magnesium, Mg': { key: '마그네슘(mg)' },
+  'Phosphorus, P': { key: '인(mg)' },
+  'Potassium, K': { key: '칼륨(mg)' },
+  'Sodium, Na': { key: '나트륨(mg)' },
+  'Zinc, Zn': { key: '아연(mg)' },
+  'Copper, Cu': { key: '구리(mg)' },
+  'Manganese, Mn': { key: '망간(mg)' },
+  'Selenium, Se': { key: '셀레늄(mcg)' },
+  'Iodine, I': { key: '요오드(mcg)' },
+  'Thiamin': { key: '비타민B1(mg)' },
+  'Riboflavin': { key: '비타민B2(mg)' },
+  'Niacin': { key: '나이아신(mg)' },
+  'Pantothenic acid': { key: '판토텐산(mg)' },
+  'Vitamin B-6': { key: '비타민B6(mg)' },
+  'Folate, total': { key: '폴산(mcg)' },
+  'Vitamin B-12': { key: '비타민B12(mcg)' },
+  'Vitamin A, RAE': { key: '비타민A(mcg)' },
+  'Vitamin E (alpha-tocopherol)': { key: '비타민E(mg)' },
+  'Vitamin D (D2 + D3)': { key: '비타민D(mcg)', unitFilter: 'µg' },
+  'Vitamin K (phylloquinone)': { key: '비타민K(mcg)' },
+  'Vitamin C, total ascorbic acid': { key: '비타민C(mg)' },
+  'Cholesterol': { key: '콜레스테롤(mg)' },
+  'Fatty acids, total saturated': { key: '포화지방산(mg)', convert: 'g_to_mg' },
+  'Fatty acids, total monounsaturated': { key: '_mono_mg', convert: 'g_to_mg' },
+  'Fatty acids, total polyunsaturated': { key: '_poly_mg', convert: 'g_to_mg' },
+  'Tryptophan': { key: '트립토판(mg)', convert: 'g_to_mg' },
+  'Threonine': { key: '트레오닌(mg)', convert: 'g_to_mg' },
+  'Isoleucine': { key: '이소루신(mg)', convert: 'g_to_mg' },
+  'Leucine': { key: '루신(mg)', convert: 'g_to_mg' },
+  'Lysine': { key: '라이신(mg)', convert: 'g_to_mg' },
+  'Methionine': { key: '메티오닌(mg)', convert: 'g_to_mg' },
+  'Cystine': { key: '시스테인(mg)', convert: 'g_to_mg' },
+  'Phenylalanine': { key: '페닐알라린(mg)', convert: 'g_to_mg' },
+  'Tyrosine': { key: '티로신(mg)', convert: 'g_to_mg' },
+  'Valine': { key: '발린(mg)', convert: 'g_to_mg' },
+  'Arginine': { key: '아르기닌(mg)', convert: 'g_to_mg' },
+  'Histidine': { key: '히스티딘(mg)', convert: 'g_to_mg' },
+  'Alanine': { key: '알라닌(mg)', convert: 'g_to_mg' },
+  'Aspartic acid': { key: '아스파르트산(mg)', convert: 'g_to_mg' },
+  'Glutamic acid': { key: '글루탐산(mg)', convert: 'g_to_mg' },
+  'Glycine': { key: '글리신(mg)', convert: 'g_to_mg' },
+  'Proline': { key: '프롤린(mg)', convert: 'g_to_mg' },
+  'Serine': { key: '세린(mg)', convert: 'g_to_mg' },
+  'PUFA 20:5 n-3 (EPA)': { key: 'EPA(mg)', convert: 'g_to_mg' },
+  'PUFA 22:6 n-3 (DHA)': { key: 'DHA(mg)', convert: 'g_to_mg' },
+  '20:5 n-3 (EPA)': { key: 'EPA(mg)', convert: 'g_to_mg' },
+  '22:6 n-3 (DHA)': { key: 'DHA(mg)', convert: 'g_to_mg' },
+  'PUFA 18:2 n-6 c,c': { key: '리놀레산(mg)', convert: 'g_to_mg' },
+  '18:2 n-6 c,c': { key: '리놀레산(mg)', convert: 'g_to_mg' },
+  'PUFA 18:3 n-3 c,c,c (ALA)': { key: '알파리놀렌산(mg)', convert: 'g_to_mg' },
+  '18:3 n-3 c,c,c (ALA)': { key: '알파리놀렌산(mg)', convert: 'g_to_mg' },
+  'PUFA 22:5 n-3 (DPA)': { key: '_dpa_mg', convert: 'g_to_mg' },
+  '22:5 n-3 (DPA)': { key: '_dpa_mg', convert: 'g_to_mg' },
+  'PUFA 20:4 n-6': { key: '_ara_mg', convert: 'g_to_mg' },
+  '20:4 n-6': { key: '_ara_mg', convert: 'g_to_mg' },
+};
+
+// USDA 영문 키워드 감지용
+const USDA_KEYWORDS = ['Energy', 'Protein', 'Water', 'Calcium, Ca', 'Iron, Fe', 'Thiamin', 'Riboflavin', 'Sodium, Na', 'Total lipid'];
+
+function findUsdaMapping(name) {
+  if (USDA_NAME_MAP[name]) return USDA_NAME_MAP[name];
+  for (const [mapKey, mapping] of Object.entries(USDA_NAME_MAP)) {
+    if (name.includes(mapKey) || mapKey.includes(name)) return mapping;
+  }
+  return null;
+}
+
+function parseUsdaText(text) {
+  const result = {};
+  const lines = text.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    // 날짜 줄 무시
+    if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(trimmed)) continue;
+    const parts = trimmed.split('\t');
+    if (parts.length < 2) continue;
+    const name = parts[0].trim();
+    if (!name) continue;
+    const valStr = parts[1].trim().replace(/,/g, '');
+    const value = parseFloat(valStr);
+    if (isNaN(value)) continue;
+    const unitStr = (parts[2] || '').trim().toLowerCase();
+
+    const mapping = findUsdaMapping(name);
+    if (!mapping) continue;
+
+    // unitFilter 체크 (Energy: kcal만, Vitamin D: µg만)
+    if (mapping.unitFilter) {
+      const filterLower = mapping.unitFilter.toLowerCase();
+      if (!unitStr.includes(filterLower) && !(filterLower === 'µg' && (unitStr === 'ug' || unitStr === 'mcg'))) continue;
+    }
+
+    let finalValue = value;
+    // g → mg 변환
+    if (mapping.convert === 'g_to_mg' && (unitStr === 'g' || unitStr === '')) {
+      finalValue = value * 1000;
+    }
+    // µg/mcg → mcg 동일 취급
+    if (unitStr === 'µg' || unitStr === 'ug') {
+      // 이미 mcg 단위이므로 변환 불필요
+    }
+
+    // 임시 키(_mono_mg, _poly_mg 등)도 일단 저장
+    if (mapping.key && finalValue !== 0) {
+      result[mapping.key] = (result[mapping.key] || 0) + finalValue;
+    }
+  }
+
+  // 불포화지방산 합산: mono + poly
+  const mono = result['_mono_mg'] || 0;
+  const poly = result['_poly_mg'] || 0;
+  if (mono + poly > 0) result['불포화지방산(mg)'] = mono + poly;
+  delete result['_mono_mg'];
+  delete result['_poly_mg'];
+
+  // n-3 합산: ALA + EPA + DHA + DPA
+  const ala = result['알파리놀렌산(mg)'] || 0;
+  const epa = result['EPA(mg)'] || 0;
+  const dha = result['DHA(mg)'] || 0;
+  const dpa = result['_dpa_mg'] || 0;
+  if (ala + epa + dha + dpa > 0) result['n-3(mg)'] = ala + epa + dha + dpa;
+  delete result['_dpa_mg'];
+
+  // n-6 합산: 리놀레산 + 아라키돈산
+  const linoleic = result['리놀레산(mg)'] || 0;
+  const ara = result['_ara_mg'] || 0;
+  if (linoleic + ara > 0) result['n-6(mg)'] = linoleic + ara;
+  delete result['_ara_mg'];
+
+  return result;
+}
+
+function isUsdaFormat(lines) {
+  let matchCount = 0;
+  const sample = lines.slice(0, 20);
+  for (const line of sample) {
+    const name = line.split('\t')[0]?.trim() || '';
+    if (USDA_KEYWORDS.some(kw => name.includes(kw))) matchCount++;
+  }
+  return matchCount >= 2;
+}
+
 // --- Parsing (unchanged) ---
 
 const NUTRIENT_NAME_MAP = {
@@ -187,10 +341,9 @@ function detectFormatAndParse(text) {
   const lines = text.split('\n').filter(l => l.trim());
   if (lines.length === 0) return { type: 'empty', results: [] };
 
-  // 가로형 감지: 1~3줄이고 탭 구분 숫자가 10개 이상
+  // 1) 가로형 감지: 1~3줄이고 탭 구분 숫자가 10개 이상
   if (lines.length <= 3) {
-    const firstLine = lines[0];
-    const tabs = firstLine.split('\t');
+    const tabs = lines[0].split('\t');
     const numCount = tabs.filter(t => !isNaN(parseFloat(t.trim().replace(/,/g, '')))).length;
     if (numCount >= 10) {
       const results = lines.map(l => parseHorizontalLine(l)).filter(Boolean);
@@ -198,10 +351,9 @@ function detectFormatAndParse(text) {
     }
   }
 
-  // 여러 줄 가로형: 각 줄의 탭 개수가 10개 이상이면 가로형으로 판단
+  // 여러 줄 가로형
   if (lines.length > 3) {
-    const firstLine = lines[0];
-    const tabs = firstLine.split('\t');
+    const tabs = lines[0].split('\t');
     const numCount = tabs.filter(t => !isNaN(parseFloat(t.trim().replace(/,/g, '')))).length;
     if (numCount >= 10) {
       const results = lines.map(l => parseHorizontalLine(l)).filter(Boolean);
@@ -209,7 +361,12 @@ function detectFormatAndParse(text) {
     }
   }
 
-  // 세로형 (기존 식약처 DB 형식)
+  // 2) USDA 영문 형식 감지
+  if (isUsdaFormat(lines)) {
+    return { type: 'usda', results: [{ name: '', nutrients: parseUsdaText(text) }] };
+  }
+
+  // 3) 세로형 (기존 식약처 DB 형식)
   return { type: 'vertical', results: [{ name: '', nutrients: parseVerticalText(text) }] };
 }
 
@@ -293,7 +450,7 @@ export default function CustomIngredient({ onUpdate }) {
         setHorizontalResults(results);
         setParsePreview(null);
       }
-    } else if (type === 'vertical' && results.length > 0) {
+    } else if ((type === 'vertical' || type === 'usda') && results.length > 0) {
       setParsePreview(results[0].nutrients);
       setHorizontalResults(null);
     }
@@ -385,10 +542,10 @@ export default function CustomIngredient({ onUpdate }) {
 
           {/* Paste-to-parse area */}
           <div>
-            <div className="text-[9px] text-gray-500 mb-0.5">영양 데이터 붙여넣기 (세로형/가로형 자동 감지)</div>
+            <div className="text-[9px] text-gray-500 mb-0.5">영양 데이터 붙여넣기 (식약처/USDA/가로형 자동 감지)</div>
             <textarea
               className="w-full text-[9px] border border-gray-300 rounded px-1 py-0.5 h-16 resize-y font-mono"
-              placeholder={"세로형: 에너지\\t135.00㎉\n가로형: 돼지등심\\t100g\\t142\\t71\\t23.33\\t..."}
+              placeholder={"식약처: 에너지\\t135.00㎉\nUSDA: Protein\\t21.7\\tg\n가로형: 돼지등심\\t100g\\t142\\t..."}
               value={pasteText}
               onChange={(e) => { setPasteText(e.target.value); setParsePreview(null); setHorizontalResults(null); }}
             />
