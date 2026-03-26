@@ -12,6 +12,13 @@ function saveBlacklist(list) {
   localStorage.setItem(BLACKLIST_KEY, JSON.stringify(list));
 }
 
+const AMINO_ACID_KEYS = new Set([
+  '이소루신(mg)', '루신(mg)', '라이신(mg)', '메티오닌(mg)', '시스테인(mg)',
+  '페닐알라린(mg)', '티로신(mg)', '트레오닌(mg)', '트립토판(mg)', '발린(mg)',
+  '히스티딘(mg)', '아르기닌(mg)', '알라닌(mg)', '아스파르트산(mg)',
+  '글루탐산(mg)', '글리신(mg)', '프롤린(mg)', '세린(mg)',
+]);
+
 export default function NutrientRecommendation({ sufficiency, daily, dailyCalories, isKitten, recipeDays, totals }) {
   const [open, setOpen] = useState(false);
   const [blacklist, setBlacklist] = useState(loadBlacklist);
@@ -34,6 +41,9 @@ export default function NutrientRecommendation({ sufficiency, daily, dailyCalori
 
     const result = [];
     for (const [nutrientKey] of Object.entries(NRC_MAPPING)) {
+      // 성묘(칼로리타입 1~4)일 때 아미노산 제외 (타우린 제외)
+      if (!isKitten && AMINO_ACID_KEYS.has(nutrientKey)) continue;
+
       const suff = sufficiency[nutrientKey];
       if (suff == null || suff >= 1) continue;
 
