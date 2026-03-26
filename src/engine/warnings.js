@@ -1,6 +1,13 @@
 import { nrc } from '../data/appConfig';
 import { getNrcValue, getNrcUpperLimit, calcSufficiency, calcDMPercent, NRC_MAPPING } from './nutrients';
 
+const AMINO_ACID_KEYS = new Set([
+  '이소루신(mg)', '루신(mg)', '라이신(mg)', '메티오닌(mg)', '시스테인(mg)',
+  '페닐알라린(mg)', '티로신(mg)', '트레오닌(mg)', '트립토판(mg)', '발린(mg)',
+  '히스티딘(mg)', '아르기닌(mg)', '알라닌(mg)', '아스파르트산(mg)',
+  '글루탐산(mg)', '글리신(mg)', '프롤린(mg)', '세린(mg)',
+]);
+
 export function generateWarnings(daily, dailyCalories, isKitten, slotStates, nutrientAdjust) {
   const warnings = [];
 
@@ -53,6 +60,8 @@ export function generateWarnings(daily, dailyCalories, isKitten, slotStates, nut
 
   // 5. Upper limit warnings for all nutrients with NRC upper limits
   for (const [nutrientKey, mapping] of Object.entries(NRC_MAPPING)) {
+    // 성묘일 때 아미노산 경고 숨김 (타우린 제외)
+    if (!isKitten && AMINO_ACID_KEYS.has(nutrientKey)) continue;
     const entry = nrc[mapping.cat]?.[mapping.key];
     if (!entry) continue;
     const upperLimit = getNrcUpperLimit(entry, isKitten);
