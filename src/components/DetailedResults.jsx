@@ -3,6 +3,15 @@ import { useState } from 'react';
 const fmt = (v) => v != null && !isNaN(v) ? v.toFixed(1) : '-';
 const fmtPct = (v) => v != null && !isNaN(v) ? `${Math.round(v * 100)}%` : '-';
 
+function suffLabel(v, isUpperExceeded) {
+  if (v == null || isNaN(v)) return '';
+  const pct = Math.round(v * 100);
+  if (pct === 0) return '';
+  if (pct < 100) return ' (부족)';
+  if (isUpperExceeded) return ' (과다)';
+  return '';
+}
+
 function suffColor(v, isUpperExceeded) {
   if (v == null || isNaN(v)) return 'text-gray-400';
   const pct = Math.round(v * 100);
@@ -119,7 +128,7 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
                 <tr key={key} className="border-b border-gray-100">
                   <td className="text-[10px] py-0">{label}</td>
                   <td className="text-[10px] py-0 text-right">{fmt(daily[key])}</td>
-                  <td className={`text-[10px] py-0 text-right ${suffColor(raw, isUE(key))}`}>{getSuff(key)}</td>
+                  <td className={`text-[10px] py-0 text-right ${suffColor(raw, isUE(key))}`}>{getSuff(key)}{suffLabel(raw, isUE(key)) && <span className="text-[8px]">{suffLabel(raw, isUE(key))}</span>}</td>
                 </tr>
               );
             })}
@@ -150,7 +159,7 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
                   <tr key={key} className="border-b border-gray-100">
                     <td className="text-[10px] py-0">{label}</td>
                     <td className="text-[10px] py-0 text-right">{val}{unit && !isRatio ? <span className="text-gray-400 ml-0.5">{unit}</span> : ''}</td>
-                    <td className={`text-[10px] py-0 text-right ${suffColor(raw, isUE(key))}`}>{suff}</td>
+                    <td className={`text-[10px] py-0 text-right ${suffColor(raw, isUE(key))}`}>{suff}{suffLabel(raw, isUE(key)) && <span className="text-[8px]">{suffLabel(raw, isUE(key))}</span>}</td>
                   </tr>
                 );
               })}

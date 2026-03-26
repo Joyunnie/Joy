@@ -7,6 +7,7 @@ const FILENAME = 'catfood_sync_data.json';
 const RECIPES_KEY = 'catfood_saved_recipes';
 const INVENTORY_KEY = 'catfood_inventory';
 const OMEGA3_KEY = 'catfood_omega3_custom';
+const BLACKLIST_KEY = 'catfood_recommend_blacklist';
 
 function getToken() { return localStorage.getItem(TOKEN_KEY) || ''; }
 function getGistId() { return localStorage.getItem(GIST_ID_KEY) || ''; }
@@ -56,6 +57,8 @@ function gatherLocalData() {
   try { inventory = JSON.parse(localStorage.getItem(INVENTORY_KEY)) || []; } catch {}
   let omega3Custom = {};
   try { omega3Custom = JSON.parse(localStorage.getItem(OMEGA3_KEY)) || {}; } catch {}
+  let recommendBlacklist = [];
+  try { recommendBlacklist = JSON.parse(localStorage.getItem(BLACKLIST_KEY)) || []; } catch {}
   return {
     version: 1,
     lastSync: new Date().toISOString(),
@@ -63,6 +66,7 @@ function gatherLocalData() {
     customFoods: getOverridesData(),
     omega3Custom,
     inventory,
+    recommendBlacklist,
   };
 }
 
@@ -102,6 +106,13 @@ function applyRemoteData(remote) {
   }
   if (remote.omega3Custom) {
     localStorage.setItem(OMEGA3_KEY, JSON.stringify(remote.omega3Custom));
+  }
+  if (remote.recommendBlacklist) {
+    // Merge: union of local and remote
+    let local = [];
+    try { local = JSON.parse(localStorage.getItem(BLACKLIST_KEY)) || []; } catch {}
+    const merged = [...new Set([...local, ...remote.recommendBlacklist])];
+    localStorage.setItem(BLACKLIST_KEY, JSON.stringify(merged));
   }
 }
 

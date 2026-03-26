@@ -3,6 +3,15 @@ import { calcDMPercent } from '../engine/nutrients';
 const fmt = (v) => v != null && !isNaN(v) ? v.toFixed(1) : '-';
 const fmtPct = (v) => v != null && !isNaN(v) ? `${Math.round(v * 100)}%` : '-';
 
+function suffLabel(v, isUpperExceeded) {
+  if (v == null || isNaN(v)) return '';
+  const pct = Math.round(v * 100);
+  if (pct === 0) return '';
+  if (pct < 100) return ' (부족)';
+  if (isUpperExceeded) return ' (과다)';
+  return '';
+}
+
 // New color logic: red if <100% (deficient) or upper limit exceeded, green if ok
 function suffColor(v, isUpperExceeded) {
   if (v == null || isNaN(v)) return 'text-gray-400';
@@ -15,12 +24,15 @@ function suffColor(v, isUpperExceeded) {
 
 function Row({ label, value, unit, dm, sufficiency, suffRaw, isUpperExceeded, warning }) {
   const suffClass = suffColor(suffRaw, isUpperExceeded);
+  const sLabel = suffLabel(suffRaw, isUpperExceeded);
   return (
     <tr className="border-b border-gray-100">
       <td className="text-[10px] py-0 pr-1">{label}</td>
       <td className="text-[10px] py-0 text-right pr-0.5">{value}{unit && <span className="text-gray-400 ml-0.5">{unit}</span>}</td>
       <td className="text-[10px] py-0 text-right pr-0.5 text-gray-500">{dm || ''}</td>
-      <td className={`text-[10px] py-0 text-right pr-0.5 ${suffClass}`}>{sufficiency || ''}</td>
+      <td className={`text-[10px] py-0 text-right pr-0.5 ${suffClass}`}>
+        {sufficiency || ''}{sLabel && <span className="text-[8px]">{sLabel}</span>}
+      </td>
       <td className="text-[10px] py-0">{warning && <span className="text-red-600 font-bold">{warning}</span>}</td>
     </tr>
   );
