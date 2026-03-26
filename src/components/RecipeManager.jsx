@@ -180,6 +180,22 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
     autoSync();
   };
 
+  const handleOverwrite = (idx) => {
+    const target = recipes[idx];
+    if (!target) return;
+    if (!confirm(`'${target.name}'에 현재 레시피를 덮어쓰시겠습니까?`)) return;
+    const updated = [...recipes];
+    updated[idx] = {
+      ...target,
+      date: new Date().toISOString().slice(0, 10),
+      memo: memo.trim() || target.memo || '',
+      basicInfo, slotStates, omega3Custom, nutrientAdjust,
+    };
+    saveRecipes(updated);
+    setRecipes(updated);
+    autoSync();
+  };
+
   const handleLoad = (recipe) => { onLoadRecipe(recipe); };
 
   const handleExport = () => {
@@ -294,6 +310,8 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
                     <button onClick={() => handleLoad(r)}
                       className="flex-1 text-left text-[10px] text-blue-700 hover:underline truncate">{r.name}</button>
                     <span className="text-[9px] text-gray-400 shrink-0">{r.date}</span>
+                    <button onClick={() => handleOverwrite(i)}
+                      className="text-[9px] text-amber-500 hover:text-amber-700 shrink-0 px-0.5">덮어쓰기</button>
                     <button onClick={() => handleDelete(i)}
                       className="text-[9px] text-red-400 hover:text-red-600 shrink-0 px-0.5">✕</button>
                   </div>
