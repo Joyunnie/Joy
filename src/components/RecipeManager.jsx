@@ -411,34 +411,31 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
       <div style={{ position: 'absolute', left: '-9999px', top: 0 }}>
         <div ref={cardRef} style={{ width: 480, padding: 20, fontFamily: 'sans-serif', background: '#fff' }}>
           <div style={{ borderBottom: '2px solid #d97706', paddingBottom: 8, marginBottom: 12 }}>
-            <div style={{ fontSize: 16, fontWeight: 'bold', color: '#92400e' }}>고양이 생식 레시피</div>
-            <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>
+            <div style={{ fontSize: 18, fontWeight: 'bold', color: '#92400e' }}>고양이 생식 레시피</div>
+            <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 2 }}>
               {new Date().toISOString().slice(0, 10)} 생성
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px', fontSize: 11, marginBottom: 12 }}>
-            <div><span style={{ color: '#6b7280' }}>체중:</span> {basicInfo.weight}kg</div>
-            <div><span style={{ color: '#6b7280' }}>칼로리 타입:</span> {CALORIE_TYPE_LABELS[basicInfo.calorieType] || basicInfo.calorieType}</div>
-            <div><span style={{ color: '#6b7280' }}>하루 필요 칼로리:</span> {dailyCalories?.toFixed(1) || '-'} Kcal</div>
+          <div style={{ display: 'flex', gap: 16, fontSize: 14, marginBottom: 12 }}>
             <div><span style={{ color: '#6b7280' }}>레시피 일수:</span> {basicInfo.recipeDays}일</div>
             <div><span style={{ color: '#6b7280' }}>총량:</span> {totals?._totalGrams?.toFixed(1) || '-'}g</div>
-            <div><span style={{ color: '#6b7280' }}>하루 섭취량:</span> {daily?._dailyGrams?.toFixed(1) || '-'}g</div>
+            <div><span style={{ color: '#6b7280' }}>하루 급여량:</span> {daily?._dailyGrams?.toFixed(1) || '-'}g</div>
           </div>
-          <div style={{ fontSize: 11, fontWeight: 'bold', color: '#374151', marginBottom: 4, borderBottom: '1px solid #e5e7eb', paddingBottom: 2 }}>
+          <div style={{ fontSize: 14, fontWeight: 'bold', color: '#374151', marginBottom: 4, borderBottom: '1px solid #e5e7eb', paddingBottom: 2 }}>
             재료 목록
           </div>
-          <table style={{ width: '100%', fontSize: 10, borderCollapse: 'collapse' }}>
+          <table style={{ width: '100%', fontSize: 16, borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                <th style={{ textAlign: 'left', padding: '2px 4px', color: '#6b7280' }}>재료</th>
-                <th style={{ textAlign: 'right', padding: '2px 4px', color: '#6b7280' }}>사용량</th>
+                <th style={{ textAlign: 'left', padding: '3px 6px', color: '#6b7280', fontSize: 14 }}>재료</th>
+                <th style={{ textAlign: 'right', padding: '3px 6px', color: '#6b7280', fontSize: 14 }}>사용량</th>
               </tr>
             </thead>
             <tbody>
               {activeIngredients.map((item, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: '2px 4px' }}>{item.name}</td>
-                  <td style={{ textAlign: 'right', padding: '2px 4px', fontFamily: 'monospace' }}>
+                  <td style={{ padding: '3px 6px' }}>{item.name}</td>
+                  <td style={{ textAlign: 'right', padding: '3px 6px' }}>
                     {item.amount}{item.unit}
                   </td>
                 </tr>
@@ -446,7 +443,7 @@ export default function RecipeManager({ basicInfo, slotStates, omega3Custom, nut
             </tbody>
           </table>
           {activeIngredients.length === 0 && (
-            <div style={{ fontSize: 10, color: '#9ca3af', textAlign: 'center', padding: 8 }}>재료 없음</div>
+            <div style={{ fontSize: 14, color: '#9ca3af', textAlign: 'center', padding: 8 }}>재료 없음</div>
           )}
         </div>
       </div>
