@@ -132,6 +132,11 @@ const SUB_CATEGORY_LABELS = {
   '식품I': '비타민E',
 };
 
+// Per-item label overrides for merged categories (mergedCatKey -> mergedIndex -> label)
+const ITEM_LABEL_OVERRIDES = {
+  '비타민': { 3: '비타민D', 3003: '비타민K' },
+};
+
 // Public labels: merged + non-merged categories
 export const CATEGORY_LABELS = {
   '칼슘류': '칼슘류',
@@ -278,7 +283,8 @@ export function getCategoryItems(categoryKey) {
       const mergedIdx = Number(idx);
       const srcIdx = Math.floor(mergedIdx / 1000);
       const srcKey = merged.sources[srcIdx];
-      const subLabel = SUB_CATEGORY_LABELS[srcKey] || srcKey;
+      const overrides = ITEM_LABEL_OVERRIDES[categoryKey];
+      const subLabel = overrides?.[mergedIdx] || SUB_CATEGORY_LABELS[srcKey] || srcKey;
       return {
         index: mergedIdx,
         name: food.name,
