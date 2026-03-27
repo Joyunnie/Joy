@@ -1,5 +1,29 @@
 @import "tailwindcss";
 
+/* PC styles (768px and above) — larger fonts for readability */
+@media (min-width: 768px) {
+  /* Base font size increase for all text within app sections */
+  .bg-white.rounded {
+    font-size: 14px;
+  }
+
+  /* Section titles */
+  .bg-white.rounded h3,
+  .bg-white.rounded .font-bold {
+    font-size: 16px;
+  }
+
+  /* Inputs and selects */
+  select, input[type="number"], input[type="text"], input[type="password"], textarea {
+    font-size: 14px;
+  }
+
+  /* Buttons */
+  button {
+    font-size: 12px;
+  }
+}
+
 /* Mobile responsive styles (768px and below) */
 @media (max-width: 767px) {
   /* Touch-friendly inputs and selects */

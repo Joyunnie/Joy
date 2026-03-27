@@ -64,8 +64,8 @@ function Accordion({ title, defaultOpen = false, children }) {
   return (
     <div className="bg-white rounded p-1.5 shadow-sm border">
       <button onClick={() => setOpen(!open)} className="flex items-center w-full text-left">
-        <h3 className="font-bold text-[11px] text-gray-800">{title}</h3>
-        <span className="text-[9px] text-gray-400 ml-auto">{open ? '▲' : '▼'}</span>
+        <h3 className="font-bold text-[11px] md:text-[16px] text-gray-800">{title}</h3>
+        <span className="text-[9px] md:text-[13px] text-gray-400 ml-auto">{open ? '▲' : '▼'}</span>
       </button>
       {open && <div className="mt-1">{children}</div>}
     </div>
@@ -97,10 +97,10 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-300">
-              <th className="text-[9px] text-left py-0">항목</th>
-              <th className="text-[9px] text-right py-0">mg</th>
-              <th className="text-[9px] text-right py-0">과부족</th>
-              <th className="text-[9px] py-0"></th>
+              <th className="text-[9px] md:text-[13px] text-left py-0">항목</th>
+              <th className="text-[9px] md:text-[13px] text-right py-0">mg</th>
+              <th className="text-[9px] md:text-[13px] text-right py-0">과부족</th>
+              <th className="text-[9px] md:text-[13px] py-0"></th>
             </tr>
           </thead>
           <tbody>
@@ -109,10 +109,10 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
               const sLbl = suffLabel(raw, isUE(key));
               return (
                 <tr key={key} className="border-b border-gray-100">
-                  <td className="text-[10px] py-0">{label}</td>
-                  <td className="text-[10px] py-0 text-right">{fmt(daily[key])}</td>
-                  <td className={`text-[10px] py-0 text-right ${suffColor(raw, isUE(key))}`} style={{minWidth: '48px'}}>{getSuff(key)}</td>
-                  <td className="text-[9px] py-0 text-left pl-0.5 text-red-600" style={{minWidth: '36px'}}>{sLbl || ''}</td>
+                  <td className="text-[10px] md:text-[14px] py-0">{label}</td>
+                  <td className="text-[10px] md:text-[14px] py-0 text-right">{fmt(daily[key])}</td>
+                  <td className={`text-[10px] md:text-[14px] py-0 text-right ${suffColor(raw, isUE(key))}`} style={{minWidth: '48px'}}>{getSuff(key)}</td>
+                  <td className="text-[9px] md:text-[13px] py-0 text-left pl-0.5 text-red-600" style={{minWidth: '28px'}}>{sLbl || ''}</td>
                 </tr>
               );
             })}
@@ -122,15 +122,15 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
 
       {/* 지방산 - always expanded */}
       <div className="bg-white rounded p-1.5 shadow-sm border">
-        <h3 className="font-bold text-[11px] text-gray-800">지방산</h3>
+        <h3 className="font-bold text-[11px] md:text-[16px] text-gray-800">지방산</h3>
         <div className="mt-1">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-300">
-                <th className="text-[9px] text-left py-0">항목</th>
-                <th className="text-[9px] text-right py-0">값</th>
-                <th className="text-[9px] text-right py-0">과부족</th>
-                <th className="text-[9px] py-0"></th>
+                <th className="text-[9px] md:text-[13px] text-left py-0">항목</th>
+                <th className="text-[9px] md:text-[13px] text-right py-0">값</th>
+                <th className="text-[9px] md:text-[13px] text-right py-0">과부족</th>
+                <th className="text-[9px] md:text-[13px] py-0"></th>
               </tr>
             </thead>
             <tbody>
@@ -143,10 +143,10 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
                 const sLbl = suffLabel(raw, isUE(key));
                 return (
                   <tr key={key} className="border-b border-gray-100">
-                    <td className="text-[10px] py-0">{label}</td>
-                    <td className="text-[10px] py-0 text-right">{val}{unit && !isRatio ? <span className="text-gray-400 ml-0.5">{unit}</span> : ''}</td>
-                    <td className={`text-[10px] py-0 text-right ${suffColor(raw, isUE(key))}`} style={{minWidth: '48px'}}>{suff}</td>
-                    <td className="text-[9px] py-0 text-left pl-0.5 text-red-600" style={{minWidth: '36px'}}>{sLbl || ''}</td>
+                    <td className="text-[10px] md:text-[14px] py-0">{label}</td>
+                    <td className="text-[10px] md:text-[14px] py-0 text-right">{val}{unit && !isRatio ? <span className="text-gray-400 ml-0.5">{unit}</span> : ''}</td>
+                    <td className={`text-[10px] md:text-[14px] py-0 text-right ${suffColor(raw, isUE(key))}`} style={{minWidth: '48px'}}>{suff}</td>
+                    <td className="text-[9px] md:text-[13px] py-0 text-left pl-0.5 text-red-600" style={{minWidth: '28px'}}>{sLbl || ''}</td>
                   </tr>
                 );
               })}
@@ -156,8 +156,8 @@ export default function DetailedResults({ daily, sufficiency, slotStates }) {
       </div>
 
       <div className="bg-white rounded p-1.5 shadow-sm border">
-        <h3 className="font-bold text-[11px] mb-0.5 text-gray-800">비율 정보</h3>
-        <div className="space-y-0 text-[10px]">
+        <h3 className="font-bold text-[11px] md:text-[16px] mb-0.5 text-gray-800">비율 정보</h3>
+        <div className="space-y-0 text-[10px] md:text-[14px]">
           <div className="flex justify-between"><span>내장:육류</span><span className="font-semibold">{organPct.toFixed(1)}% : {meatOnlyPct.toFixed(1)}%</span></div>
           <div className="flex justify-between"><span>퓨레:육류</span><span className="font-semibold">{pureePct.toFixed(1)}% : {nonPureePct.toFixed(1)}%</span></div>
         </div>

@@ -27,17 +27,17 @@ function Row({ label, value, unit, dm, sufficiency, suffRaw, isUpperExceeded, wa
   const sLabel = suffLabel(suffRaw, isUpperExceeded);
   return (
     <tr className="border-b border-gray-100">
-      <td className="text-[10px] py-0 pr-1">{label}</td>
-      <td className="text-[10px] py-0 text-right pr-0.5">{value}{unit && <span className="text-gray-400 ml-0.5">{unit}</span>}</td>
-      <td className="text-[10px] py-0 text-right pr-0.5 text-gray-500">{dm || ''}</td>
-      <td className={`text-[10px] py-0 text-right ${suffClass}`} style={{minWidth: '48px'}}>{sufficiency || ''}</td>
-      <td className="text-[9px] py-0 text-left pl-0.5 text-red-600" style={{minWidth: '36px'}}>{sLabel || ''}</td>
+      <td className="text-[10px] md:text-[14px] py-0 pr-1">{label}</td>
+      <td className="text-[10px] md:text-[14px] py-0 text-right pr-0.5">{value}{unit && <span className="text-gray-400 ml-0.5">{unit}</span>}</td>
+      <td className="text-[10px] md:text-[14px] py-0 text-right pr-0.5 text-gray-500">{dm || ''}</td>
+      <td className={`text-[10px] md:text-[14px] py-0 text-right ${suffClass}`} style={{minWidth: '48px'}}>{sufficiency || ''}</td>
+      <td className="text-[9px] md:text-[13px] py-0 text-left pl-0.5 text-red-600" style={{minWidth: '28px'}}>{sLabel || ''}</td>
     </tr>
   );
 }
 
 export default function ResultPanel({ daily, totals, dailyCalories, sufficiency, warnings, slotStates }) {
-  if (!daily) return <div className="bg-white rounded p-1.5 shadow-sm border"><p className="text-[10px] text-gray-400">데이터를 입력하세요</p></div>;
+  if (!daily) return <div className="bg-white rounded p-1.5 shadow-sm border"><p className="text-[10px] md:text-[14px] text-gray-400">데이터를 입력하세요</p></div>;
 
   const upperExceeded = sufficiency._upperExceeded || {};
   const isUE = (key) => !!upperExceeded[key];
@@ -99,10 +99,10 @@ export default function ResultPanel({ daily, totals, dailyCalories, sufficiency,
 
   return (
     <div className="bg-white rounded p-1.5 shadow-sm border">
-      <h3 className="font-bold text-[11px] mb-1 text-gray-800">기본 영양 정보</h3>
+      <h3 className="font-bold text-[11px] md:text-[16px] mb-1 text-gray-800">기본 영양 정보</h3>
 
       {warnings.length > 0 && (
-        <div className="mb-1 p-1 bg-red-50 rounded text-[10px] space-y-0">
+        <div className="mb-1 p-1 bg-red-50 rounded text-[10px] md:text-[14px] space-y-0">
           {warnings.map((w, i) => (
             <div key={i} className={w.type === 'blue' ? 'text-blue-600 font-bold' : 'text-red-600 font-bold'}>
               {w.msg}
@@ -115,11 +115,11 @@ export default function ResultPanel({ daily, totals, dailyCalories, sufficiency,
       <table className="w-full">
         <thead>
           <tr className="border-b border-gray-300">
-            <th className="text-[9px] text-left py-0">항목</th>
-            <th className="text-[9px] text-right py-0">값</th>
-            <th className="text-[9px] text-right py-0">DM%</th>
-            <th className="text-[9px] text-right py-0">과부족</th>
-            <th className="text-[9px] py-0"></th>
+            <th className="text-[9px] md:text-[13px] text-left py-0">항목</th>
+            <th className="text-[9px] md:text-[13px] text-right py-0">값</th>
+            <th className="text-[9px] md:text-[13px] text-right py-0">DM%</th>
+            <th className="text-[9px] md:text-[13px] text-right py-0">과부족</th>
+            <th className="text-[9px] md:text-[13px] py-0"></th>
           </tr>
         </thead>
         <tbody>
@@ -146,7 +146,7 @@ export default function ResultPanel({ daily, totals, dailyCalories, sufficiency,
           <Row label="뼈:살 비율" value={`${bonePct.toFixed(1)}% : ${meatPct.toFixed(1)}%`} />
 
           <tr><td colSpan={5} className="py-1"><div className="border-b border-gray-300"></div></td></tr>
-          <tr><td colSpan={5} className="text-[9px] font-semibold py-0.5 text-gray-700 bg-gray-100">비타민</td></tr>
+          <tr><td colSpan={5} className="text-[9px] md:text-[16px] font-semibold py-0.5 text-gray-700 bg-gray-100">비타민</td></tr>
           {vitaminRows.map(({ key, label, unit }) => (
             <Row key={key} label={label} value={fmt(daily[key])} unit={unit}
               sufficiency={getSuff(key)} suffRaw={getSuffRaw(key)}
@@ -154,7 +154,7 @@ export default function ResultPanel({ daily, totals, dailyCalories, sufficiency,
           ))}
 
           <tr><td colSpan={5} className="py-1"><div className="border-b border-gray-300"></div></td></tr>
-          <tr><td colSpan={5} className="text-[9px] font-semibold py-0.5 text-gray-700 bg-gray-100">무기질</td></tr>
+          <tr><td colSpan={5} className="text-[9px] md:text-[16px] font-semibold py-0.5 text-gray-700 bg-gray-100">무기질</td></tr>
           {mineralRows.map(({ key, label, unit }) => (
             <Row key={key} label={label} value={fmt(daily[key])} unit={unit}
               sufficiency={getSuff(key)} suffRaw={getSuffRaw(key)}
@@ -162,7 +162,7 @@ export default function ResultPanel({ daily, totals, dailyCalories, sufficiency,
           ))}
 
           <tr><td colSpan={5} className="py-1"><div className="border-b border-gray-300"></div></td></tr>
-          <tr><td colSpan={5} className="text-[9px] font-semibold py-0.5 text-gray-700 bg-gray-100">타우린</td></tr>
+          <tr><td colSpan={5} className="text-[9px] md:text-[16px] font-semibold py-0.5 text-gray-700 bg-gray-100">타우린</td></tr>
           <Row label="타우린" value={fmt(daily['타우린(mg)'])} unit="mg"
             sufficiency={getSuff('타우린(mg)')} suffRaw={getSuffRaw('타우린(mg)')}
             isUpperExceeded={isUE('타우린(mg)')} />
