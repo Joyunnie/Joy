@@ -140,43 +140,44 @@ export default function App() {
       </header>
 
       <div className="max-w-[1400px] mx-auto p-1">
-        <div className="flex gap-1 items-start justify-center" ref={resultRef}>
-          {/* Left column — 25% */}
-          <div className="w-1/4 min-w-[260px] max-w-[320px] shrink-0 space-y-1">
-            <BasicInfo basicInfo={basicInfo} dailyCalories={dailyCalories} onUpdate={handleBasicInfoUpdate} onReset={handleReset} />
-            <MeatSection slotStates={slotStates} onSlotUpdate={handleSlotUpdate} />
-            <VegetableSection slotStates={slotStates} onSlotUpdate={handleSlotUpdate} />
-            <Omega3Register values={omega3Custom} onUpdate={handleOmega3Update}
-              onReset={handleOmega3Reset} />
-            <NutrientAdjust values={nutrientAdjust} onUpdate={handleNutrientAdjustUpdate}
-              onReset={() => setNutrientAdjust(initialNutrientAdjust)} />
+        {/* Mobile: single column with ordered sections / PC: 3-column flex */}
+        <div className="flex flex-col md:flex-row gap-1 md:items-start md:justify-center" ref={resultRef}>
+          {/* Left column — PC: 25% / Mobile: full width, split into ordered sections */}
+          <div className="w-full md:w-1/4 md:min-w-[260px] md:max-w-[320px] md:shrink-0 space-y-1 order-2 md:order-none mobile-col-left contents md:block">
+            <div className="order-2 md:order-none"><BasicInfo basicInfo={basicInfo} dailyCalories={dailyCalories} onUpdate={handleBasicInfoUpdate} onReset={handleReset} /></div>
+            <div className="order-3 md:order-none"><MeatSection slotStates={slotStates} onSlotUpdate={handleSlotUpdate} /></div>
+            <div className="order-4 md:order-none"><VegetableSection slotStates={slotStates} onSlotUpdate={handleSlotUpdate} /></div>
+            <div className="order-10 md:order-none"><Omega3Register values={omega3Custom} onUpdate={handleOmega3Update}
+              onReset={handleOmega3Reset} /></div>
+            <div className="order-10 md:order-none"><NutrientAdjust values={nutrientAdjust} onUpdate={handleNutrientAdjustUpdate}
+              onReset={() => setNutrientAdjust(initialNutrientAdjust)} /></div>
           </div>
 
-          {/* Center column — 35% */}
-          <div className="w-[35%] min-w-[280px] max-w-[420px] shrink-0 space-y-1">
-            <GistSync onSyncComplete={handleSyncComplete} />
-            <RecipeManager basicInfo={basicInfo} slotStates={slotStates}
+          {/* Center column — PC: 35% / Mobile: full width, split into ordered sections */}
+          <div className="w-full md:w-[35%] md:min-w-[280px] md:max-w-[420px] md:shrink-0 space-y-1 order-1 md:order-none mobile-col-center contents md:block">
+            <div className="order-1 md:order-none"><GistSync onSyncComplete={handleSyncComplete} /></div>
+            <div className="order-1 md:order-none"><RecipeManager basicInfo={basicInfo} slotStates={slotStates}
               omega3Custom={omega3Custom} nutrientAdjust={nutrientAdjust}
               onLoadRecipe={handleLoadRecipe} resultRef={resultRef}
-              daily={daily} totals={totals} dailyCalories={dailyCalories} />
-            <CustomIngredient onUpdate={handleCustomFoodUpdate} />
-            <Inventory onUpdate={handleCustomFoodUpdate} />
-            <SupplementSection slotStates={slotStates} onSlotUpdate={handleSlotUpdate} />
+              daily={daily} totals={totals} dailyCalories={dailyCalories} /></div>
+            <div className="order-1 md:order-none"><CustomIngredient onUpdate={handleCustomFoodUpdate} /></div>
+            <div className="order-1 md:order-none"><Inventory onUpdate={handleCustomFoodUpdate} /></div>
+            <div className="order-5 md:order-none"><SupplementSection slotStates={slotStates} onSlotUpdate={handleSlotUpdate} /></div>
           </div>
 
-          {/* Right column — 40% */}
-          <div className="w-[40%] min-w-[300px] max-w-[520px] space-y-1">
-            <ResultPanel daily={daily} totals={totals} dailyCalories={dailyCalories}
-              sufficiency={sufficiency} warnings={warnings} slotStates={slotStates} />
-            <DetailedResults daily={daily} sufficiency={sufficiency} slotStates={slotStates} />
-            <NutrientRecommendation sufficiency={sufficiency} daily={daily}
-              dailyCalories={dailyCalories} isKitten={isKitten} recipeDays={basicInfo.recipeDays} totals={totals} />
+          {/* Right column — PC: 40% / Mobile: full width, split into ordered sections */}
+          <div className="w-full md:w-[40%] md:min-w-[300px] md:max-w-[520px] space-y-1 order-3 md:order-none mobile-col-right contents md:block">
+            <div className="order-6 md:order-none"><ResultPanel daily={daily} totals={totals} dailyCalories={dailyCalories}
+              sufficiency={sufficiency} warnings={warnings} slotStates={slotStates} /></div>
+            <div className="order-7 md:order-none"><DetailedResults daily={daily} sufficiency={sufficiency} slotStates={slotStates} /></div>
+            <div className="order-9 md:order-none"><NutrientRecommendation sufficiency={sufficiency} daily={daily}
+              dailyCalories={dailyCalories} isKitten={isKitten} recipeDays={basicInfo.recipeDays} totals={totals} /></div>
           </div>
         </div>
 
         {/* Reference info — outside capture area */}
-        <div className="flex justify-end max-w-[1400px]">
-          <div className="w-[40%] min-w-[300px] max-w-[520px] text-right text-xs text-gray-500 leading-relaxed mt-2 pr-1">
+        <div className="md:flex md:justify-end max-w-[1400px]">
+          <div className="w-full md:w-[40%] md:min-w-[300px] md:max-w-[520px] md:text-right text-xs text-gray-500 leading-relaxed mt-2 pr-1 order-11">
             <p className="font-semibold text-gray-600 mb-0.5">참고 정보</p>
             <p><span className="font-semibold">t, T 표기:</span> t = 티스푼, T = 테이블스푼</p>
             <p className="text-[10px]">대부분의 t는 직접 계량한 것, T는 라벨상의 무게</p>

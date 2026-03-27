@@ -1,1 +1,28 @@
 @import "tailwindcss";
+
+/* Mobile responsive styles (768px and below) */
+@media (max-width: 767px) {
+  /* Touch-friendly inputs and selects */
+  select, input[type="number"], input[type="text"], input[type="password"], textarea {
+    min-height: 40px;
+    font-size: 14px !important;
+  }
+
+  /* Touch-friendly buttons */
+  button {
+    min-height: 36px;
+    font-size: 12px !important;
+  }
+
+  /* Tables: horizontal scroll */
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Wider section spacing */
+  .space-y-1 > * + * {
+    margin-top: 0.375rem;
+  }
+}
