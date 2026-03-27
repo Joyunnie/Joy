@@ -190,13 +190,22 @@ CREATE TABLE visit_predictions (
 CREATE INDEX idx_predictions_pharmacy_patient ON visit_predictions(pharmacy_id, patient_hash);
 CREATE INDEX idx_predictions_date ON visit_predictions(predicted_visit_date);
 
--- 11. receipt_ocr_records: 영수증 OCR 처리 기록
+-- 11. receipt_ocr_records: 영수증 OCR 처리 기록 (입고 영수증)
 CREATE TABLE receipt_ocr_records (
     id BIGSERIAL PRIMARY KEY,
     pharmacy_id BIGINT NOT NULL REFERENCES pharmacies(id),
     image_path TEXT,
     ocr_status VARCHAR(20) NOT NULL CHECK (ocr_status IN ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED')),
     raw_text TEXT,
+    supplier_name VARCHAR(100),
+    receipt_date DATE,
+    receipt_number VARCHAR(50),
+    total_amount INTEGER,
+    intake_status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (intake_status IN ('PENDING', 'CONFIRMED', 'CANCELLED')),
+    confirmed_at TIMESTAMPTZ,
+    confirmed_by BIGINT REFERENCES users(id),
+    duplicate_of BIGINT REFERENCES receipt_ocr_records(id),
+    ocr_engine VARCHAR(30) DEFAULT 'GOOGLE_VISION',
     processed_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -210,6 +219,11 @@ CREATE TABLE receipt_ocr_items (
     quantity INTEGER,
     unit_price INTEGER,
     confidence REAL,
+    match_score REAL,
+    matched_drug_name VARCHAR(200),
+    is_confirmed BOOLEAN NOT NULL DEFAULT FALSE,
+    confirmed_drug_id BIGINT REFERENCES drugs(id),
+    confirmed_quantity INTEGER,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

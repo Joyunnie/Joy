@@ -17,6 +17,11 @@ services:
       - "8000:8000"
     environment:
       PHARMA_DATABASE_URL: "postgresql+asyncpg://pharma_user:pharma_pass@db:5432/pharma"
+      PHARMA_OCR_ENGINE: "google_vision"
+      # PHARMA_GOOGLE_VISION_API_KEY: ""
+      PHARMA_UPLOAD_DIR: "/app/uploads/receipts"
+    volumes:
+      - uploads:/app/uploads
     depends_on:
       - db
 
@@ -29,3 +34,4 @@ services:
 
 volumes:
   pgdata:
+  uploads:

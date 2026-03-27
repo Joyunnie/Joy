@@ -229,6 +229,74 @@ export interface BatchLocationRemoveRequest {
   item_ids: number[];
 }
 
+// --- Receipt OCR ---
+
+export interface ReceiptOcrItemOut {
+  id: number;
+  record_id: number;
+  drug_id: number | null;
+  item_name: string | null;
+  quantity: number | null;
+  unit_price: number | null;
+  confidence: number | null;
+  match_score: number | null;
+  matched_drug_name: string | null;
+  is_confirmed: boolean;
+  confirmed_drug_id: number | null;
+  confirmed_quantity: number | null;
+}
+
+export interface ReceiptOcrRecordOut {
+  id: number;
+  pharmacy_id: number;
+  image_path: string | null;
+  ocr_status: string;
+  supplier_name: string | null;
+  receipt_date: string | null;
+  receipt_number: string | null;
+  total_amount: number | null;
+  intake_status: string;
+  confirmed_at: string | null;
+  duplicate_of: number | null;
+  ocr_engine: string | null;
+  processed_at: string | null;
+  created_at: string;
+  item_count: number;
+}
+
+export interface ReceiptOcrResponse {
+  record: ReceiptOcrRecordOut;
+  items: ReceiptOcrItemOut[];
+  duplicate_warning: string | null;
+}
+
+export interface ReceiptOcrDetailResponse {
+  record: ReceiptOcrRecordOut;
+  items: ReceiptOcrItemOut[];
+  raw_text: string | null;
+}
+
+export interface ReceiptListResponse {
+  items: ReceiptOcrRecordOut[];
+  total: number;
+}
+
+export interface ConfirmResponse {
+  confirmed_count: number;
+  updated_stocks: Array<{
+    drug_id: number;
+    drug_name: string;
+    table: string;
+    added_quantity: number;
+    new_quantity: number;
+  }>;
+}
+
+export interface ReceiptItemUpdateRequest {
+  drug_id?: number | null;
+  quantity?: number | null;
+}
+
 // --- JWT payload ---
 
 export interface JwtPayload {

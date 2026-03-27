@@ -225,6 +225,15 @@ class ReceiptOcrRecord(Base):
     image_path: Mapped[str | None] = mapped_column(Text)
     ocr_status: Mapped[str] = mapped_column(String(20))  # PENDING | PROCESSING | COMPLETED | FAILED
     raw_text: Mapped[str | None] = mapped_column(Text)
+    supplier_name: Mapped[str | None] = mapped_column(String(100))
+    receipt_date: Mapped[date | None] = mapped_column(Date)
+    receipt_number: Mapped[str | None] = mapped_column(String(50))
+    total_amount: Mapped[int | None] = mapped_column(Integer)
+    intake_status: Mapped[str] = mapped_column(String(20), default="PENDING")  # PENDING | CONFIRMED | CANCELLED
+    confirmed_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
+    confirmed_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"))
+    duplicate_of: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("receipt_ocr_records.id"))
+    ocr_engine: Mapped[str | None] = mapped_column(String(30), default="GOOGLE_VISION")
     processed_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
 
@@ -240,6 +249,11 @@ class ReceiptOcrItem(Base):
     quantity: Mapped[int | None] = mapped_column(Integer)
     unit_price: Mapped[int | None] = mapped_column(Integer)
     confidence: Mapped[float | None] = mapped_column(Float)
+    match_score: Mapped[float | None] = mapped_column(Float)
+    matched_drug_name: Mapped[str | None] = mapped_column(String(200))
+    is_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
+    confirmed_drug_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("drugs.id"))
+    confirmed_quantity: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
 
 

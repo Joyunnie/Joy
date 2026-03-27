@@ -9,6 +9,13 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 7
 
+    # P32: OCR 엔진 설정 ("google_vision" | "mock")
+    ocr_engine: str = "google_vision"
+    google_vision_api_key: str = ""
+
+    # P33: 업로드 디렉토리
+    upload_dir: str = "uploads/receipts"
+
     model_config = SettingsConfigDict(env_prefix="PHARMA_")
 
 

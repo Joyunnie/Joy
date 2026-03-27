@@ -21,6 +21,8 @@ from app.models.tables import (
     OtcInventory,
     PatientVisitHistory,
     Pharmacy,
+    ReceiptOcrItem,
+    ReceiptOcrRecord,
     ShelfLayout,
     User,
     VisitDrug,

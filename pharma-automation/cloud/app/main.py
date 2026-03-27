@@ -3,12 +3,16 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import settings
 from app.database import engine
-from app.routers import alerts, auth, drugs, inventory, narcotics, otc, predictions, shelf_layouts, sync, thresholds
+from app.routers import alerts, auth, drugs, inventory, narcotics, otc, predictions, receipt_ocr, shelf_layouts, sync, thresholds
+from app.services.ocr_engine import init_ocr_engine
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # P32: OCR 엔진 초기화 (서버 시작 시)
+    init_ocr_engine(settings.ocr_engine, settings.google_vision_api_key or None)
     yield
     await engine.dispose()
 
@@ -37,6 +41,7 @@ app.include_router(narcotics.router)
 app.include_router(drugs.router)
 app.include_router(thresholds.router)
 app.include_router(shelf_layouts.router)
+app.include_router(receipt_ocr.router)
 
 
 @app.get("/health")
