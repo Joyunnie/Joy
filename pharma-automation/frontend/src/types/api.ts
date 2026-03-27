@@ -367,6 +367,27 @@ export interface PrescriptionDrugUpdateRequest {
   days?: number | null;
 }
 
+// --- RPA Commands ---
+
+export interface RpaCommandOut {
+  id: number;
+  pharmacy_id: number;
+  command_type: string;
+  payload: Record<string, unknown>;
+  status: string;
+  created_at: string;
+  sent_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  error_message: string | null;
+  retry_count: number;
+}
+
+export interface RpaCommandCreateRequest {
+  command_type: string;
+  payload: Record<string, unknown>;
+}
+
 // --- JWT payload ---
 
 export interface JwtPayload {

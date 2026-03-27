@@ -367,3 +367,22 @@ CREATE TABLE backup_logs (
 );
 
 CREATE INDEX idx_backup_logs_pharmacy ON backup_logs(pharmacy_id);
+
+-- 21. rpa_commands: RPA 자동 입력 커맨드 큐
+-- Cloud에서 커맨드 생성 → Agent1이 폴링 → PM+20에 RPA 입력 실행.
+CREATE TABLE rpa_commands (
+    id BIGSERIAL PRIMARY KEY,
+    pharmacy_id BIGINT NOT NULL REFERENCES pharmacies(id),
+    command_type VARCHAR(30) NOT NULL,  -- NARCOTICS_INPUT, PRESCRIPTION_INPUT
+    payload JSONB NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING'
+        CHECK (status IN ('PENDING', 'SENT', 'EXECUTING', 'SUCCESS', 'FAILED', 'SKIPPED')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    sent_at TIMESTAMPTZ,
+    started_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    error_message TEXT,
+    retry_count INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX idx_rpa_commands_pharmacy_status ON rpa_commands(pharmacy_id, status);

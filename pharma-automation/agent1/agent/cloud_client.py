@@ -53,3 +53,35 @@ class CloudClient:
         resp = self.session.get(url, params=params, timeout=self.timeout)
         resp.raise_for_status()
         return resp.json()
+
+    # --- RPA Commands ---
+
+    def get_pending_rpa_commands(self) -> list[dict]:
+        """GET /api/v1/rpa-commands/pending — Agent1 폴링."""
+        url = f"{self.base_url}/api/v1/rpa-commands/pending"
+        try:
+            resp = self.session.get(url, timeout=self.timeout)
+            resp.raise_for_status()
+            return resp.json().get("commands", [])
+        except requests.ConnectionError as e:
+            logger.warning("RPA poll failed (connection): %s", e)
+            return []
+        except requests.HTTPError as e:
+            logger.error("RPA poll failed (HTTP): %s", e)
+            return []
+
+    def update_rpa_command_status(
+        self, command_id: int, status: str, error_message: str | None = None
+    ) -> dict | None:
+        """PATCH /api/v1/rpa-commands/{id}/status"""
+        url = f"{self.base_url}/api/v1/rpa-commands/{command_id}/status"
+        body: dict = {"status": status}
+        if error_message:
+            body["error_message"] = error_message
+        try:
+            resp = self.session.patch(url, json=body, timeout=self.timeout)
+            resp.raise_for_status()
+            return resp.json()
+        except (requests.ConnectionError, requests.HTTPError) as e:
+            logger.error("RPA status update failed for %d: %s", command_id, e)
+            return None

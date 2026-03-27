@@ -25,6 +25,7 @@ from app.models.tables import (
     PrescriptionOcrRecord,
     ReceiptOcrItem,
     ReceiptOcrRecord,
+    RpaCommand,
     ShelfLayout,
     User,
     VisitDrug,
@@ -363,6 +364,20 @@ async def cleanup_visits(seed_data):
         await db.execute(
             PatientVisitHistory.__table__.delete().where(
                 PatientVisitHistory.pharmacy_id == pharmacy_id
+            )
+        )
+        await db.commit()
+    yield
+
+
+@pytest_asyncio.fixture(autouse=False)
+async def cleanup_rpa_commands(seed_data):
+    """RPA command 테스트 전 기존 rpa_commands 정리."""
+    async with seed_session_factory() as db:
+        pharmacy_id = seed_data["pharmacy_id"]
+        await db.execute(
+            RpaCommand.__table__.delete().where(
+                RpaCommand.pharmacy_id == pharmacy_id
             )
         )
         await db.commit()

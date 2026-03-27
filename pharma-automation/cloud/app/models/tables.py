@@ -413,3 +413,23 @@ class BackupLog(Base):
     total_bytes: Mapped[int | None] = mapped_column(BigInteger)
     error_message: Mapped[str | None] = mapped_column(Text)
     reported_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
+
+
+# 21. rpa_commands — RPA 자동 입력 커맨드 큐
+class RpaCommand(Base):
+    __tablename__ = "rpa_commands"
+    __table_args__ = (
+        Index("idx_rpa_commands_pharmacy_status", "pharmacy_id", "status"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
+    command_type: Mapped[str] = mapped_column(String(30))  # NARCOTICS_INPUT | PRESCRIPTION_INPUT
+    payload: Mapped[dict] = mapped_column(JSONB)
+    status: Mapped[str] = mapped_column(String(20), default="PENDING")  # PENDING | SENT | EXECUTING | SUCCESS | FAILED | SKIPPED
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
+    sent_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
+    started_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
+    completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
+    error_message: Mapped[str | None] = mapped_column(Text)
+    retry_count: Mapped[int] = mapped_column(Integer, default=0)

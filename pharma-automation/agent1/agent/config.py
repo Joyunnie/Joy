@@ -1,14 +1,6 @@
 import yaml
 
 
-class AgentConfig:
-    def __init__(self, data: dict):
-        self._data = data
-        self.agent = _Section(data.get("agent", {}))
-        self.pm20 = _Section(data.get("pm20", {}))
-        self.backup = _Section(data.get("backup", {}))
-
-
 class _Section:
     def __init__(self, data: dict):
         self._data = data
@@ -23,6 +15,21 @@ class _Section:
 
     def get(self, key: str, default=None):
         return self._data.get(key, default)
+
+
+class AgentConfig:
+    def __init__(self, data: dict):
+        self._data = data
+        self.agent = _Section(data.get("agent", {}))
+        self.pm20 = _Section(data.get("pm20", {}))
+        self.backup = _Section(data.get("backup", {}))
+        self.rpa = _Section(data.get("rpa", {}))
+
+    def get_section(self, name: str) -> _Section | None:
+        section_data = self._data.get(name)
+        if section_data is None:
+            return None
+        return _Section(section_data)
 
 
 def load_config(path: str) -> AgentConfig:

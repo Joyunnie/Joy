@@ -25,6 +25,21 @@ agent:
   log_max_bytes: 10485760        # 10 MB
   log_backup_count: 5
 
+rpa:
+  enabled: false                        # true로 변경 시 RPA 모듈 활성화
+  polling_interval_seconds: 2           # P35: RPA 커맨드 폴링 주기 (기본 2초)
+  max_consecutive_failures: 3           # 연속 실패 시 자동 OFF
+  # coordinates:                        # PM+20 화면 좌표 오버라이드 (옵션)
+  #   narcotics:
+  #     inventory_list_x: 200
+  #     inventory_list_y: 150
+  #     row_height: 22
+  #     complete_button_x: 400
+  #     complete_button_y: 450
+  #   prescription:
+  #     patient_search_x: 200
+  #     patient_search_y: 60
+
 backup:
   output_dir: "D:\\PM20_Backups"
   retention_days: 30

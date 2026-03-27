@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '../api/client.ts';
-import type { DrugListResponse, DrugOut, PrescriptionConfirmResponse, PrescriptionOcrDetailResponse, PrescriptionOcrDrugOut } from '../types/api.ts';
+import type { DrugListResponse, DrugOut, PrescriptionConfirmResponse, PrescriptionOcrDetailResponse, PrescriptionOcrDrugOut, RpaCommandOut } from '../types/api.ts';
 import Modal from './Modal.tsx';
 
 interface Props {
@@ -15,6 +15,7 @@ export default function PrescriptionDetailModal({ recordId, onClose, onConfirmed
   const [detail, setDetail] = useState<PrescriptionOcrDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
+  const [sendingRpa, setSendingRpa] = useState(false);
 
   const fetchDetail = useCallback(async () => {
     setLoading(true);
@@ -67,8 +68,35 @@ export default function PrescriptionDetailModal({ recordId, onClose, onConfirmed
     }
   }
 
+  async function handleSendToPm20() {
+    if (!detail) return;
+    setSendingRpa(true);
+    try {
+      await api.post<RpaCommandOut>('/rpa-commands', {
+        command_type: 'PRESCRIPTION_INPUT',
+        payload: {
+          prescription_ocr_record_id: detail.record.id,
+          patient_name: detail.record.patient_name,
+          patient_dob: detail.record.patient_dob,
+          drugs: detail.drugs.map((d) => ({
+            drug_name: d.matched_drug_name ?? d.drug_name_raw,
+            dosage: d.confirmed_dosage ?? d.dosage,
+            frequency: d.confirmed_frequency ?? d.frequency,
+            days: d.confirmed_days ?? d.days,
+          })),
+        },
+      });
+      showToast('PM+20 입력 요청이 전송되었습니다');
+    } catch {
+      onError('PM+20 입력 요청에 실패했습니다');
+    } finally {
+      setSendingRpa(false);
+    }
+  }
+
   const allConfirmed = detail?.drugs.every((d) => d.is_confirmed) ?? false;
   const isCompleted = detail?.record.ocr_status === 'COMPLETED';
+  const isConfirmed = detail?.record.ocr_status === 'CONFIRMED';
 
   return (
     <Modal isOpen onClose={onClose} title="처방전 상세">
@@ -132,6 +160,18 @@ export default function PrescriptionDetailModal({ recordId, onClose, onConfirmed
                 className="flex-1 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50 transition-colors"
               >
                 {confirming ? '처리 중...' : '확인 완료'}
+              </button>
+            </div>
+          )}
+
+          {isConfirmed && detail.drugs.length > 0 && (
+            <div className="pt-2 border-t">
+              <button
+                onClick={handleSendToPm20}
+                disabled={sendingRpa}
+                className="w-full py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg disabled:opacity-50 transition-colors"
+              >
+                {sendingRpa ? '전송 중...' : 'PM+20 입력'}
               </button>
             </div>
           )}
