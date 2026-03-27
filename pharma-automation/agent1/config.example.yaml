@@ -1,8 +1,19 @@
 pm20:
-  install_dir: "C:\\PM20"
-  config_file: "C:\\PM20\\config\\pm20.ini"
-  service_name: "PM20MariaDB"
-  data_dir: "C:\\PM20\\MariaDB\\data"
+  db_type: "sqlserver"
+  instance: ".\\PMPLUS20"
+  database: "PM_MAIN"
+  auth: "windows"                     # "windows" | "sql"
+  # SQL auth only:
+  # username: "readonly_user"
+  # password_env: "PM20_DB_PASSWORD"  # 환경변수명
+
+  # Patient hashing (환경변수 우선)
+  patient_hash_salt_env: "PM20_HASH_SALT"
+  # patient_hash_salt: "직접 입력 시 (비권장)"
+
+  # Sync 설정
+  visit_lookback_days: 7              # read_recent_visits 조회 범위
+  drug_master_sync_interval_hours: 24 # 약품 마스터 동기화 주기
 
 agent:
   polling_interval_seconds: 300   # 5분
@@ -16,13 +27,7 @@ agent:
 
 backup:
   output_dir: "D:\\PM20_Backups"
-  compress: true
-  compress_format: "zip"          # zip | tar.gz
   retention_days: 30
   retention_min_count: 3
   min_disk_space_gb: 10
   lock_file: "D:\\PM20_Backups\\.backup.lock"
-  critical_file_patterns:
-    - "ibdata*"
-    - "ib_logfile*"
-    - "#innodb_redo/*"

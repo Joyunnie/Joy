@@ -122,7 +122,21 @@ CREATE TABLE shelf_layouts (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 9. patient_visit_history: 환자 방문 이력
+-- 9. drug_stock: PM+20 TEMP_STOCK 약품별 재고 (카세트가 아닌 약품 단위)
+CREATE TABLE drug_stock (
+    id BIGSERIAL PRIMARY KEY,
+    pharmacy_id BIGINT NOT NULL REFERENCES pharmacies(id),
+    drug_id BIGINT NOT NULL REFERENCES drugs(id),
+    current_quantity NUMERIC(10,2) NOT NULL DEFAULT 0,
+    is_narcotic BOOLEAN NOT NULL DEFAULT FALSE,
+    quantity_source VARCHAR(20) NOT NULL DEFAULT 'PM20',
+    synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(pharmacy_id, drug_id)
+);
+
+-- 10. patient_visit_history: 환자 방문 이력
 -- source 의미:
 --   PM20_SYNC: PM+20 DB에서 동기화된 방문 기록
 --   DISPENSE_EVENT: ATDPS 조제 완료 이벤트로 자동 생성 (원본 데이터는 PM+20 처방)

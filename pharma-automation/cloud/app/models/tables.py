@@ -8,6 +8,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     SmallInteger,
     String,
     Text,
@@ -148,7 +149,23 @@ class ShelfLayout(Base):
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
 
 
-# 9. patient_visit_history
+# 9. drug_stock — PM+20 TEMP_STOCK 약품별 재고 (카세트 아닌 약품 단위)
+class DrugStock(Base):
+    __tablename__ = "drug_stock"
+    __table_args__ = (UniqueConstraint("pharmacy_id", "drug_id"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
+    drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id"))
+    current_quantity: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
+    is_narcotic: Mapped[bool] = mapped_column(Boolean, default=False)
+    quantity_source: Mapped[str] = mapped_column(String(20), default="PM20")
+    synced_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
+
+
+# 10. patient_visit_history
 class PatientVisitHistory(Base):
     __tablename__ = "patient_visit_history"
     __table_args__ = (

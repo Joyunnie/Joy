@@ -13,14 +13,17 @@ from app.main import app
 from app.models.tables import (
     AlertLog,
     Drug,
+    DrugStock,
     DrugThreshold,
     InventoryAuditLog,
     NarcoticsInventory,
     NarcoticsTransaction,
     OtcInventory,
+    PatientVisitHistory,
     Pharmacy,
     ShelfLayout,
     User,
+    VisitDrug,
 )
 
 TEST_DATABASE_URL = "postgresql+asyncpg://pharma_user:pharma_pass@localhost:5432/pharma"
@@ -322,6 +325,40 @@ async def cleanup_narcotics(seed_data):
         await db.execute(
             AlertLog.__table__.delete().where(
                 AlertLog.pharmacy_id == pharmacy_id,
+            )
+        )
+        await db.commit()
+    yield
+
+
+@pytest_asyncio.fixture(autouse=False)
+async def cleanup_drug_stock(seed_data):
+    """Drug stock 테스트 전 기존 drug_stock + alert 정리."""
+    async with seed_session_factory() as db:
+        pharmacy_id = seed_data["pharmacy_id"]
+        await db.execute(
+            DrugStock.__table__.delete().where(
+                DrugStock.pharmacy_id == pharmacy_id
+            )
+        )
+        await db.execute(
+            AlertLog.__table__.delete().where(
+                AlertLog.pharmacy_id == pharmacy_id,
+            )
+        )
+        await db.commit()
+    yield
+
+
+@pytest_asyncio.fixture(autouse=False)
+async def cleanup_visits(seed_data):
+    """Visit 테스트 전 기존 visit 관련 데이터 정리."""
+    async with seed_session_factory() as db:
+        pharmacy_id = seed_data["pharmacy_id"]
+        # visit_drugs cascade-deletes with visits
+        await db.execute(
+            PatientVisitHistory.__table__.delete().where(
+                PatientVisitHistory.pharmacy_id == pharmacy_id
             )
         )
         await db.commit()
