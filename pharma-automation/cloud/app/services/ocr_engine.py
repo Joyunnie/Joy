@@ -47,10 +47,10 @@ class MockOcrEngine(OcrEngine):
     """테스트/개발용 mock. 미리 정의된 텍스트 반환."""
 
     def __init__(self, mock_text: str | None = None):
-        self._mock_text = mock_text or self._default_text()
+        self._mock_text = mock_text or self._default_receipt_text()
 
     @staticmethod
-    def _default_text() -> str:
+    def _default_receipt_text() -> str:
         return (
             "거래처: 테스트제약\n"
             "날짜: 2026-03-27\n"
@@ -62,6 +62,24 @@ class MockOcrEngine(OcrEngine):
             "타이레놀정500mg      20  1500   30000\n"
             "-----------------------------------------\n"
             "합계                               60000\n"
+        )
+
+    @staticmethod
+    def default_prescription_text() -> str:
+        return (
+            "처방전\n"
+            "환자 성명: 홍길동\n"
+            "생년월일: 900101\n"
+            "보험유형: 건강보험\n"
+            "처방의: 김의사\n"
+            "의료기관: 서울내과의원\n"
+            "처방일: 2026-03-27\n"
+            "교부번호: RX-20260327-001\n"
+            "-----------------------------------------\n"
+            "약품명                 1회투약량  1일투약횟수  총투약일수\n"
+            "-----------------------------------------\n"
+            "아모시실린캡슐250mg    1정       3           7\n"
+            "타이레놀정500mg        2정       3           7\n"
         )
 
     async def extract_text(self, image_bytes: bytes) -> str:

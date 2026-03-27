@@ -78,6 +78,12 @@ export default function InventoryPage() {
         <h2 className="text-xl font-bold text-gray-800">OTC 재고</h2>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => navigate('/prescription-ocr')}
+            className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            처방전
+          </button>
+          <button
             onClick={() => navigate('/receipt-ocr')}
             className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
           >
