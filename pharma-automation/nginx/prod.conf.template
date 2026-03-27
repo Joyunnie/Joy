@@ -1,0 +1,57 @@
+# P37: ${DOMAIN} is replaced by nginx:alpine envsubst on container start.
+# nginx:alpine auto-processes /etc/nginx/templates/*.template → /etc/nginx/conf.d/*.conf
+
+# HTTP → HTTPS redirect (skip if DOMAIN=localhost for IP-only use)
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    # ACME challenge for Let's Encrypt
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name ${DOMAIN};
+
+    ssl_certificate /etc/letsencrypt/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/${DOMAIN}/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers on;
+
+    # Frontend SPA
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # API proxy
+    location /api/ {
+        proxy_pass http://cloud:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 10M;
+    }
+
+    # Health check
+    location /health {
+        proxy_pass http://cloud:8000;
+    }
+
+    # SPA fallback
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Static asset cache
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}

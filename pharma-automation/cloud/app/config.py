@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     # P33: 업로드 디렉토리
     upload_dir: str = "uploads/receipts"
 
+    # Phase 6: CORS origins (콤마 구분)
+    cors_origins: str = "http://localhost:5173"
+
     model_config = SettingsConfigDict(env_prefix="PHARMA_")
 
 

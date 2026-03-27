@@ -1,0 +1,61 @@
+# Production override — 사용법:
+# docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env up -d
+
+services:
+  db:
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pharma}
+      POSTGRES_USER: ${POSTGRES_USER:-pharma_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pharma_pass}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docs/db-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./backups:/backups
+
+  cloud:
+    restart: always
+    environment:
+      PHARMA_DATABASE_URL: "postgresql+asyncpg://${POSTGRES_USER:-pharma_user}:${POSTGRES_PASSWORD:-pharma_pass}@db:5432/${POSTGRES_DB:-pharma}"
+      PHARMA_JWT_SECRET_KEY: ${PHARMA_JWT_SECRET_KEY:-CHANGE-ME-IN-PRODUCTION}
+      PHARMA_OCR_ENGINE: ${PHARMA_OCR_ENGINE:-google_vision}
+      PHARMA_GOOGLE_VISION_API_KEY: ${PHARMA_GOOGLE_VISION_API_KEY:-}
+      PHARMA_UPLOAD_DIR: /app/uploads/receipts
+      PHARMA_CORS_ORIGINS: ${PHARMA_CORS_ORIGINS:-http://localhost:5173}
+    ports:
+      - "127.0.0.1:8000:8000"
+    expose:
+      - "8000"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./nginx/prod.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - certbot-data:/etc/letsencrypt:ro
+      - certbot-www:/var/www/certbot:ro
+
+  certbot:
+    image: certbot/certbot
+    restart: unless-stopped
+    volumes:
+      - certbot-data:/etc/letsencrypt
+      - certbot-www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done'"
+
+volumes:
+  pgdata:
+  uploads:
+  certbot-data:
+  certbot-www:
