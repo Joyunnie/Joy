@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: pharma
+      POSTGRES_USER: pharma_user
+      POSTGRES_PASSWORD: pharma_pass
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docs/db-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+
+  cloud:
+    build: ./cloud
+    ports:
+      - "8000:8000"
+    environment:
+      PHARMA_DATABASE_URL: "postgresql+asyncpg://pharma_user:pharma_pass@db:5432/pharma"
+      PHARMA_OCR_ENGINE: "google_vision"
+      # PHARMA_GOOGLE_VISION_API_KEY: ""
+      PHARMA_UPLOAD_DIR: "/app/uploads/receipts"
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - cloud
+
+volumes:
+  pgdata:
+  uploads:
