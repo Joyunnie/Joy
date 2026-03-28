@@ -15,12 +15,18 @@ async def get_alerts(
     user: User = Depends(get_current_user),
     alert_type: str | None = Query(None),
     unread_only: bool = Query(False),
+    read_only: bool = Query(False),
     limit: int = Query(50, le=200),
     offset: int = Query(0),
     db: AsyncSession = Depends(get_db),
 ):
     return await alert_service.get_alerts(
-        db, user.pharmacy_id, alert_type=alert_type, unread_only=unread_only, limit=limit, offset=offset
+        db, user.pharmacy_id,
+        alert_type=alert_type,
+        unread_only=unread_only,
+        read_only=read_only,
+        limit=limit,
+        offset=offset,
     )
 
 

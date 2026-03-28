@@ -12,14 +12,22 @@ async def get_alerts(
     pharmacy_id: int,
     alert_type: str | None = None,
     unread_only: bool = False,
+    read_only: bool = False,
     limit: int = 50,
     offset: int = 0,
 ) -> AlertListResponse:
+    if unread_only and read_only:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=422, detail="Cannot use both unread_only and read_only")
+
     conditions = [AlertLog.pharmacy_id == pharmacy_id]
     if alert_type:
         conditions.append(AlertLog.alert_type == alert_type)
     if unread_only:
         conditions.append(AlertLog.read_at.is_(None))
+    if read_only:
+        conditions.append(AlertLog.read_at.is_not(None))
 
     # Total count
     count_result = await db.execute(

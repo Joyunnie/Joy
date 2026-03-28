@@ -11,6 +11,12 @@ from app.services.ocr_engine import init_ocr_engine
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # JWT 시크릿 검증
+    if not settings.jwt_secret_key or settings.jwt_secret_key == "CHANGE-ME-IN-PRODUCTION":
+        raise ValueError(
+            "PHARMA_JWT_SECRET_KEY must be set. "
+            "Generate one with: openssl rand -hex 32"
+        )
     # P32: OCR 엔진 초기화 (서버 시작 시)
     init_ocr_engine(settings.ocr_engine, settings.google_vision_api_key or None)
     yield

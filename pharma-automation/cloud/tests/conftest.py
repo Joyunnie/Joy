@@ -1,5 +1,9 @@
 import hashlib
+import os
 from collections.abc import AsyncGenerator
+
+# JWT secret must be set before app.config.Settings() is evaluated
+os.environ.setdefault("PHARMA_JWT_SECRET_KEY", "test-jwt-secret-key-for-testing-only-32chars!")
 
 import bcrypt
 import pytest_asyncio
@@ -29,6 +33,7 @@ from app.models.tables import (
     ShelfLayout,
     User,
     VisitDrug,
+    VisitPrediction,
 )
 
 TEST_DATABASE_URL = "postgresql+asyncpg://pharma_user:pharma_pass@localhost:5432/pharma"
@@ -382,3 +387,45 @@ async def cleanup_rpa_commands(seed_data):
         )
         await db.commit()
     yield
+
+
+@pytest_asyncio.fixture(autouse=False)
+async def cleanup_predictions(seed_data):
+    """Prediction 테스트 전 기존 visit_predictions + alerts + visits 정리."""
+    async with seed_session_factory() as db:
+        pharmacy_id = seed_data["pharmacy_id"]
+        await db.execute(
+            VisitPrediction.__table__.delete().where(
+                VisitPrediction.pharmacy_id == pharmacy_id
+            )
+        )
+        await db.execute(
+            AlertLog.__table__.delete().where(
+                AlertLog.pharmacy_id == pharmacy_id
+            )
+        )
+        await db.execute(
+            PatientVisitHistory.__table__.delete().where(
+                PatientVisitHistory.pharmacy_id == pharmacy_id
+            )
+        )
+        await db.commit()
+    yield
+    async with seed_session_factory() as db:
+        pharmacy_id = seed_data["pharmacy_id"]
+        await db.execute(
+            VisitPrediction.__table__.delete().where(
+                VisitPrediction.pharmacy_id == pharmacy_id
+            )
+        )
+        await db.execute(
+            AlertLog.__table__.delete().where(
+                AlertLog.pharmacy_id == pharmacy_id
+            )
+        )
+        await db.execute(
+            PatientVisitHistory.__table__.delete().where(
+                PatientVisitHistory.pharmacy_id == pharmacy_id
+            )
+        )
+        await db.commit()

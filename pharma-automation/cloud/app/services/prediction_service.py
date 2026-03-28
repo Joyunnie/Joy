@@ -81,7 +81,7 @@ async def get_predictions(
                         )
                     )
                 )
-                inv = inv_result.scalar_one_or_none()
+                inv = inv_result.scalars().first()
                 needed_drugs.append(
                     NeededDrugOut(
                         drug_name=drug.name,
