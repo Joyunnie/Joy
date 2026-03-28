@@ -57,7 +57,7 @@ class TestNarcoticHandler:
         fs = FailsafeManager()
         handler = NarcoticHandler(fs)
 
-        # Mock window detection
+        # Mock: PM+20 window found, narcotics popup found, no disease/price popups
         mock_win = MagicMock()
         mock_window.find_window_by_title.return_value = mock_win
         mock_window.activate_window.return_value = True
@@ -68,12 +68,38 @@ class TestNarcoticHandler:
         assert "완료" in msg
 
     @patch("agent1.agent.rpa.narcotic_handler.window_utils")
-    def test_execute_popup_not_found(self, mock_window):
+    @patch("agent1.agent.rpa.narcotic_handler.input_utils")
+    def test_execute_pm20_not_found(self, mock_input, mock_window):
         from agent1.agent.rpa.narcotic_handler import NarcoticHandler
 
         fs = FailsafeManager()
         handler = NarcoticHandler(fs)
         mock_window.find_window_by_title.return_value = None
+
+        success, msg = handler.execute({"quantity": 1})
+        assert success is False
+        assert "PM+20" in msg
+
+    @patch("agent1.agent.rpa.narcotic_handler.window_utils")
+    @patch("agent1.agent.rpa.narcotic_handler.input_utils")
+    def test_execute_popup_not_found(self, mock_input, mock_window):
+        from agent1.agent.rpa.narcotic_handler import NarcoticHandler
+
+        fs = FailsafeManager()
+        handler = NarcoticHandler(fs)
+
+        # PM+20 found on first call, narcotics popup not found on second call
+        mock_win = MagicMock()
+        call_count = {"n": 0}
+
+        def find_side_effect(title, timeout=5.0):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return mock_win  # PM+20 found
+            return None  # narcotics popup not found
+
+        mock_window.find_window_by_title.side_effect = find_side_effect
+        mock_window.activate_window.return_value = True
 
         success, msg = handler.execute({"quantity": 1})
         assert success is False
@@ -84,18 +110,15 @@ class TestPrescriptionHandler:
     @patch("agent1.agent.rpa.prescription_handler.window_utils")
     @patch("agent1.agent.rpa.prescription_handler.input_utils")
     def test_execute_success(self, mock_input, mock_window):
-        from agent1.agent.rpa.pm20_controller import PM20Controller
         from agent1.agent.rpa.prescription_handler import PrescriptionHandler
 
         fs = FailsafeManager()
-        pm20 = PM20Controller()
 
-        mock_window.is_window_visible.return_value = True
         mock_win = MagicMock()
         mock_window.find_window_by_title.return_value = mock_win
         mock_window.activate_window.return_value = True
 
-        handler = PrescriptionHandler(fs, pm20)
+        handler = PrescriptionHandler(fs)
         payload = {
             "patient_name": "홍길동",
             "patient_dob": "900101",
@@ -106,23 +129,39 @@ class TestPrescriptionHandler:
         success, msg = handler.execute(payload)
         assert success is True
         assert "1건" in msg
+        # Verify F2 was pressed for prescription screen
+        mock_input.press_key.assert_any_call("f2")
 
     @patch("agent1.agent.rpa.prescription_handler.window_utils")
     @patch("agent1.agent.rpa.prescription_handler.input_utils")
     def test_execute_no_drugs(self, mock_input, mock_window):
-        from agent1.agent.rpa.pm20_controller import PM20Controller
         from agent1.agent.rpa.prescription_handler import PrescriptionHandler
 
         fs = FailsafeManager()
-        pm20 = PM20Controller()
-        mock_window.is_window_visible.return_value = True
         mock_win = MagicMock()
         mock_window.find_window_by_title.return_value = mock_win
+        mock_window.activate_window.return_value = True
 
-        handler = PrescriptionHandler(fs, pm20)
+        handler = PrescriptionHandler(fs)
         success, msg = handler.execute({"patient_name": "홍길동", "drugs": []})
         assert success is False
         assert "약품이 없습니다" in msg
+
+    @patch("agent1.agent.rpa.prescription_handler.window_utils")
+    @patch("agent1.agent.rpa.prescription_handler.input_utils")
+    def test_execute_pm20_not_running(self, mock_input, mock_window):
+        from agent1.agent.rpa.prescription_handler import PrescriptionHandler
+
+        fs = FailsafeManager()
+        mock_window.find_window_by_title.return_value = None
+
+        handler = PrescriptionHandler(fs)
+        success, msg = handler.execute({
+            "patient_name": "홍길동",
+            "drugs": [{"drug_name": "약품A"}],
+        })
+        assert success is False
+        assert "처방조제 화면 이동 실패" in msg
 
 
 class TestRpaManager:

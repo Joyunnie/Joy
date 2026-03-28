@@ -17,6 +17,7 @@ from agent1.agent.rpa.failsafe import FailsafeManager
 logger = logging.getLogger("agent1.rpa.narcotic")
 
 # 창 제목 키워드
+PM20_WINDOW_TITLE = "PMPLUS20"
 NARCOTICS_REPORT_TITLE = "마약류"
 DISEASE_CODE_POPUP_TITLE = "질병"
 PRICE_EXCEED_TITLE = "금액"
@@ -53,6 +54,11 @@ class NarcoticHandler:
             (success: bool, message: str)
         """
         try:
+            # Step 0: PM+20 창 활성화 → F2(처방조제)
+            logger.info("Step 0: PM+20 창 활성화 → F2")
+            if not self._activate_pm20_and_open_prescription():
+                return False, "PM+20이 실행되지 않았습니다"
+
             # Step 1: 마약류 조제 보고 팝업 감지
             logger.info("Step 1: 마약류 조제 보고 팝업 감지")
             if not self._step1_detect_popup():
@@ -83,6 +89,19 @@ class NarcoticHandler:
         except Exception as e:
             logger.error("마약류 조제 보고 실패: %s", e)
             return False, str(e)
+
+    def _activate_pm20_and_open_prescription(self) -> bool:
+        """PM+20 창 활성화 → F2(처방조제) → 0.5초 대기."""
+        window = window_utils.find_window_by_title(PM20_WINDOW_TITLE, timeout=5.0)
+        if not window:
+            logger.error("PM+20이 실행되지 않았습니다")
+            self.failsafe.record_failure("PM+20이 실행되지 않았습니다")
+            return False
+
+        window_utils.activate_window(window)
+        input_utils.press_key("f2")
+        time.sleep(0.5)
+        return True
 
     def _step1_detect_popup(self) -> bool:
         """마약류 조제 보고 팝업 감지."""

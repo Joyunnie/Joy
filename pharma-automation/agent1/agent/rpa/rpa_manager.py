@@ -9,7 +9,6 @@ import threading
 from agent1.agent.cloud_client import CloudClient
 from agent1.agent.rpa.failsafe import FailsafeManager
 from agent1.agent.rpa.narcotic_handler import NarcoticHandler
-from agent1.agent.rpa.pm20_controller import PM20Controller
 from agent1.agent.rpa.prescription_handler import PrescriptionHandler
 
 logger = logging.getLogger("agent1.rpa.manager")
@@ -30,14 +29,12 @@ class RpaManager:
 
         # Components
         self.failsafe = FailsafeManager()
-        self.pm20_controller = PM20Controller()
         self.narcotic_handler = NarcoticHandler(
             self.failsafe,
             coordinates=rpa_coordinates.get("narcotics", {}) if rpa_coordinates else None,
         )
         self.prescription_handler = PrescriptionHandler(
             self.failsafe,
-            self.pm20_controller,
             coordinates=rpa_coordinates.get("prescription", {}) if rpa_coordinates else None,
         )
 

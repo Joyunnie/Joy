@@ -1,7 +1,6 @@
 """P36: 처방전 PM+20 입력 RPA 핸들러.
 
-PM+20 처방조제 화면이 닫혀 있으면 자동으로
-"조제판매 → 처방조제" 메뉴 이동 후 입력 시작.
+PM+20 창(PMPLUS20.exe)을 찾아 활성화 → F2(처방조제) → 입력 시작.
 """
 
 import logging
@@ -9,11 +8,10 @@ import time
 
 from agent1.agent.rpa import input_utils, window_utils
 from agent1.agent.rpa.failsafe import FailsafeManager
-from agent1.agent.rpa.pm20_controller import PM20Controller
 
 logger = logging.getLogger("agent1.rpa.prescription")
 
-PRESCRIPTION_TITLE = "처방조제"
+PM20_WINDOW_TITLE = "PMPLUS20"
 
 # 좌표 설정 (PM+20 처방조제 화면 기준)
 PATIENT_SEARCH_X = 200
@@ -34,11 +32,9 @@ class PrescriptionHandler:
     def __init__(
         self,
         failsafe: FailsafeManager,
-        pm20_controller: PM20Controller,
         coordinates: dict | None = None,
     ):
         self.failsafe = failsafe
-        self.pm20 = pm20_controller
         self._coords = coordinates or {}
 
     def _get(self, key: str, default: int) -> int:
@@ -82,15 +78,17 @@ class PrescriptionHandler:
             return False, str(e)
 
     def _ensure_prescription_screen(self) -> bool:
-        """P36: 처방조제 화면 확인, 없으면 자동 이동."""
-        if window_utils.is_window_visible(PRESCRIPTION_TITLE):
-            window = window_utils.find_window_by_title(PRESCRIPTION_TITLE, timeout=2.0)
-            if window:
-                window_utils.activate_window(window)
-            return True
+        """PM+20 창 활성화 → F2(처방조제) → 0.5초 대기."""
+        window = window_utils.find_window_by_title(PM20_WINDOW_TITLE, timeout=5.0)
+        if not window:
+            logger.error("PM+20이 실행되지 않았습니다")
+            self.failsafe.record_failure("PM+20이 실행되지 않았습니다")
+            return False
 
-        logger.info("처방조제 화면이 닫혀 있음 → 자동 메뉴 이동")
-        return self.pm20.navigate_to_prescription()
+        window_utils.activate_window(window)
+        input_utils.press_key("f2")
+        time.sleep(0.5)
+        return True
 
     def _search_patient(self, name: str, dob: str) -> bool:
         """환자 검색 (이름 + 생년월일)."""
