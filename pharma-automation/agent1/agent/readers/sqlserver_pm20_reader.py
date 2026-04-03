@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 r"""PM+20 SQL Server 구현체.
 
 SQL Server 인스턴스 .\PMPLUS20, 데이터베이스 PM_MAIN에서

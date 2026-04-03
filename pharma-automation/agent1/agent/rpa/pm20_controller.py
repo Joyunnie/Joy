@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """PM+20 창 제어: 찾기, 활성화, 메뉴 이동."""
 
 import logging

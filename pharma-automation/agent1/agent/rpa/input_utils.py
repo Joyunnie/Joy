@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """키보드/마우스 입력 헬퍼 (pyautogui 래핑)."""
 
 import logging

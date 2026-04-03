@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """RPA 실패 카운트 + 자동 OFF 로직."""
 
 import logging

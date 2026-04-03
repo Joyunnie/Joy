@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Agent1 — 메인 폴링 루프.
 
 Usage:

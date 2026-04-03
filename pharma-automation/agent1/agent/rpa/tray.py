@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """시스템 트레이 아이콘 + ON/OFF 토글.
 
 M15: pynput 사용 (keyboard 대신, 관리자 권한 불필요).

@@ -1,7 +1,11 @@
-"""P36: 처방전 PM+20 입력 RPA 핸들러.
+from __future__ import annotations
 
-PM+20 처방조제 화면이 닫혀 있으면 자동으로
-"조제판매 → 처방조제" 메뉴 이동 후 입력 시작.
+"""P36 / Phase 5B: 처방전 PM+20 입력 RPA 핸들러.
+
+_ensure_prescription_screen()은 처방조제 창이 이미 열려 있으면 활성화만 하고,
+닫혀 있으면 pm20.navigate_to_prescription()으로 자동 이동한다.
+마약류 처리에는 처방조제 화면이 불필요하므로 NarcoticHandler에서는 호출하지 않는다.
+F2 전송 로직은 Phase 5B에서 제거됨.
 """
 
 import logging
@@ -27,9 +31,13 @@ DAYS_X = 490
 SAVE_BUTTON_X = 600
 SAVE_BUTTON_Y = 500
 
+DRIVING_WARNING_TITLE = "운전"
+
 STEP_TIMEOUT = 30.0
+OPTIONAL_WAIT = 1.0
 
 
+# 마약류에서는 이 핸들러를 호출하지 않음
 class PrescriptionHandler:
     def __init__(
         self,
@@ -51,7 +59,7 @@ class PrescriptionHandler:
             (success: bool, message: str)
         """
         try:
-            # P36: 처방조제 화면 자동 이동
+            # 처방조제 화면 확인/이동
             if not self._ensure_prescription_screen():
                 return False, "처방조제 화면 이동 실패"
 
@@ -74,6 +82,9 @@ class PrescriptionHandler:
             if not self._save():
                 return False, "저장 실패"
 
+            # [선택] 운전 경고 팝업 → Enter (법 개정으로 추가, 마약류 외 약품에도 뜰 수 있음)
+            self._handle_driving_warning()
+
             logger.info("처방전 입력 완료 (%d건)", len(drugs))
             return True, f"처방전 입력 완료 ({len(drugs)}건)"
 
@@ -82,7 +93,12 @@ class PrescriptionHandler:
             return False, str(e)
 
     def _ensure_prescription_screen(self) -> bool:
-        """P36: 처방조제 화면 확인, 없으면 자동 이동."""
+        """처방조제 화면 확인, 없으면 자동 이동.
+
+        Phase 5B: F2 전송 로직 제거됨.
+        마약류 처리(NarcoticHandler)에서는 이 메서드를 호출하지 않는다.
+        처방전 입력(PRESCRIPTION_INPUT) 커맨드 전용.
+        """
         if window_utils.is_window_visible(PRESCRIPTION_TITLE):
             window = window_utils.find_window_by_title(PRESCRIPTION_TITLE, timeout=2.0)
             if window:
@@ -117,7 +133,10 @@ class PrescriptionHandler:
     def _input_drug(self, idx: int, drug: dict) -> bool:
         """단일 약품 정보 입력."""
         drug_x = self._get("drug_input_x", DRUG_INPUT_X)
-        drug_y = self._get("drug_input_y", DRUG_INPUT_Y) + (idx * self._get("drug_row_height", DRUG_ROW_HEIGHT))
+        drug_y = (
+            self._get("drug_input_y", DRUG_INPUT_Y)
+            + idx * self._get("drug_row_height", DRUG_ROW_HEIGHT)
+        )
 
         # 약품명 입력
         input_utils.click(drug_x, drug_y)
@@ -159,3 +178,21 @@ class PrescriptionHandler:
         time.sleep(1.0)
         logger.info("저장 완료")
         return True
+
+    def _handle_driving_warning(self):
+        """[선택] 운전 경고 팝업 감지 → Enter 키 전송.
+
+        법 개정으로 추가된 단계. 마약류 외 약품에도 뜰 수 있음.
+        1초 대기 후 팝업이 없으면 스킵.
+        """
+        time.sleep(OPTIONAL_WAIT)
+        if not window_utils.is_window_visible(DRIVING_WARNING_TITLE):
+            logger.debug("운전 경고 팝업 없음 → 스킵")
+            return
+
+        logger.info("운전 경고 팝업 감지 → Enter 전송")
+        window = window_utils.find_window_by_title(DRIVING_WARNING_TITLE, timeout=2.0)
+        if window:
+            window_utils.activate_window(window)
+        input_utils.press_key("enter")
+        time.sleep(0.5)

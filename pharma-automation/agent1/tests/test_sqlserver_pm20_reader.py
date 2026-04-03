@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """SqlServerPM20Reader 단위 테스트 — pymssql mock 사용."""
 
 import hashlib

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Agent1 sync_cycle 통합 테스트 — Reader + CloudClient mock."""
 
 from datetime import date, datetime, timezone

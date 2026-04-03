@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 #!/usr/bin/env python3
 """PM+20 SQL Server Hot Backup Script.
 

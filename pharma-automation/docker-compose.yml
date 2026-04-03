@@ -4,34 +4,34 @@ services:
     environment:
       POSTGRES_DB: pharma
       POSTGRES_USER: pharma_user
-      POSTGRES_PASSWORD: pharma_pass
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./docs/db-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-
+    restart: unless-stopped
   cloud:
     build: ./cloud
     ports:
       - "8000:8000"
     environment:
-      PHARMA_DATABASE_URL: "postgresql+asyncpg://pharma_user:pharma_pass@db:5432/pharma"
+      PHARMA_DATABASE_URL: "postgresql+asyncpg://pharma_user:${POSTGRES_PASSWORD}@db:5432/pharma"
+      PHARMA_JWT_SECRET_KEY: ${PHARMA_JWT_SECRET_KEY}
       PHARMA_OCR_ENGINE: "google_vision"
-      # PHARMA_GOOGLE_VISION_API_KEY: ""
       PHARMA_UPLOAD_DIR: "/app/uploads/receipts"
     volumes:
       - uploads:/app/uploads
     depends_on:
       - db
-
+    restart: unless-stopped
   frontend:
     build: ./frontend
     ports:
-      - "3000:80"
+      - "80:80"
     depends_on:
       - cloud
-
+    restart: unless-stopped
 volumes:
   pgdata:
   uploads:

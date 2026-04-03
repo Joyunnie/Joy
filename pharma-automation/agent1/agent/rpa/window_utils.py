@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """윈도우 찾기/포커스 유틸리티 (pygetwindow 래핑)."""
 
 import logging

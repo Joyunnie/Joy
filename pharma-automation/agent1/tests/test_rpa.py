@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Agent1 RPA module unit tests (mock pyautogui/pygetwindow)."""
 
 import threading
@@ -57,7 +59,7 @@ class TestNarcoticHandler:
         fs = FailsafeManager()
         handler = NarcoticHandler(fs)
 
-        # Mock window detection
+        # Mock window detection: 마약류 팝업만 있고 나머지 선택 팝업은 없음
         mock_win = MagicMock()
         mock_window.find_window_by_title.return_value = mock_win
         mock_window.activate_window.return_value = True
@@ -78,6 +80,152 @@ class TestNarcoticHandler:
         success, msg = handler.execute({"quantity": 1})
         assert success is False
         assert "팝업" in msg
+
+    @patch("agent1.agent.rpa.narcotic_handler.window_utils")
+    @patch("agent1.agent.rpa.narcotic_handler.input_utils")
+    def test_disease_code_popup_skipped_when_absent(self, mock_input, mock_window):
+        """질병기호 팝업이 없으면 스킵해야 함."""
+        from agent1.agent.rpa.narcotic_handler import NarcoticHandler
+
+        fs = FailsafeManager()
+        handler = NarcoticHandler(fs)
+
+        mock_win = MagicMock()
+        mock_window.find_window_by_title.return_value = mock_win
+        mock_window.activate_window.return_value = True
+        mock_window.is_window_visible.return_value = False  # 모든 선택 팝업 없음
+
+        success, msg = handler.execute({"quantity": 1})
+        assert success is True
+        # 질병기호 클릭(continue_button)이 호출되지 않았어야 함
+        # is_window_visible이 False 반환 → click은 완료 버튼(step3)에서만 호출됨
+        assert mock_input.click.call_count == 1  # complete_button_click 1회만
+
+    @patch("agent1.agent.rpa.narcotic_handler.window_utils")
+    @patch("agent1.agent.rpa.narcotic_handler.input_utils")
+    def test_disease_code_popup_handled(self, mock_input, mock_window):
+        """질병기호 팝업이 뜨면 '계속 진행' 클릭."""
+        from agent1.agent.rpa.narcotic_handler import DISEASE_CODE_POPUP_TITLE, NarcoticHandler
+
+        fs = FailsafeManager()
+        handler = NarcoticHandler(fs)
+
+        mock_win = MagicMock()
+        mock_window.find_window_by_title.return_value = mock_win
+        mock_window.activate_window.return_value = True
+
+        # 질병기호 팝업만 True, 나머지는 False
+        def is_visible(title):
+            return title == DISEASE_CODE_POPUP_TITLE
+
+        mock_window.is_window_visible.side_effect = is_visible
+
+        success, msg = handler.execute({"quantity": 1})
+        assert success is True
+        # complete_button(1) + continue_button(1) = 2회 클릭
+        assert mock_input.click.call_count == 2
+
+    @patch("agent1.agent.rpa.narcotic_handler.window_utils")
+    @patch("agent1.agent.rpa.narcotic_handler.input_utils")
+    def test_dur_review_handled_with_f12(self, mock_input, mock_window):
+        """DUR 처방검토 화면이 뜨면 F12 전송."""
+        from agent1.agent.rpa.narcotic_handler import DUR_REVIEW_TITLE, NarcoticHandler
+
+        fs = FailsafeManager()
+        handler = NarcoticHandler(fs)
+
+        mock_win = MagicMock()
+        mock_window.find_window_by_title.return_value = mock_win
+        mock_window.activate_window.return_value = True
+
+        # DUR만 True, 그 이후엔 False (사유 선택 팝업 없음)
+        call_counts = {"dur": 0}
+
+        def is_visible(title):
+            if title == DUR_REVIEW_TITLE:
+                call_counts["dur"] += 1
+                # 첫 번째 is_window_visible(DUR) = True (화면 감지)
+                # 두 번째 이후(사유선택 루프) = False
+                return call_counts["dur"] == 1
+            return False
+
+        mock_window.is_window_visible.side_effect = is_visible
+
+        success, msg = handler.execute({"quantity": 1})
+        assert success is True
+        # F12 키 전송 확인
+        f12_calls = [c for c in mock_input.press_key.call_args_list if c.args[0] == "f12"]
+        assert len(f12_calls) == 1
+
+    @patch("agent1.agent.rpa.narcotic_handler.window_utils")
+    @patch("agent1.agent.rpa.narcotic_handler.input_utils")
+    def test_payment_and_bag_screen_skipped_below_threshold(self, mock_input, mock_window):
+        """약품 7종 미만이면 결제/봉투 화면 처리 스킵."""
+        from agent1.agent.rpa.narcotic_handler import NarcoticHandler
+
+        fs = FailsafeManager()
+        handler = NarcoticHandler(fs)
+
+        mock_win = MagicMock()
+        mock_window.find_window_by_title.return_value = mock_win
+        mock_window.activate_window.return_value = True
+        mock_window.is_window_visible.return_value = False
+
+        # drug_count=6 (< 7) → 결제/봉투 화면 감지 시도 자체를 안 함
+        success, msg = handler.execute({"quantity": 1, "drug_count": 6})
+        assert success is True
+        # is_window_visible 호출 횟수: 질병기호(1) + DUR(1) = 2회
+        # 결제/봉투는 is_window_visible 호출 없음
+        visible_titles = [c.args[0] for c in mock_window.is_window_visible.call_args_list]
+        from agent1.agent.rpa.narcotic_handler import BAG_SELECTION_TITLE, PAYMENT_SCREEN_TITLE
+        assert PAYMENT_SCREEN_TITLE not in visible_titles
+        assert BAG_SELECTION_TITLE not in visible_titles
+
+    @patch("agent1.agent.rpa.narcotic_handler.window_utils")
+    @patch("agent1.agent.rpa.narcotic_handler.input_utils")
+    def test_payment_screen_handled_with_esc(self, mock_input, mock_window):
+        """약품 7종 이상이고 결제 화면이 뜨면 ESC 전송."""
+        from agent1.agent.rpa.narcotic_handler import PAYMENT_SCREEN_TITLE, NarcoticHandler
+
+        fs = FailsafeManager()
+        handler = NarcoticHandler(fs)
+
+        mock_win = MagicMock()
+        mock_window.find_window_by_title.return_value = mock_win
+        mock_window.activate_window.return_value = True
+
+        def is_visible(title):
+            return title == PAYMENT_SCREEN_TITLE
+
+        mock_window.is_window_visible.side_effect = is_visible
+
+        success, msg = handler.execute({"quantity": 1, "drug_count": 7})
+        assert success is True
+        esc_calls = [c for c in mock_input.press_key.call_args_list if c.args[0] == "escape"]
+        assert len(esc_calls) == 1
+
+    @patch("agent1.agent.rpa.narcotic_handler.window_utils")
+    @patch("agent1.agent.rpa.narcotic_handler.input_utils")
+    def test_bag_selection_handled_with_middle_button(self, mock_input, mock_window):
+        """약품 7종 이상이고 봉투 선택 화면이 뜨면 가운데 버튼 클릭."""
+        from agent1.agent.rpa.narcotic_handler import BAG_SELECTION_TITLE, NarcoticHandler
+
+        fs = FailsafeManager()
+        handler = NarcoticHandler(fs)
+
+        mock_win = MagicMock()
+        mock_window.find_window_by_title.return_value = mock_win
+        mock_window.activate_window.return_value = True
+
+        def is_visible(title):
+            return title == BAG_SELECTION_TITLE
+
+        mock_window.is_window_visible.side_effect = is_visible
+
+        success, msg = handler.execute({"quantity": 1, "drug_count": 7})
+        assert success is True
+        # complete_button(1) + bag_middle_button(1) = 2회
+        assert mock_input.click.call_count == 2
 
 
 class TestPrescriptionHandler:

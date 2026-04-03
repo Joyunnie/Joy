@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """RPA 메인 루프: 커맨드 폴링 + 디스패치.
 
 P35: 폴링 주기를 config rpa.polling_interval_seconds에서 설정 (기본 2초).
