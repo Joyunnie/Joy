@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/client.ts';
+import { fetchTodos, toggleComplete, type TodoItem } from '../api/todos.ts';
 import type {
   AlertListResponse,
   InventoryStatusResponse,
@@ -18,8 +19,6 @@ interface DashboardData {
   narcoticsLowStock: number;
   predictionsThisWeek: number;
   predictionsToday: number;
-  narcoticsActive: number;
-  narcoticsLow: number;
 }
 
 function todayStr(): string {
@@ -28,6 +27,7 @@ function todayStr(): string {
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [todos, setTodos] = useState<TodoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -37,7 +37,7 @@ export default function DashboardPage() {
     async function fetchAll() {
       try {
         // TODO(Phase 3B): GET /dashboard/summary 통합 API 검토
-        const [alertsRes, otcRes, narcLowRes, prescRes, predRes, narcAllRes] =
+        const [alertsRes, otcRes, narcLowRes, prescRes, predRes, todosRes] =
           await Promise.all([
             api.get<AlertListResponse>('/alerts', {
               params: { unread_only: true, limit: 5 },
@@ -54,9 +54,7 @@ export default function DashboardPage() {
             api.get<PredictionListResponse>('/predictions', {
               params: { days_ahead: 7 },
             }),
-            api.get<NarcoticsListResponse>('/narcotics-inventory', {
-              params: { limit: 1 },
-            }),
+            fetchTodos('today'),
           ]);
 
         if (cancelled) return;
@@ -66,6 +64,7 @@ export default function DashboardPage() {
           (p) => p.predicted_visit_date === today,
         ).length;
 
+        setTodos(todosRes.items);
         setData({
           unreadAlerts: alertsRes.data.total,
           recentAlerts: alertsRes.data.alerts.map((a) => ({
@@ -78,8 +77,6 @@ export default function DashboardPage() {
           narcoticsLowStock: narcLowRes.data.total,
           predictionsThisWeek: predRes.data.predictions.length,
           predictionsToday,
-          narcoticsActive: narcAllRes.data.total,
-          narcoticsLow: narcLowRes.data.total,
         });
       } catch {
         if (!cancelled) setError('데이터를 불러오지 못했습니다');
@@ -108,12 +105,63 @@ export default function DashboardPage() {
 
   if (!data) return null;
 
+  async function handleToggleTodo(id: number) {
+    const updated = await toggleComplete(id);
+    setTodos((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+  }
+
+  function formatTime(dateStr: string | null): string {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+  }
+
   const totalLowStock =
     data.otcLowStock + data.prescriptionLowStock + data.narcoticsLowStock;
 
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto">
       <h2 className="text-xl font-bold text-gray-800">대시보드</h2>
+
+      {/* 오늘 할 일 */}
+      <Link
+        to="/todos"
+        className="block bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow border border-gray-100"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-gray-600">오늘 할 일</h3>
+          <span className="text-xs text-blue-500">더보기 &rarr;</span>
+        </div>
+        {todos.length > 0 ? (
+          <ul className="space-y-2">
+            {todos.map((todo) => (
+              <li key={todo.id} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={todo.is_completed}
+                  onChange={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleToggleTodo(todo.id);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-4 h-4 rounded border-gray-300 text-blue-600 flex-shrink-0"
+                />
+                <span className={`text-sm flex-1 truncate ${todo.is_completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+                  {todo.title}
+                </span>
+                {todo.due_date && (
+                  <span className="text-xs text-gray-400 flex-shrink-0">
+                    {formatTime(todo.due_date)}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-gray-400">오늘 할 일이 없습니다</p>
+        )}
+      </Link>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Card 1: Alerts */}
@@ -175,18 +223,6 @@ export default function DashboardPage() {
             오늘 예상: <span className="font-semibold text-blue-700">{data.predictionsToday}명</span>
           </p>
         </Link>
-
-        {/* Card 4: Narcotics (링크 없음 — PM+20이 별도 관리) */}
-        <div className="bg-white rounded-lg shadow p-4 border border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-600 mb-2">마약류 현황</h3>
-          <p className="text-3xl font-bold text-purple-600">{data.narcoticsActive}건</p>
-          <p className="text-sm text-gray-400">활성 품목</p>
-          {data.narcoticsLow > 0 && (
-            <p className="mt-1 text-sm text-red-500">
-              재고 부족 {data.narcoticsLow}건
-            </p>
-          )}
-        </div>
       </div>
     </div>
   );

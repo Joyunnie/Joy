@@ -81,7 +81,7 @@ export default function TodoQuickAdd({ open, onClose, onSave }: TodoQuickAddProp
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
 
       {/* Panel */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-xl z-50 max-w-lg mx-auto animate-slide-up">
+      <div className="fixed bottom-0 left-0 right-0 w-full bg-white rounded-t-2xl shadow-xl z-50 animate-slide-up" style={{ maxWidth: '100%', boxSizing: 'border-box' }}>
         <div className="p-4">
           {/* Handle */}
           <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
