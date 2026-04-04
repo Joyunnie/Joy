@@ -122,7 +122,7 @@ export default function DashboardPage() {
           className="block bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow border border-gray-100"
         >
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-gray-600">미읽은 알림</h3>
+            <h3 className="text-sm font-semibold text-gray-600">새 알림</h3>
             {data.unreadAlerts > 0 && (
               <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                 {data.unreadAlerts}
