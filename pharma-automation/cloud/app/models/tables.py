@@ -144,6 +144,7 @@ class ShelfLayout(Base):
     pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
     name: Mapped[str] = mapped_column(String(50))
     location_type: Mapped[str] = mapped_column(String(10))  # DISPLAY | STORAGE
+    position: Mapped[str] = mapped_column(String(10), default="front")  # front | left | right
     rows: Mapped[int] = mapped_column(Integer, default=4)
     cols: Mapped[int] = mapped_column(Integer, default=6)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")

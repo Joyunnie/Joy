@@ -13,6 +13,7 @@ from app.schemas.shelf_layout import (
 )
 
 VALID_LOCATION_TYPES = {"DISPLAY", "STORAGE"}
+VALID_POSITIONS = {"front", "left", "right"}
 
 
 def _build_response(layout: ShelfLayout) -> ShelfLayoutResponse:
@@ -21,6 +22,7 @@ def _build_response(layout: ShelfLayout) -> ShelfLayoutResponse:
         pharmacy_id=layout.pharmacy_id,
         name=layout.name,
         location_type=layout.location_type,
+        position=layout.position,
         rows=layout.rows,
         cols=layout.cols,
         created_at=layout.created_at,
@@ -39,10 +41,13 @@ async def create_layout(
             detail="location_type must be DISPLAY or STORAGE",
         )
 
+    position = req.position if req.position in VALID_POSITIONS else "front"
+
     layout = ShelfLayout(
         pharmacy_id=pharmacy_id,
         name=req.name,
         location_type=req.location_type,
+        position=position,
         rows=req.rows,
         cols=req.cols,
     )
@@ -91,6 +96,8 @@ async def update_layout(
 
     old_rows, old_cols = layout.rows, layout.cols
     layout.name = req.name
+    if req.position and req.position in VALID_POSITIONS:
+        layout.position = req.position
     layout.rows = req.rows
     layout.cols = req.cols
     layout.updated_at = datetime.now(timezone.utc)

@@ -185,11 +185,14 @@ export interface ThresholdUpdateRequest {
 
 // --- Shelf Layouts ---
 
+export type ShelfPosition = 'front' | 'left' | 'right';
+
 export interface ShelfLayoutResponse {
   id: number;
   pharmacy_id: number;
   name: string;
   location_type: 'DISPLAY' | 'STORAGE';
+  position: ShelfPosition;
   rows: number;
   cols: number;
   created_at: string;
@@ -203,12 +206,14 @@ export interface ShelfLayoutListResponse {
 export interface ShelfLayoutCreateRequest {
   name: string;
   location_type: 'DISPLAY' | 'STORAGE';
+  position: ShelfPosition;
   rows: number;
   cols: number;
 }
 
 export interface ShelfLayoutUpdateRequest {
   name: string;
+  position?: ShelfPosition;
   rows: number;
   cols: number;
 }
