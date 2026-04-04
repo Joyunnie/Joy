@@ -181,14 +181,10 @@ export default function ShelfViewPage() {
       {/* === DISPLAY: Floorplan View === */}
       {locationType === 'DISPLAY' && (
         <div className="space-y-2">
-          {/* Top row: entrance + front cabinets */}
-          <div className="flex items-start gap-1.5">
-            {/* Entrance label */}
-            <div className="flex-shrink-0 w-12 h-10 flex items-center justify-center text-[10px] text-gray-400 border border-dashed border-gray-300 rounded bg-gray-50">
-              입구
-            </div>
-            {/* Front cabinets */}
-            <div className="flex gap-1.5 flex-wrap flex-1">
+          {/* Top row: front cabinets (left) + entrance (center) + empty (right) */}
+          <div className="grid grid-cols-3 gap-1.5">
+            {/* Front cabinets - left of entrance */}
+            <div className="flex flex-col gap-1.5">
               {frontLayouts.map((l) => (
                 <CabinetSlot
                   key={l.id}
@@ -200,6 +196,14 @@ export default function ShelfViewPage() {
               ))}
               <AddSlot onClick={() => openAddEditor('front')} />
             </div>
+            {/* Entrance - top center */}
+            <div className="flex items-start justify-center">
+              <div className="w-full h-10 flex items-center justify-center text-[10px] text-gray-400 border border-dashed border-gray-300 rounded bg-gray-50">
+                입구
+              </div>
+            </div>
+            {/* Empty space - right of entrance */}
+            <div />
           </div>
 
           {/* Middle: left wall + empty center + right wall */}

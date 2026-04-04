@@ -21,12 +21,6 @@ function validateRange(value: string): { valid: boolean; num: number } {
   return { valid: true, num };
 }
 
-const POSITION_LABELS: Record<ShelfPosition, string> = {
-  front: '정면',
-  left: '좌',
-  right: '우',
-};
-
 export default function ShelfLayoutEditor({
   layout,
   locationType,
@@ -36,7 +30,7 @@ export default function ShelfLayoutEditor({
   onError,
 }: ShelfLayoutEditorProps) {
   const [name, setName] = useState(layout?.name ?? '');
-  const [position, setPosition] = useState<ShelfPosition>(layout?.position ?? defaultPosition);
+  const position = layout?.position ?? defaultPosition;
   const [rowsStr, setRowsStr] = useState(String(layout?.rows ?? 4));
   const [colsStr, setColsStr] = useState(String(layout?.cols ?? 6));
   const [rowsError, setRowsError] = useState('');
@@ -121,28 +115,6 @@ export default function ShelfLayoutEditor({
             />
           </div>
 
-          {locationType === 'DISPLAY' && (
-            <div>
-              <label className="block text-xs text-gray-600 mb-1">위치</label>
-              <div className="flex gap-2">
-                {(['left', 'front', 'right'] as ShelfPosition[]).map((pos) => (
-                  <button
-                    key={pos}
-                    type="button"
-                    onClick={() => setPosition(pos)}
-                    className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                      position === pos
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    {POSITION_LABELS[pos]}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
           <div className="flex gap-3">
             <div className="flex-1">
               <label className="block text-xs text-gray-600 mb-1">행 수 (1~10)</label>
@@ -195,8 +167,11 @@ export default function ShelfLayoutEditor({
               </div>
             </div>
           )}
+        </div>
 
-          <div className="flex gap-2 pt-1">
+        {/* Sticky footer buttons */}
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 px-4 py-3 -mx-4 -mb-4 mt-3 space-y-2">
+          <div className="flex gap-2">
             <button
               onClick={onClose}
               className="flex-1 py-2 text-sm font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
