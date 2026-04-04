@@ -3,6 +3,7 @@ from datetime import date, datetime
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     Date,
     Float,
     ForeignKey,
@@ -433,3 +434,37 @@ class RpaCommand(Base):
     completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
     error_message: Mapped[str | None] = mapped_column(Text)
     retry_count: Mapped[int] = mapped_column(Integer, default=0)
+
+
+# 22. todos — 약국 공유 할일 메모장
+class Todo(Base):
+    __tablename__ = "todos"
+    __table_args__ = (
+        CheckConstraint("priority BETWEEN 1 AND 4", name="ck_todos_priority"),
+        Index(
+            "idx_todos_pharmacy_due",
+            "pharmacy_id",
+            "due_date",
+            postgresql_where="NOT is_completed",
+        ),
+        Index(
+            "idx_todos_pharmacy_completed",
+            "pharmacy_id",
+            "is_completed",
+            "completed_at",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
+    title: Mapped[str] = mapped_column(String(500))
+    description: Mapped[str | None] = mapped_column(Text)
+    due_date: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
+    priority: Mapped[int] = mapped_column(SmallInteger, default=4)
+    is_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
+    completed_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"))
+    created_by: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"))
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
