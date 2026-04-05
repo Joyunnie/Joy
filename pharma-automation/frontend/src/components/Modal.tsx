@@ -21,7 +21,7 @@ export default function Modal({ isOpen, onClose, title, children, footer }: Moda
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center pb-14">
+    <div className="fixed inset-0 z-[9999] flex items-end justify-center pb-20">
       <div
         className="absolute inset-0 bg-black/40"
         onClick={onClose}
@@ -38,7 +38,7 @@ export default function Modal({ isOpen, onClose, title, children, footer }: Moda
         </div>
         <div className="p-4 overflow-y-auto flex-1 min-h-0">{children}</div>
         {footer && (
-          <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-3 rounded-b-2xl">
+          <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] rounded-b-2xl">
             {footer}
           </div>
         )}
