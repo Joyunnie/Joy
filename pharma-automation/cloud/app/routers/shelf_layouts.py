@@ -5,6 +5,7 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.tables import User
 from app.schemas.shelf_layout import (
+    CellDrugsUpdateRequest,
     ShelfLayoutCreateRequest,
     ShelfLayoutListResponse,
     ShelfLayoutResponse,
@@ -55,3 +56,20 @@ async def delete_layout(
 ):
     await shelf_layout_service.delete_layout(db, user.pharmacy_id, layout_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.patch(
+    "/{layout_id}/cells/{row}/{col}/drugs",
+    response_model=ShelfLayoutResponse,
+)
+async def update_cell_drugs(
+    layout_id: int,
+    row: int,
+    col: int,
+    req: CellDrugsUpdateRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await shelf_layout_service.update_cell_drugs(
+        db, user.pharmacy_id, layout_id, row, col, req
+    )

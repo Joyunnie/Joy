@@ -147,6 +147,7 @@ class ShelfLayout(Base):
     position: Mapped[str] = mapped_column(String(10), default="front")  # front | left | right
     rows: Mapped[int] = mapped_column(Integer, default=4)
     cols: Mapped[int] = mapped_column(Integer, default=6)
+    cell_drugs: Mapped[dict | None] = mapped_column(JSONB, default=dict)  # {"row,col": ["drug1", "drug2", ...]}
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
 

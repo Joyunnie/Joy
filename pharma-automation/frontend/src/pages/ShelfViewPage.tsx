@@ -2,16 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client.ts';
 import type {
-  OtcItemResponse,
-  OtcListResponse,
   ShelfLayoutListResponse,
   ShelfLayoutResponse,
   ShelfPosition,
 } from '../types/api.ts';
 import ShelfGrid from '../components/ShelfGrid.tsx';
 import ShelfLayoutEditor from '../components/ShelfLayoutEditor.tsx';
-import DrugPicker from '../components/DrugPicker.tsx';
-import Modal from '../components/Modal.tsx';
+import CellDetailView from '../components/CellDetailView.tsx';
 import Toast from '../components/Toast.tsx';
 import { useToast } from '../hooks/useToast.ts';
 
@@ -24,17 +21,13 @@ export default function ShelfViewPage() {
   const [locationType, setLocationType] = useState<LocationType>('DISPLAY');
   const [layouts, setLayouts] = useState<ShelfLayoutResponse[]>([]);
   const [selectedLayout, setSelectedLayout] = useState<ShelfLayoutResponse | null>(null);
-  const [items, setItems] = useState<OtcItemResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
   // modal states
   const [editorOpen, setEditorOpen] = useState(false);
   const [editLayout, setEditLayout] = useState<ShelfLayoutResponse | undefined>(undefined);
   const [editorDefaultPosition, setEditorDefaultPosition] = useState<ShelfPosition>('front');
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerTarget, setPickerTarget] = useState<{ row: number; col: number } | null>(null);
-  const [cellDetail, setCellDetail] = useState<{ item: OtcItemResponse; row: number; col: number } | null>(null);
-  const [changeDrugTarget, setChangeDrugTarget] = useState<{ item: OtcItemResponse; row: number; col: number } | null>(null);
+  const [cellDetailTarget, setCellDetailTarget] = useState<{ row: number; col: number } | null>(null);
 
   // Fetch layouts
   const fetchLayouts = useCallback(async () => {
@@ -55,96 +48,29 @@ export default function ShelfViewPage() {
       }
     } catch {
       showToast('레이아웃 목록을 불러오지 못했습니다', 'error');
-    }
-  }, [locationType, showToast]);
-
-  // Fetch items for selected layout
-  const fetchItems = useCallback(async () => {
-    if (!selectedLayout) {
-      setItems([]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const { data } = await api.get<OtcListResponse>('/otc-inventory', {
-        params: { layout_id: selectedLayout.id, limit: 200 },
-      });
-      setItems(data.items);
-    } catch {
-      showToast('약품 목록을 불러오지 못했습니다', 'error');
     } finally {
       setLoading(false);
     }
-  }, [selectedLayout, showToast]);
+  }, [locationType, showToast]);
 
   useEffect(() => { fetchLayouts(); }, [fetchLayouts]);
-  useEffect(() => { fetchItems(); }, [fetchItems]);
 
-  function handleCellClick(row: number, col: number, item?: OtcItemResponse) {
-    if (item) {
-      setCellDetail({ item, row, col });
-    } else {
-      setPickerTarget({ row, col });
-      setPickerOpen(true);
-    }
+  function handleCellClick(row: number, col: number) {
+    setCellDetailTarget({ row, col });
   }
 
-  async function handlePlaceDrug(item: OtcItemResponse) {
-    if (!selectedLayout || !pickerTarget) return;
+  async function handleCellDrugsSave(drugs: string[]) {
+    if (!selectedLayout || !cellDetailTarget) return;
     try {
-      await api.post('/otc-inventory/batch-location', {
-        layout_id: selectedLayout.id,
-        assignments: [{ item_id: item.id, row: pickerTarget.row, col: pickerTarget.col }],
-      });
-      setPickerOpen(false);
-      setPickerTarget(null);
-      showToast('약품을 배치했습니다');
-      fetchItems();
+      const { data } = await api.patch<ShelfLayoutResponse>(
+        `/shelf-layouts/${selectedLayout.id}/cells/${cellDetailTarget.row}/${cellDetailTarget.col}/drugs`,
+        { drugs },
+      );
+      // Update local state with the returned layout
+      setSelectedLayout(data);
+      setLayouts((prev) => prev.map((l) => (l.id === data.id ? data : l)));
     } catch {
-      showToast('배치에 실패했습니다', 'error');
-    }
-  }
-
-  async function handleRemoveDrug() {
-    if (!selectedLayout || !cellDetail) return;
-    try {
-      await api.post('/otc-inventory/batch-location-remove', {
-        layout_id: selectedLayout.id,
-        item_ids: [cellDetail.item.id],
-      });
-      setCellDetail(null);
-      showToast('약품 위치를 제거했습니다');
-      fetchItems();
-    } catch {
-      showToast('제거에 실패했습니다', 'error');
-    }
-  }
-
-  function handleChangeDrug() {
-    if (!cellDetail) return;
-    setChangeDrugTarget(cellDetail);
-    setCellDetail(null);
-  }
-
-  async function handleChangeDrugSelect(newItem: OtcItemResponse) {
-    if (!selectedLayout || !changeDrugTarget) return;
-    try {
-      // Remove old drug from this cell
-      await api.post('/otc-inventory/batch-location-remove', {
-        layout_id: selectedLayout.id,
-        item_ids: [changeDrugTarget.item.id],
-      });
-      // Place new drug
-      await api.post('/otc-inventory/batch-location', {
-        layout_id: selectedLayout.id,
-        assignments: [{ item_id: newItem.id, row: changeDrugTarget.row, col: changeDrugTarget.col }],
-      });
-      setChangeDrugTarget(null);
-      showToast('약품을 변경했습니다');
-      fetchItems();
-    } catch {
-      showToast('변경에 실패했습니다', 'error');
+      showToast('약품 저장에 실패했습니다', 'error');
     }
   }
 
@@ -208,10 +134,10 @@ export default function ShelfViewPage() {
 
       {/* === DISPLAY: Floorplan View === */}
       {locationType === 'DISPLAY' && (
-        <div className="space-y-2">
-          {/* Top row: front cabinets | entrance | empty space */}
-          <div className="grid grid-cols-[auto_1fr_1fr] gap-1.5 items-start">
-            {/* Front cabinets column */}
+        <div className="grid grid-rows-[auto_1fr_auto] gap-1.5">
+          {/* Row 1: front shelves | entrance | empty space */}
+          <div className="grid grid-cols-3 gap-1.5 items-start">
+            {/* Col 1: Front shelves stacked vertically */}
             <div className="flex flex-col gap-1.5">
               {frontLayouts.map((l) => (
                 <CabinetSlot
@@ -224,13 +150,13 @@ export default function ShelfViewPage() {
               ))}
               <AddSlot onClick={() => openAddEditor('front')} />
             </div>
-            {/* Entrance - center */}
+            {/* Col 2: Entrance centered */}
             <div className="flex items-start justify-center">
               <div className="w-full h-10 flex items-center justify-center text-[10px] text-gray-400 border border-dashed border-gray-300 rounded bg-gray-50">
                 입구
               </div>
             </div>
-            {/* Empty space */}
+            {/* Col 3: Empty space */}
             <div className="flex items-start justify-center">
               <div className="w-full h-10 flex items-center justify-center text-[10px] text-gray-300 border border-dashed border-gray-200 rounded bg-gray-50/50">
                 빈 공간
@@ -238,9 +164,9 @@ export default function ShelfViewPage() {
             </div>
           </div>
 
-          {/* Middle: left wall | center empty | right wall */}
-          <div className="grid grid-cols-[auto_1fr_auto] gap-1.5">
-            {/* Left column */}
+          {/* Row 2: left wall | empty center | right wall */}
+          <div className="grid grid-cols-3 gap-1.5 items-start">
+            {/* Col 1: Left shelves on left wall */}
             <div className="flex flex-col gap-1.5">
               {leftLayouts.map((l) => (
                 <CabinetSlot
@@ -254,10 +180,10 @@ export default function ShelfViewPage() {
               <AddSlot onClick={() => openAddEditor('left')} />
             </div>
 
-            {/* Center empty space */}
+            {/* Col 2: Empty center */}
             <div className="min-h-[120px]" />
 
-            {/* Right column */}
+            {/* Col 3: Right shelves on right wall */}
             <div className="flex flex-col gap-1.5">
               {rightLayouts.map((l) => (
                 <CabinetSlot
@@ -272,8 +198,8 @@ export default function ShelfViewPage() {
             </div>
           </div>
 
-          {/* Bottom: counter */}
-          <div className="w-full">
+          {/* Row 3: Counter full width */}
+          <div className="col-span-full">
             <div className="w-full py-2 text-xs text-gray-400 border border-dashed border-gray-300 rounded-lg bg-gray-50 text-center">
               카운터(조제대)
             </div>
@@ -295,7 +221,6 @@ export default function ShelfViewPage() {
               ) : (
                 <ShelfGrid
                   layout={selectedLayout}
-                  items={items}
                   onCellClick={handleCellClick}
                 />
               )}
@@ -361,7 +286,6 @@ export default function ShelfViewPage() {
                 </div>
                 <ShelfGrid
                   layout={selectedLayout}
-                  items={items}
                   onCellClick={handleCellClick}
                 />
               </div>
@@ -386,60 +310,15 @@ export default function ShelfViewPage() {
         />
       )}
 
-      {/* Drug Picker Modal */}
-      {pickerOpen && selectedLayout && (
-        <DrugPicker
+      {/* Cell Detail View */}
+      {cellDetailTarget && selectedLayout && (
+        <CellDetailView
           layoutId={selectedLayout.id}
-          onSelect={handlePlaceDrug}
-          onClose={() => { setPickerOpen(false); setPickerTarget(null); }}
-        />
-      )}
-
-      {/* Cell Detail Modal */}
-      {cellDetail && (
-        <Modal isOpen onClose={() => setCellDetail(null)} title="배치 정보">
-          <div className="space-y-3">
-            <div className="bg-gray-50 rounded-lg p-3">
-              <p className="text-sm font-medium text-gray-800">
-                {cellDetail.item.drug_name ?? `Drug #${cellDetail.item.drug_id}`}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                위치: {cellDetail.row + 1}행 {cellDetail.col + 1}열
-              </p>
-              <p className="text-xs text-gray-500">
-                수량: {cellDetail.item.current_quantity}
-                {cellDetail.item.min_quantity != null && ` (최소 ${cellDetail.item.min_quantity})`}
-              </p>
-              {cellDetail.item.is_low_stock && (
-                <span className="inline-block mt-1 text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">
-                  재고 부족
-                </span>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={handleChangeDrug}
-                className="flex-1 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-              >
-                변경
-              </button>
-              <button
-                onClick={handleRemoveDrug}
-                className="flex-1 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
-              >
-                삭제
-              </button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Change Drug Picker Modal */}
-      {changeDrugTarget && selectedLayout && (
-        <DrugPicker
-          layoutId={selectedLayout.id}
-          onSelect={handleChangeDrugSelect}
-          onClose={() => setChangeDrugTarget(null)}
+          row={cellDetailTarget.row}
+          col={cellDetailTarget.col}
+          drugs={selectedLayout.cell_drugs?.[`${cellDetailTarget.row},${cellDetailTarget.col}`] ?? []}
+          onSave={handleCellDrugsSave}
+          onClose={() => setCellDetailTarget(null)}
         />
       )}
     </div>

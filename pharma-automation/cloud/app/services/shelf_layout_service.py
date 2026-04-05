@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.tables import OtcInventory, ShelfLayout
 from app.schemas.shelf_layout import (
+    CellDrugsUpdateRequest,
     ShelfLayoutCreateRequest,
     ShelfLayoutListResponse,
     ShelfLayoutResponse,
@@ -25,6 +26,7 @@ def _build_response(layout: ShelfLayout) -> ShelfLayoutResponse:
         position=layout.position,
         rows=layout.rows,
         cols=layout.cols,
+        cell_drugs=layout.cell_drugs or {},
         created_at=layout.created_at,
         updated_at=layout.updated_at,
     )
@@ -148,6 +150,51 @@ async def delete_layout(
     )
 
     await db.delete(layout)
+
+
+async def update_cell_drugs(
+    db: AsyncSession,
+    pharmacy_id: int,
+    layout_id: int,
+    row: int,
+    col: int,
+    req: CellDrugsUpdateRequest,
+) -> ShelfLayoutResponse:
+    result = await db.execute(
+        select(ShelfLayout).where(
+            and_(
+                ShelfLayout.id == layout_id,
+                ShelfLayout.pharmacy_id == pharmacy_id,
+            )
+        )
+    )
+    layout = result.scalar_one_or_none()
+    if not layout:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Shelf layout not found",
+        )
+
+    if row < 0 or row >= layout.rows or col < 0 or col >= layout.cols:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Cell ({row},{col}) is out of bounds for {layout.rows}x{layout.cols} grid",
+        )
+
+    cell_drugs = dict(layout.cell_drugs or {})
+    key = f"{row},{col}"
+    if req.drugs:
+        cell_drugs[key] = req.drugs
+    else:
+        cell_drugs.pop(key, None)
+
+    layout.cell_drugs = cell_drugs
+    layout.updated_at = datetime.now(timezone.utc)
+    # Force SQLAlchemy to detect JSONB mutation
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(layout, "cell_drugs")
+
+    return _build_response(layout)
 
 
 async def _clear_out_of_bounds(

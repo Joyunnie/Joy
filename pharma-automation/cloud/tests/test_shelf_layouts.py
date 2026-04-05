@@ -307,6 +307,55 @@ async def test_list_otc_unplaced(client, auth_headers, seed_data, cleanup_shelf_
 
 
 @pytest.mark.asyncio
+async def test_update_cell_drugs(client, auth_headers, seed_data, cleanup_shelf_layouts):
+    """셀 약품 자유 입력: PATCH /cells/{row}/{col}/drugs."""
+    layout_id = await _seed_layout(seed_data["pharmacy_id"], "매장 A", "DISPLAY")
+
+    # 약품 추가
+    resp = await client.patch(
+        f"/api/v1/shelf-layouts/{layout_id}/cells/0/0/drugs",
+        json={"drugs": ["판피린", "타이레놀", "게보린"]},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["cell_drugs"]["0,0"] == ["판피린", "타이레놀", "게보린"]
+
+    # 순서 변경 (드래그 재정렬)
+    resp = await client.patch(
+        f"/api/v1/shelf-layouts/{layout_id}/cells/0/0/drugs",
+        json={"drugs": ["게보린", "판피린", "타이레놀"]},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["cell_drugs"]["0,0"] == ["게보린", "판피린", "타이레놀"]
+
+    # 약품 모두 삭제 → 키 자체가 사라져야 함
+    resp = await client.patch(
+        f"/api/v1/shelf-layouts/{layout_id}/cells/0/0/drugs",
+        json={"drugs": []},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "0,0" not in body["cell_drugs"]
+
+
+@pytest.mark.asyncio
+async def test_update_cell_drugs_out_of_bounds(client, auth_headers, seed_data, cleanup_shelf_layouts):
+    """범위 밖 셀에 약품 추가 시 422."""
+    layout_id = await _seed_layout(seed_data["pharmacy_id"], "Small", "DISPLAY", rows=2, cols=2)
+
+    resp = await client.patch(
+        f"/api/v1/shelf-layouts/{layout_id}/cells/5/0/drugs",
+        json={"drugs": ["타이레놀"]},
+        headers=auth_headers,
+    )
+    assert resp.status_code == 422
+
+
+@pytest.mark.asyncio
 async def test_update_layout_shrink_clears_locations(client, auth_headers, seed_data, cleanup_shelf_layouts, cleanup_otc, otc_drug_seed):
     """격자 축소 시 범위 밖 약품 위치가 null로 초기화."""
     layout_id = await _seed_layout(seed_data["pharmacy_id"], "Big", "DISPLAY", rows=5, cols=5)

@@ -26,9 +26,14 @@ class ShelfLayoutResponse(BaseModel):
     position: str
     rows: int
     cols: int
+    cell_drugs: dict[str, list[str]] = {}
     created_at: datetime
     updated_at: datetime
 
 
 class ShelfLayoutListResponse(BaseModel):
     items: list[ShelfLayoutResponse]
+
+
+class CellDrugsUpdateRequest(BaseModel):
+    drugs: list[str] = Field(..., max_length=200)

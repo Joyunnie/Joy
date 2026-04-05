@@ -195,6 +195,7 @@ export interface ShelfLayoutResponse {
   position: ShelfPosition;
   rows: number;
   cols: number;
+  cell_drugs: Record<string, string[]>;
   created_at: string;
   updated_at: string;
 }

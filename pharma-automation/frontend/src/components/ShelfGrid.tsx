@@ -1,24 +1,13 @@
-import type { OtcItemResponse, ShelfLayoutResponse } from '../types/api.ts';
-import { parseLocation } from '../utils/location.ts';
+import type { ShelfLayoutResponse } from '../types/api.ts';
 import ShelfCell from './ShelfCell.tsx';
 
 interface ShelfGridProps {
   layout: ShelfLayoutResponse;
-  items: OtcItemResponse[];
-  onCellClick: (row: number, col: number, item?: OtcItemResponse) => void;
+  onCellClick: (row: number, col: number) => void;
 }
 
-export default function ShelfGrid({ layout, items, onCellClick }: ShelfGridProps) {
-  // Build a map of (row, col) -> item
-  const cellMap = new Map<string, OtcItemResponse>();
-  const locField = layout.location_type === 'DISPLAY' ? 'display_location' : 'storage_location';
-
-  for (const item of items) {
-    const loc = parseLocation(item[locField]);
-    if (loc && loc.layoutId === layout.id) {
-      cellMap.set(`${loc.row},${loc.col}`, item);
-    }
-  }
+export default function ShelfGrid({ layout, onCellClick }: ShelfGridProps) {
+  const cellDrugs = layout.cell_drugs ?? {};
 
   return (
     <div className="overflow-x-auto">
@@ -49,14 +38,14 @@ export default function ShelfGrid({ layout, items, onCellClick }: ShelfGridProps
             </div>
             {/* Cells */}
             {Array.from({ length: layout.cols }, (_, c) => {
-              const item = cellMap.get(`${r},${c}`);
+              const drugs = cellDrugs[`${r},${c}`] ?? [];
               return (
                 <ShelfCell
                   key={c}
                   row={r}
                   col={c}
-                  item={item}
-                  onClick={() => onCellClick(r, c, item)}
+                  drugs={drugs}
+                  onClick={() => onCellClick(r, c)}
                 />
               );
             })}
