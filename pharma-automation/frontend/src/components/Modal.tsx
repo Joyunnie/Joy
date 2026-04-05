@@ -21,7 +21,7 @@ export default function Modal({ isOpen, onClose, title, children, footer }: Moda
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center pb-14">
       <div
         className="absolute inset-0 bg-black/40"
         onClick={onClose}
