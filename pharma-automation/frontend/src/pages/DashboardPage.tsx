@@ -9,8 +9,6 @@ import type {
   NarcoticsListResponse,
   OtcListResponse,
   PredictionListResponse,
-  PrescriptionListResponse,
-  PrescriptionOcrRecordOut,
 } from '../types/api.ts';
 
 interface DashboardData {
@@ -30,7 +28,6 @@ function todayStr(): string {
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [todos, setTodos] = useState<TodoItem[]>([]);
-  const [recentPrescriptions, setRecentPrescriptions] = useState<PrescriptionOcrRecordOut[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -40,7 +37,7 @@ export default function DashboardPage() {
     async function fetchAll() {
       try {
         // TODO(Phase 3B): GET /dashboard/summary 통합 API 검토
-        const [alertsRes, otcRes, narcLowRes, prescRes, predRes, todosRes, prescOcrRes] =
+        const [alertsRes, otcRes, narcLowRes, prescRes, predRes, todosRes] =
           await Promise.all([
             api.get<AlertListResponse>('/alerts', {
               params: { unread_only: true, limit: 5 },
@@ -58,9 +55,6 @@ export default function DashboardPage() {
               params: { days_ahead: 7 },
             }),
             fetchTodos('today'),
-            api.get<PrescriptionListResponse>('/prescription-ocr', {
-              params: { limit: 5 },
-            }),
           ]);
 
         if (cancelled) return;
@@ -71,7 +65,6 @@ export default function DashboardPage() {
         ).length;
 
         setTodos(todosRes.items);
-        setRecentPrescriptions(prescOcrRes.data.items);
         setData({
           unreadAlerts: alertsRes.data.total,
           recentAlerts: alertsRes.data.alerts.map((a) => ({
@@ -130,79 +123,45 @@ export default function DashboardPage() {
     <div className="p-4 space-y-4 max-w-lg mx-auto">
       <h2 className="text-xl font-bold text-gray-800">대시보드</h2>
 
-      {/* 오늘 할 일 + 처방전 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Link
-          to="/todos"
-          className="block bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow border border-gray-100"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-600">오늘 할 일</h3>
-            <span className="text-xs text-blue-500">더보기 &rarr;</span>
-          </div>
-          {todos.length > 0 ? (
-            <ul className="space-y-2">
-              {todos.map((todo) => (
-                <li key={todo.id} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={todo.is_completed}
-                    onChange={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleToggleTodo(todo.id);
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="w-4 h-4 rounded border-gray-300 text-blue-600 flex-shrink-0"
-                  />
-                  <span className={`text-sm flex-1 truncate ${todo.is_completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
-                    {todo.title}
+      {/* 오늘 할 일 */}
+      <Link
+        to="/todos"
+        className="block bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow border border-gray-100"
+      >
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-gray-600">오늘 할 일</h3>
+          <span className="text-xs text-blue-500">더보기 &rarr;</span>
+        </div>
+        {todos.length > 0 ? (
+          <ul className="space-y-2">
+            {todos.map((todo) => (
+              <li key={todo.id} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={todo.is_completed}
+                  onChange={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleToggleTodo(todo.id);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-4 h-4 rounded border-gray-300 text-blue-600 flex-shrink-0"
+                />
+                <span className={`text-sm flex-1 truncate ${todo.is_completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+                  {todo.title}
+                </span>
+                {todo.due_date && (
+                  <span className="text-xs text-gray-400 flex-shrink-0">
+                    {formatTime(todo.due_date)}
                   </span>
-                  {todo.due_date && (
-                    <span className="text-xs text-gray-400 flex-shrink-0">
-                      {formatTime(todo.due_date)}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-gray-400">오늘 할 일이 없습니다</p>
-          )}
-        </Link>
-
-        {/* 처방전 */}
-        <Link
-          to="/prescription-ocr"
-          className="block bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow border border-gray-100"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-gray-600">처방전</h3>
-            <span className="text-xs text-blue-500">더보기 &rarr;</span>
-          </div>
-          {recentPrescriptions.length > 0 ? (
-            <ul className="space-y-2">
-              {recentPrescriptions.map((rx) => (
-                <li key={rx.id} className="flex items-center justify-between gap-2">
-                  <span className="text-sm text-gray-700 truncate flex-1">
-                    {rx.patient_name ?? '환자명 없음'}
-                    {rx.prescriber_clinic && <span className="text-xs text-gray-400 ml-1">· {rx.prescriber_clinic}</span>}
-                  </span>
-                  <span className={`text-xs px-1.5 py-0.5 rounded font-medium flex-shrink-0 ${
-                    rx.ocr_status === 'CONFIRMED' ? 'bg-green-100 text-green-600' :
-                    rx.ocr_status === 'CANCELLED' ? 'bg-gray-100 text-gray-500' :
-                    'bg-yellow-100 text-yellow-600'
-                  }`}>
-                    {rx.ocr_status === 'CONFIRMED' ? '확정' : rx.ocr_status === 'CANCELLED' ? '취소' : '대기'}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-gray-400">최근 처방전이 없습니다</p>
-          )}
-        </Link>
-      </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-gray-400">오늘 할 일이 없습니다</p>
+        )}
+      </Link>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Card 1: Alerts */}
