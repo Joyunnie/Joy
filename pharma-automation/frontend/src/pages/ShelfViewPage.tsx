@@ -34,6 +34,7 @@ export default function ShelfViewPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<{ row: number; col: number } | null>(null);
   const [cellDetail, setCellDetail] = useState<{ item: OtcItemResponse; row: number; col: number } | null>(null);
+  const [changeDrugTarget, setChangeDrugTarget] = useState<{ item: OtcItemResponse; row: number; col: number } | null>(null);
 
   // Fetch layouts
   const fetchLayouts = useCallback(async () => {
@@ -120,6 +121,33 @@ export default function ShelfViewPage() {
     }
   }
 
+  function handleChangeDrug() {
+    if (!cellDetail) return;
+    setChangeDrugTarget(cellDetail);
+    setCellDetail(null);
+  }
+
+  async function handleChangeDrugSelect(newItem: OtcItemResponse) {
+    if (!selectedLayout || !changeDrugTarget) return;
+    try {
+      // Remove old drug from this cell
+      await api.post('/otc-inventory/batch-location-remove', {
+        layout_id: selectedLayout.id,
+        item_ids: [changeDrugTarget.item.id],
+      });
+      // Place new drug
+      await api.post('/otc-inventory/batch-location', {
+        layout_id: selectedLayout.id,
+        assignments: [{ item_id: newItem.id, row: changeDrugTarget.row, col: changeDrugTarget.col }],
+      });
+      setChangeDrugTarget(null);
+      showToast('약품을 변경했습니다');
+      fetchItems();
+    } catch {
+      showToast('변경에 실패했습니다', 'error');
+    }
+  }
+
   function handleEditorSave() {
     setEditorOpen(false);
     setEditLayout(undefined);
@@ -181,9 +209,9 @@ export default function ShelfViewPage() {
       {/* === DISPLAY: Floorplan View === */}
       {locationType === 'DISPLAY' && (
         <div className="space-y-2">
-          {/* Top row: front cabinets (left) + entrance (center) + empty (right) */}
-          <div className="grid grid-cols-3 gap-1.5">
-            {/* Front cabinets - left of entrance */}
+          {/* Top row: front cabinets | entrance | empty space */}
+          <div className="grid grid-cols-[auto_1fr_1fr] gap-1.5 items-start">
+            {/* Front cabinets column */}
             <div className="flex flex-col gap-1.5">
               {frontLayouts.map((l) => (
                 <CabinetSlot
@@ -196,20 +224,24 @@ export default function ShelfViewPage() {
               ))}
               <AddSlot onClick={() => openAddEditor('front')} />
             </div>
-            {/* Entrance - top center */}
+            {/* Entrance - center */}
             <div className="flex items-start justify-center">
               <div className="w-full h-10 flex items-center justify-center text-[10px] text-gray-400 border border-dashed border-gray-300 rounded bg-gray-50">
                 입구
               </div>
             </div>
-            {/* Empty space - right of entrance */}
-            <div />
+            {/* Empty space */}
+            <div className="flex items-start justify-center">
+              <div className="w-full h-10 flex items-center justify-center text-[10px] text-gray-300 border border-dashed border-gray-200 rounded bg-gray-50/50">
+                빈 공간
+              </div>
+            </div>
           </div>
 
-          {/* Middle: left wall + empty center + right wall */}
-          <div className="flex gap-1.5">
+          {/* Middle: left wall | center empty | right wall */}
+          <div className="grid grid-cols-[auto_1fr_auto] gap-1.5">
             {/* Left column */}
-            <div className="flex flex-col gap-1.5 flex-shrink-0">
+            <div className="flex flex-col gap-1.5">
               {leftLayouts.map((l) => (
                 <CabinetSlot
                   key={l.id}
@@ -223,10 +255,10 @@ export default function ShelfViewPage() {
             </div>
 
             {/* Center empty space */}
-            <div className="flex-1 min-h-[120px]" />
+            <div className="min-h-[120px]" />
 
             {/* Right column */}
-            <div className="flex flex-col gap-1.5 flex-shrink-0">
+            <div className="flex flex-col gap-1.5">
               {rightLayouts.map((l) => (
                 <CabinetSlot
                   key={l.id}
@@ -241,8 +273,8 @@ export default function ShelfViewPage() {
           </div>
 
           {/* Bottom: counter */}
-          <div className="flex justify-center">
-            <div className="px-6 py-2 text-xs text-gray-400 border border-dashed border-gray-300 rounded-lg bg-gray-50">
+          <div className="w-full">
+            <div className="w-full py-2 text-xs text-gray-400 border border-dashed border-gray-300 rounded-lg bg-gray-50 text-center">
               카운터(조제대)
             </div>
           </div>
@@ -384,14 +416,31 @@ export default function ShelfViewPage() {
                 </span>
               )}
             </div>
-            <button
-              onClick={handleRemoveDrug}
-              className="w-full py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
-            >
-              위치 제거
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleChangeDrug}
+                className="flex-1 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+              >
+                변경
+              </button>
+              <button
+                onClick={handleRemoveDrug}
+                className="flex-1 py-2 text-sm font-medium text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+              >
+                삭제
+              </button>
+            </div>
           </div>
         </Modal>
+      )}
+
+      {/* Change Drug Picker Modal */}
+      {changeDrugTarget && selectedLayout && (
+        <DrugPicker
+          layoutId={selectedLayout.id}
+          onSelect={handleChangeDrugSelect}
+          onClose={() => setChangeDrugTarget(null)}
+        />
       )}
     </div>
   );

@@ -74,40 +74,32 @@ export default function InventoryPage() {
     <div className="p-4 max-w-lg mx-auto">
       <Toast toasts={toasts} onRemove={removeToast} />
 
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold text-gray-800">OTC 재고</h2>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate('/prescription-ocr')}
-            className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            처방전
-          </button>
-          <button
-            onClick={() => navigate('/receipt-ocr')}
-            className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            입고 OCR
-          </button>
-          <button
-            onClick={() => navigate('/shelf')}
-            className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            약장 보기
-          </button>
-          <button
-            onClick={() => navigate('/thresholds')}
-            className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
-          >
-            최소수량
-          </button>
-          <button
-            onClick={() => setAddOpen(true)}
-            className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-          >
-            추가
-          </button>
-        </div>
+      <h2 className="text-xl font-bold text-gray-800 mb-3">OTC 재고</h2>
+      <div className="flex flex-row items-center gap-2 mb-4 overflow-x-auto whitespace-nowrap">
+        <button
+          onClick={() => navigate('/receipt-ocr')}
+          className="h-9 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors min-w-fit"
+        >
+          입고OCR
+        </button>
+        <button
+          onClick={() => navigate('/shelf')}
+          className="h-9 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors min-w-fit"
+        >
+          약장보기
+        </button>
+        <button
+          onClick={() => navigate('/thresholds')}
+          className="h-9 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors min-w-fit"
+        >
+          최소수량
+        </button>
+        <button
+          onClick={() => setAddOpen(true)}
+          className="h-9 px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors min-w-fit"
+        >
+          추가
+        </button>
       </div>
 
       <div className="flex items-center gap-3 mb-4">
