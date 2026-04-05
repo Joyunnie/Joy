@@ -134,72 +134,70 @@ export default function ShelfViewPage() {
 
       {/* === DISPLAY: Floorplan View === */}
       {locationType === 'DISPLAY' && (
-        <div className="grid grid-rows-[auto_1fr_auto] gap-1.5">
-          {/* Row 1: front shelves | entrance | empty space */}
-          <div className="grid grid-cols-3 gap-1.5 items-start">
-            {/* Col 1: Front shelves stacked vertically */}
-            <div className="flex flex-col gap-1.5">
-              {frontLayouts.map((l) => (
-                <CabinetSlot
-                  key={l.id}
-                  layout={l}
-                  isSelected={selectedLayout?.id === l.id}
-                  onSelect={() => setSelectedLayout(l)}
-                  onEdit={() => openEditEditor(l)}
-                />
-              ))}
-              <AddSlot onClick={() => openAddEditor('front')} />
-            </div>
-            {/* Col 2: Entrance centered */}
-            <div className="flex items-start justify-center">
-              <div className="w-full h-10 flex items-center justify-center text-[10px] text-gray-400 border border-dashed border-gray-300 rounded bg-gray-50">
-                입구
-              </div>
-            </div>
-            {/* Col 3: Empty space */}
-            <div className="flex items-start justify-center">
-              <div className="w-full h-10 flex items-center justify-center text-[10px] text-gray-300 border border-dashed border-gray-200 rounded bg-gray-50/50">
-                빈 공간
-              </div>
+        <div className="grid grid-cols-4 gap-1.5">
+          {/* Top row: empty corner | front shelves | entrance | empty corner */}
+          <div className="flex items-center justify-center">
+            <div className="w-full h-10 flex items-center justify-center text-[10px] text-gray-300 border border-dashed border-gray-200 rounded bg-gray-50/50" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {frontLayouts.map((l) => (
+              <CabinetSlot
+                key={l.id}
+                layout={l}
+                isSelected={selectedLayout?.id === l.id}
+                onSelect={() => setSelectedLayout(l)}
+                onEdit={() => openEditEditor(l)}
+              />
+            ))}
+            <AddSlot onClick={() => openAddEditor('front')} />
+          </div>
+          <div className="flex items-start justify-center">
+            <div className="w-full h-10 flex items-center justify-center text-[10px] text-gray-400 border border-dashed border-gray-300 rounded bg-gray-50">
+              입구
             </div>
           </div>
-
-          {/* Row 2: left wall | empty center | right wall */}
-          <div className="grid grid-cols-3 gap-1.5 items-start">
-            {/* Col 1: Left shelves on left wall */}
-            <div className="flex flex-col gap-1.5">
-              {leftLayouts.map((l) => (
-                <CabinetSlot
-                  key={l.id}
-                  layout={l}
-                  isSelected={selectedLayout?.id === l.id}
-                  onSelect={() => setSelectedLayout(l)}
-                  onEdit={() => openEditEditor(l)}
-                />
-              ))}
-              <AddSlot onClick={() => openAddEditor('left')} />
-            </div>
-
-            {/* Col 2: Empty center */}
-            <div className="min-h-[120px]" />
-
-            {/* Col 3: Right shelves on right wall */}
-            <div className="flex flex-col gap-1.5">
-              {rightLayouts.map((l) => (
-                <CabinetSlot
-                  key={l.id}
-                  layout={l}
-                  isSelected={selectedLayout?.id === l.id}
-                  onSelect={() => setSelectedLayout(l)}
-                  onEdit={() => openEditEditor(l)}
-                />
-              ))}
-              <AddSlot onClick={() => openAddEditor('right')} />
-            </div>
+          <div className="flex items-center justify-center">
+            <div className="w-full h-10 flex items-center justify-center text-[10px] text-gray-300 border border-dashed border-gray-200 rounded bg-gray-50/50" />
           </div>
 
-          {/* Row 3: Counter full width */}
-          <div className="col-span-full">
+          {/* Middle rows: left shelf | empty center (col-span-2) | right shelf */}
+          {Array.from({ length: Math.max(leftLayouts.length, rightLayouts.length) }).map((_, i) => (
+            <div key={`middle-${i}`} className="contents">
+              <div className="flex items-center">
+                {leftLayouts[i] ? (
+                  <CabinetSlot
+                    layout={leftLayouts[i]}
+                    isSelected={selectedLayout?.id === leftLayouts[i].id}
+                    onSelect={() => setSelectedLayout(leftLayouts[i])}
+                    onEdit={() => openEditEditor(leftLayouts[i])}
+                  />
+                ) : <div className="h-10" />}
+              </div>
+              <div className="col-span-2" />
+              <div className="flex items-center justify-end">
+                {rightLayouts[i] ? (
+                  <CabinetSlot
+                    layout={rightLayouts[i]}
+                    isSelected={selectedLayout?.id === rightLayouts[i].id}
+                    onSelect={() => setSelectedLayout(rightLayouts[i])}
+                    onEdit={() => openEditEditor(rightLayouts[i])}
+                  />
+                ) : <div className="h-10" />}
+              </div>
+            </div>
+          ))}
+
+          {/* Add buttons row for left / right */}
+          <div className="flex items-center">
+            <AddSlot onClick={() => openAddEditor('left')} />
+          </div>
+          <div className="col-span-2" />
+          <div className="flex items-center justify-end">
+            <AddSlot onClick={() => openAddEditor('right')} />
+          </div>
+
+          {/* Bottom: counter full width */}
+          <div className="col-span-4">
             <div className="w-full py-2 text-xs text-gray-400 border border-dashed border-gray-300 rounded-lg bg-gray-50 text-center">
               카운터(조제대)
             </div>

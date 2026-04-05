@@ -11,3 +11,4 @@ bcrypt>=4.0
 PyJWT>=2.8
 pytest
 pytest-asyncio
+psycopg2-binary
