@@ -75,7 +75,7 @@ def backup_database(pm20_cfg: dict, output_path: str, dry_run: bool) -> bool:
 
     logger.info("Backing up %s to %s", database, output_path)
 
-    kwargs = {"server": instance, "database": "master"}
+    kwargs = {"server": instance, "database": "master", "charset": "utf8"}
     if auth == "sql":
         kwargs["user"] = pm20_cfg.get("username", "sa")
         pw_env = pm20_cfg.get("password_env", "PM20_DB_PASSWORD")
@@ -115,7 +115,7 @@ def verify_backup(pm20_cfg: dict, backup_path: str, dry_run: bool) -> bool:
 
     logger.info("Verifying backup: %s", backup_path)
 
-    kwargs = {"server": instance, "database": "master"}
+    kwargs = {"server": instance, "database": "master", "charset": "utf8"}
     if auth == "sql":
         kwargs["user"] = pm20_cfg.get("username", "sa")
         pw_env = pm20_cfg.get("password_env", "PM20_DB_PASSWORD")

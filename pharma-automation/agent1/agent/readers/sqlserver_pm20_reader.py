@@ -104,6 +104,7 @@ class SqlServerPM20Reader(PM20Reader):
         kwargs = {
             "server": self._instance,
             "database": self._database,
+            "charset": "utf8",
         }
 
         if self._auth == "sql":
