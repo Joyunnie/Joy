@@ -151,8 +151,8 @@ async def sync_cassette_mapping(
         )
         drug = drug_result.scalar_one_or_none()
         if not drug:
-            from app.exceptions import ValidationError
-            raise ValidationError(f"Drug not found: {mapping.drug_standard_code}")
+            from app.exceptions import ServiceError
+            raise ServiceError(f"Drug not found: {mapping.drug_standard_code}", 422)
 
         # UPSERT
         result = await db.execute(

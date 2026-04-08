@@ -5,7 +5,7 @@ import type { PrescriptionListResponse, PrescriptionOcrRecordOut, PrescriptionOc
 import Pagination from '../components/Pagination.tsx';
 import EmptyState from '../components/EmptyState.tsx';
 import Toast from '../components/Toast.tsx';
-import PrescriptionUploadModal from '../components/PrescriptionUploadModal.tsx';
+import FileUploadModal from '../components/FileUploadModal.tsx';
 import PrescriptionDetailModal from '../components/PrescriptionDetailModal.tsx';
 import { useToast } from '../hooks/useToast.ts';
 
@@ -159,7 +159,9 @@ export default function PrescriptionOcrPage() {
       )}
 
       {uploadOpen && (
-        <PrescriptionUploadModal
+        <FileUploadModal<PrescriptionOcrResponse>
+          endpoint="/prescription-ocr/upload"
+          title="처방전 촬영/업로드"
           onClose={() => setUploadOpen(false)}
           onSuccess={handleUploadSuccess}
           onError={(msg) => showToast(msg, 'error')}

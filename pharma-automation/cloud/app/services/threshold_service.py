@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from app.exceptions import DuplicateEntryError, NotFoundError
+from app.exceptions import ServiceError
 from sqlalchemy import and_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,7 +41,7 @@ async def create_threshold(
     drug_result = await db.execute(select(Drug).where(Drug.id == req.drug_id))
     drug = drug_result.scalar_one_or_none()
     if not drug:
-        raise NotFoundError("Drug not found")
+        raise ServiceError("Drug not found", 404)
 
     th = DrugThreshold(
         pharmacy_id=pharmacy_id,
@@ -54,7 +54,7 @@ async def create_threshold(
         await db.flush()
     except IntegrityError:
         await db.rollback()
-        raise DuplicateEntryError("Threshold already exists for this drug")
+        raise ServiceError("Threshold already exists for this drug", 409)
 
     return _build_item_response(th, drug.name, drug.category)
 
@@ -117,7 +117,7 @@ async def update_threshold(
     )
     th = result.scalar_one_or_none()
     if not th:
-        raise NotFoundError("Threshold not found")
+        raise ServiceError("Threshold not found", 404)
 
     th.min_quantity = req.min_quantity
     th.is_active = req.is_active
@@ -149,6 +149,6 @@ async def delete_threshold(
     )
     th = result.scalar_one_or_none()
     if not th:
-        raise NotFoundError("Threshold not found")
+        raise ServiceError("Threshold not found", 404)
 
     await db.delete(th)

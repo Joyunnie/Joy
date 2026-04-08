@@ -10,8 +10,7 @@ import Pagination from '../components/Pagination.tsx';
 import EmptyState from '../components/EmptyState.tsx';
 import ConfirmDialog from '../components/ConfirmDialog.tsx';
 import Toast from '../components/Toast.tsx';
-import OtcAddModal from '../components/OtcAddModal.tsx';
-import OtcEditModal from '../components/OtcEditModal.tsx';
+import OtcFormModal from '../components/OtcFormModal.tsx';
 import { useToast } from '../hooks/useToast.ts';
 
 const LIMIT = 20;
@@ -163,18 +162,18 @@ export default function InventoryPage() {
         </>
       )}
 
-      {/* Add Modal */}
       {addOpen && (
-        <OtcAddModal
+        <OtcFormModal
+          mode="add"
           onClose={() => setAddOpen(false)}
           onSuccess={() => { setAddOpen(false); showToast('추가되었습니다'); fetchItems(); }}
           onError={(msg) => showToast(msg, 'error')}
         />
       )}
 
-      {/* Edit Modal */}
       {editItem && (
-        <OtcEditModal
+        <OtcFormModal
+          mode="edit"
           item={editItem}
           onClose={() => setEditItem(null)}
           onSuccess={() => { setEditItem(null); showToast('수정되었습니다'); fetchItems(); }}

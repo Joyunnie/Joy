@@ -8,12 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.exceptions import (
-    AuthenticationError,
-    DuplicateEntryError,
-    ForbiddenError,
-    NotFoundError,
-)
+from app.exceptions import ServiceError
 from app.models.tables import Pharmacy, RefreshToken, User
 from app.schemas.auth import (
     AccessTokenResponse,
@@ -65,18 +60,18 @@ async def register_user(db: AsyncSession, pharmacy_id: int, invite_code: str,
     result = await db.execute(select(Pharmacy).where(Pharmacy.id == pharmacy_id))
     pharmacy = result.scalar_one_or_none()
     if pharmacy is None:
-        raise NotFoundError("Pharmacy not found")
+        raise ServiceError("Pharmacy not found", 404)
 
     # 2. invite_code 검증
     if pharmacy.invite_code != invite_code:
-        raise ForbiddenError("Invalid invite code")
+        raise ServiceError("Invalid invite code", 403)
 
     # 3. 중복 검사
     existing = await db.execute(
         select(User).where(User.pharmacy_id == pharmacy_id, User.username == username)
     )
     if existing.scalar_one_or_none() is not None:
-        raise DuplicateEntryError("Username already exists")
+        raise ServiceError("Username already exists", 409)
 
     # 4. 사용자 생성
     user = User(
@@ -98,10 +93,10 @@ async def login(db: AsyncSession, pharmacy_id: int, username: str, password: str
     user = result.scalar_one_or_none()
 
     if user is None or not verify_password(password, user.password_hash):
-        raise AuthenticationError("Invalid credentials")
+        raise ServiceError("Invalid credentials", 401)
 
     if not user.is_active:
-        raise AuthenticationError("User is inactive")
+        raise ServiceError("User is inactive", 401)
 
     access_token = create_access_token(user.id, user.pharmacy_id, user.role)
     refresh_token = await create_refresh_token(db, user.id)
@@ -117,16 +112,16 @@ async def refresh_access_token(db: AsyncSession, refresh_token: str) -> AccessTo
     rt = result.scalar_one_or_none()
 
     if rt is None or rt.is_revoked:
-        raise AuthenticationError("Invalid or revoked refresh token")
+        raise ServiceError("Invalid or revoked refresh token", 401)
 
     if rt.expires_at < datetime.now(timezone.utc):
-        raise AuthenticationError("Refresh token expired")
+        raise ServiceError("Refresh token expired", 401)
 
     # user 조회 + is_active 확인
     user_result = await db.execute(select(User).where(User.id == rt.user_id))
     user = user_result.scalar_one_or_none()
     if user is None or not user.is_active:
-        raise AuthenticationError("User not found or inactive")
+        raise ServiceError("User not found or inactive", 401)
 
     access_token = create_access_token(user.id, user.pharmacy_id, user.role)
     return AccessTokenResponse(access_token=access_token)

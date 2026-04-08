@@ -53,15 +53,15 @@ async def get_alerts(
 
 
 async def mark_alert_read(db: AsyncSession, alert_id: int, pharmacy_id: int) -> AlertReadResponse:
-    from app.exceptions import ForbiddenError, NotFoundError
+    from app.exceptions import ServiceError
 
     result = await db.execute(select(AlertLog).where(AlertLog.id == alert_id))
     alert = result.scalar_one_or_none()
     if not alert:
-        raise NotFoundError("Alert not found")
+        raise ServiceError("Alert not found", 404)
 
     if alert.pharmacy_id != pharmacy_id:
-        raise ForbiddenError("Access denied")
+        raise ServiceError("Access denied", 403)
 
     now = datetime.now(timezone.utc)
     alert.read_at = now

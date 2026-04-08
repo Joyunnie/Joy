@@ -3,12 +3,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.exceptions import (
-    DuplicateEntryError,
-    NotFoundError,
-    ValidationError,
-    VersionConflictError,
-)
+from app.exceptions import ServiceError
 from app.models.tables import (
     AlertLog,
     Drug,
@@ -133,7 +128,7 @@ async def create_otc_item(
     drug_result = await db.execute(select(Drug).where(Drug.id == req.drug_id))
     drug = drug_result.scalar_one_or_none()
     if not drug:
-        raise NotFoundError("Drug not found")
+        raise ServiceError("Drug not found", 404)
 
     # 중복 확인
     dup_result = await db.execute(
@@ -145,7 +140,7 @@ async def create_otc_item(
         )
     )
     if dup_result.scalar_one_or_none():
-        raise DuplicateEntryError("OTC inventory item already exists for this drug")
+        raise ServiceError("OTC inventory item already exists for this drug", 409)
 
     now = datetime.now(timezone.utc)
     inv = OtcInventory(
@@ -269,7 +264,7 @@ async def get_otc_item(
     )
     inv = result.scalar_one_or_none()
     if not inv:
-        raise NotFoundError("OTC inventory item not found")
+        raise ServiceError("OTC inventory item not found", 404)
 
     drug_name, min_qty = await _get_drug_and_threshold(
         db, pharmacy_id, inv.drug_id
@@ -294,11 +289,11 @@ async def update_otc_item(
     )
     inv = result.scalar_one_or_none()
     if not inv:
-        raise NotFoundError("OTC inventory item not found")
+        raise ServiceError("OTC inventory item not found", 404)
 
     # Optimistic locking
     if inv.version != req.version:
-        raise VersionConflictError("Data has been modified by another user")
+        raise ServiceError("Data has been modified by another user", 409)
 
     now = datetime.now(timezone.utc)
     # PUT = 전체 덮어쓰기
@@ -333,7 +328,7 @@ async def delete_otc_item(
     )
     inv = result.scalar_one_or_none()
     if not inv:
-        raise NotFoundError("OTC inventory item not found")
+        raise ServiceError("OTC inventory item not found", 404)
 
     # P16: audit log 기록
     audit = InventoryAuditLog(
@@ -370,18 +365,18 @@ async def batch_update_locations(
     )
     layout = layout_result.scalar_one_or_none()
     if not layout:
-        raise NotFoundError("Shelf layout not found")
+        raise ServiceError("Shelf layout not found", 404)
 
     # 범위 검증 + 중복 칸 검증
     seen_positions: set[tuple[int, int]] = set()
     for a in req.assignments:
         if a.row >= layout.rows or a.col >= layout.cols:
-            raise ValidationError(
-                f"Position ({a.row},{a.col}) is out of bounds for {layout.rows}x{layout.cols} layout"
+            raise ServiceError(
+                f"Position ({a.row},{a.col}) is out of bounds for {layout.rows}x{layout.cols} layout", 422
             )
         pos = (a.row, a.col)
         if pos in seen_positions:
-            raise ValidationError(f"Duplicate position ({a.row},{a.col})")
+            raise ServiceError(f"Duplicate position ({a.row},{a.col})", 422)
         seen_positions.add(pos)
 
     loc_field_key = (
@@ -400,7 +395,7 @@ async def batch_update_locations(
         )
         inv = inv_result.scalar_one_or_none()
         if not inv:
-            raise NotFoundError(f"OTC inventory item {a.item_id} not found")
+            raise ServiceError(f"OTC inventory item {a.item_id} not found", 404)
 
         loc_value = f"{req.layout_id}:{a.row},{a.col}"
         setattr(inv, loc_field_key, loc_value)
@@ -424,7 +419,7 @@ async def batch_remove_locations(
     )
     layout = layout_result.scalar_one_or_none()
     if not layout:
-        raise NotFoundError("Shelf layout not found")
+        raise ServiceError("Shelf layout not found", 404)
 
     loc_field_key = (
         "display_location" if layout.location_type == "DISPLAY" else "storage_location"
@@ -441,5 +436,5 @@ async def batch_remove_locations(
         )
         inv = inv_result.scalar_one_or_none()
         if not inv:
-            raise NotFoundError(f"OTC inventory item {item_id} not found")
+            raise ServiceError(f"OTC inventory item {item_id} not found", 404)
         setattr(inv, loc_field_key, None)

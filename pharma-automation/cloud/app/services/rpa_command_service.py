@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from app.exceptions import NotFoundError, ValidationError
+from app.exceptions import ServiceError
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,7 +21,7 @@ async def create_command(
     payload: dict,
 ) -> RpaCommand:
     if command_type not in ("NARCOTICS_INPUT", "PRESCRIPTION_INPUT"):
-        raise ValidationError("Invalid command_type")
+        raise ServiceError("Invalid command_type", 422)
 
     cmd = RpaCommand(
         pharmacy_id=pharmacy_id,
@@ -67,12 +67,12 @@ async def update_command_status(
     )
     cmd = result.scalar_one_or_none()
     if not cmd:
-        raise NotFoundError("Command not found")
+        raise ServiceError("Command not found", 404)
 
     allowed = _VALID_TRANSITIONS.get(cmd.status, set())
     if new_status not in allowed:
-        raise ValidationError(
-            f"Cannot transition from {cmd.status} to {new_status}",
+        raise ServiceError(
+            f"Cannot transition from {cmd.status} to {new_status}", 422,
         )
 
     now = datetime.now(timezone.utc)

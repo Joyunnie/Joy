@@ -72,15 +72,15 @@ async def upload_and_process(
     file: UploadFile,
 ) -> PrescriptionOcrResponse:
     """이미지 업로드 → OCR → 파싱 → 매칭 → 중복감지 → DB 저장."""
-    from app.exceptions import ValidationError
+    from app.exceptions import ServiceError
 
     # 1. 파일 검증
     if file.content_type not in ALLOWED_TYPES:
-        raise ValidationError(f"지원하지 않는 파일 형식: {file.content_type}")
+        raise ServiceError(f"지원하지 않는 파일 형식: {file.content_type}", 422)
 
     contents = await file.read()
     if len(contents) > MAX_FILE_SIZE:
-        raise ValidationError("파일 크기가 10MB를 초과합니다")
+        raise ServiceError("파일 크기가 10MB를 초과합니다", 422)
 
     # 2. 이미지 저장
     ext = "jpg" if file.content_type == "image/jpeg" else "png"
@@ -250,15 +250,25 @@ async def list_prescriptions(
     )
     records = result.scalars().all()
 
-    items_out = []
-    for rec in records:
+    # 단일 쿼리로 모든 레코드의 drug 수 가져오기 (N+1 → 2 쿼리)
+    record_ids = [rec.id for rec in records]
+    if record_ids:
         count_result = await db.execute(
-            select(func.count(PrescriptionOcrDrug.id)).where(
-                PrescriptionOcrDrug.record_id == rec.id
+            select(
+                PrescriptionOcrDrug.record_id,
+                func.count(PrescriptionOcrDrug.id).label("cnt"),
             )
+            .where(PrescriptionOcrDrug.record_id.in_(record_ids))
+            .group_by(PrescriptionOcrDrug.record_id)
         )
-        drug_count = count_result.scalar() or 0
-        items_out.append(_record_to_out(rec, drug_count))
+        count_map = {row.record_id: row.cnt for row in count_result.all()}
+    else:
+        count_map = {}
+
+    items_out = [
+        _record_to_out(rec, count_map.get(rec.id, 0))
+        for rec in records
+    ]
 
     return PrescriptionListResponse(items=items_out, total=total)
 
@@ -271,7 +281,7 @@ async def get_prescription_detail(
     pharmacy_id: int,
     record_id: int,
 ) -> PrescriptionOcrDetailResponse:
-    from app.exceptions import NotFoundError
+    from app.exceptions import ServiceError
 
     result = await db.execute(
         select(PrescriptionOcrRecord).where(
@@ -281,7 +291,7 @@ async def get_prescription_detail(
     )
     record = result.scalar_one_or_none()
     if not record:
-        raise NotFoundError("처방전을 찾을 수 없습니다")
+        raise ServiceError("처방전을 찾을 수 없습니다", 404)
 
     drugs_result = await db.execute(
         select(PrescriptionOcrDrug).where(PrescriptionOcrDrug.record_id == record_id)
@@ -308,7 +318,7 @@ async def update_drug(
     frequency: str | None,
     days: int | None,
 ) -> PrescriptionOcrDrugOut:
-    from app.exceptions import NotFoundError, ValidationError
+    from app.exceptions import ServiceError
 
     # 레코드 소유권 확인
     rec_result = await db.execute(
@@ -318,7 +328,7 @@ async def update_drug(
         )
     )
     if not rec_result.scalar_one_or_none():
-        raise NotFoundError("처방전을 찾을 수 없습니다")
+        raise ServiceError("처방전을 찾을 수 없습니다", 404)
 
     result = await db.execute(
         select(PrescriptionOcrDrug).where(
@@ -328,13 +338,13 @@ async def update_drug(
     )
     item = result.scalar_one_or_none()
     if not item:
-        raise NotFoundError("약품 항목을 찾을 수 없습니다")
+        raise ServiceError("약품 항목을 찾을 수 없습니다", 404)
 
     if drug_id is not None:
         drug_result = await db.execute(select(Drug).where(Drug.id == drug_id))
         drug = drug_result.scalar_one_or_none()
         if not drug:
-            raise ValidationError("약품을 찾을 수 없습니다")
+            raise ServiceError("약품을 찾을 수 없습니다", 422)
         item.confirmed_drug_id = drug_id
         item.matched_drug_name = drug.name
         item.is_narcotic = drug.category == "NARCOTIC"
@@ -361,7 +371,7 @@ async def confirm_prescription(
     user: User,
 ) -> PrescriptionConfirmResponse:
     """확인 완료 → 상태만 CONFIRMED 변경 (재고 반영 없음)."""
-    from app.exceptions import NotFoundError, ValidationError
+    from app.exceptions import ServiceError
 
     result = await db.execute(
         select(PrescriptionOcrRecord).where(
@@ -371,11 +381,11 @@ async def confirm_prescription(
     )
     record = result.scalar_one_or_none()
     if not record:
-        raise NotFoundError("처방전을 찾을 수 없습니다")
+        raise ServiceError("처방전을 찾을 수 없습니다", 404)
 
     if record.ocr_status not in ("COMPLETED",):
-        raise ValidationError(
-            f"확인 불가 (현재 상태: {record.ocr_status})",
+        raise ServiceError(
+            f"확인 불가 (현재 상태: {record.ocr_status})", 422,
         )
 
     # 모든 약품 확인 여부 체크
@@ -386,8 +396,8 @@ async def confirm_prescription(
 
     unconfirmed = [d for d in drugs if not d.is_confirmed]
     if unconfirmed:
-        raise ValidationError(
-            f"미확인 항목이 {len(unconfirmed)}개 있습니다. 모든 항목을 확인 후 처리하세요.",
+        raise ServiceError(
+            f"미확인 항목이 {len(unconfirmed)}개 있습니다. 모든 항목을 확인 후 처리하세요.", 422,
         )
 
     record.ocr_status = "CONFIRMED"
@@ -405,7 +415,7 @@ async def cancel_prescription(
     pharmacy_id: int,
     record_id: int,
 ) -> None:
-    from app.exceptions import NotFoundError
+    from app.exceptions import ServiceError
 
     result = await db.execute(
         select(PrescriptionOcrRecord).where(
@@ -415,6 +425,6 @@ async def cancel_prescription(
     )
     record = result.scalar_one_or_none()
     if not record:
-        raise NotFoundError("처방전을 찾을 수 없습니다")
+        raise ServiceError("처방전을 찾을 수 없습니다", 404)
 
     record.ocr_status = "CANCELLED"

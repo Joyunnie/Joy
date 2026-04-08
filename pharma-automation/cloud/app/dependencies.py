@@ -13,6 +13,11 @@ from app.models.tables import Pharmacy, User
 _bearer_scheme = HTTPBearer()
 
 
+def decode_jwt_payload(token: str) -> dict:
+    """Decode and return JWT payload. Raises jwt exceptions on failure."""
+    return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+
+
 async def verify_api_key(
     x_api_key: str = Header(...),
     db: AsyncSession = Depends(get_db),
@@ -48,7 +53,7 @@ async def get_current_user(
     """
     token = credentials.credentials
     try:
-        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+        payload = decode_jwt_payload(token)
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
     except jwt.InvalidTokenError:

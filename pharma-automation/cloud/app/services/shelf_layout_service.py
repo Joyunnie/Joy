@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from app.exceptions import NotFoundError, ValidationError
+from app.exceptions import ServiceError
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,7 +38,7 @@ async def create_layout(
     req: ShelfLayoutCreateRequest,
 ) -> ShelfLayoutResponse:
     if req.location_type not in VALID_LOCATION_TYPES:
-        raise ValidationError("location_type must be DISPLAY or STORAGE")
+        raise ServiceError("location_type must be DISPLAY or STORAGE", 422)
 
     position = req.position if req.position in VALID_POSITIONS else "front"
 
@@ -88,7 +88,7 @@ async def update_layout(
     )
     layout = result.scalar_one_or_none()
     if not layout:
-        raise NotFoundError("Shelf layout not found")
+        raise ServiceError("Shelf layout not found", 404)
 
     old_rows, old_cols = layout.rows, layout.cols
     layout.name = req.name
@@ -120,7 +120,7 @@ async def delete_layout(
     )
     layout = result.scalar_one_or_none()
     if not layout:
-        raise NotFoundError("Shelf layout not found")
+        raise ServiceError("Shelf layout not found", 404)
 
     # P26: 삭제 전 해당 layout_id를 참조하는 otc_inventory 위치 null로 초기화
     prefix = f"{layout_id}:"
@@ -161,11 +161,11 @@ async def update_cell_drugs(
     )
     layout = result.scalar_one_or_none()
     if not layout:
-        raise NotFoundError("Shelf layout not found")
+        raise ServiceError("Shelf layout not found", 404)
 
     if row < 0 or row >= layout.rows or col < 0 or col >= layout.cols:
-        raise ValidationError(
-            f"Cell ({row},{col}) is out of bounds for {layout.rows}x{layout.cols} grid",
+        raise ServiceError(
+            f"Cell ({row},{col}) is out of bounds for {layout.rows}x{layout.cols} grid", 422,
         )
 
     cell_drugs = dict(layout.cell_drugs or {})

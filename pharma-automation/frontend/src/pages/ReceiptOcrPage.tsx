@@ -5,7 +5,7 @@ import type { ReceiptListResponse, ReceiptOcrRecordOut, ReceiptOcrResponse } fro
 import Pagination from '../components/Pagination.tsx';
 import EmptyState from '../components/EmptyState.tsx';
 import Toast from '../components/Toast.tsx';
-import ReceiptUploadModal from '../components/ReceiptUploadModal.tsx';
+import FileUploadModal from '../components/FileUploadModal.tsx';
 import ReceiptDetailModal from '../components/ReceiptDetailModal.tsx';
 import { useToast } from '../hooks/useToast.ts';
 
@@ -159,7 +159,9 @@ export default function ReceiptOcrPage() {
       )}
 
       {uploadOpen && (
-        <ReceiptUploadModal
+        <FileUploadModal<ReceiptOcrResponse>
+          endpoint="/receipt-ocr/upload"
+          title="영수증 촬영/업로드"
           onClose={() => setUploadOpen(false)}
           onSuccess={handleUploadSuccess}
           onError={(msg) => showToast(msg, 'error')}
