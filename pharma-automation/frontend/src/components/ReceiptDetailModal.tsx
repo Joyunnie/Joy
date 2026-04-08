@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import axios from 'axios';
 import api from '../api/client.ts';
 import type { ConfirmResponse, ReceiptOcrDetailResponse, ReceiptOcrItemOut } from '../types/api.ts';
 import Modal from './Modal.tsx';
@@ -62,8 +63,11 @@ export default function ReceiptDetailModal({ recordId, onClose, onConfirmed, onE
       showToast(`입고 확정: ${data.confirmed_count}건 반영`);
       onConfirmed();
     } catch (err: unknown) {
-      const resp = (err as { response?: { data?: { detail?: string } } }).response;
-      onError(resp?.data?.detail ?? '입고 확정에 실패했습니다');
+      if (axios.isAxiosError(err)) {
+        onError(err.response?.data?.detail ?? '입고 확정에 실패했습니다');
+      } else {
+        onError('입고 확정에 실패했습니다');
+      }
     } finally {
       setConfirming(false);
     }

@@ -9,6 +9,7 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.database import engine
+from app.exceptions import ServiceError
 from app.rate_limit import limiter
 from app.routers import alerts, auth, drugs, inventory, narcotics, otc, predictions, prescription_ocr, receipt_ocr, rpa_commands, shelf_layouts, sync, thresholds, todos
 from app.services.ocr_engine import init_ocr_engine
@@ -38,6 +39,14 @@ async def rate_limit_handler(request, exc):
     return JSONResponse(
         status_code=429,
         content={"detail": "Too many requests. Please try again later."},
+    )
+
+
+@app.exception_handler(ServiceError)
+async def service_error_handler(request, exc: ServiceError):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
     )
 
 

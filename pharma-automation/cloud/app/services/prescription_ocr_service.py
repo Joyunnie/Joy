@@ -72,15 +72,15 @@ async def upload_and_process(
     file: UploadFile,
 ) -> PrescriptionOcrResponse:
     """이미지 업로드 → OCR → 파싱 → 매칭 → 중복감지 → DB 저장."""
-    from fastapi import HTTPException
+    from app.exceptions import ValidationError
 
     # 1. 파일 검증
     if file.content_type not in ALLOWED_TYPES:
-        raise HTTPException(status_code=422, detail=f"지원하지 않는 파일 형식: {file.content_type}")
+        raise ValidationError(f"지원하지 않는 파일 형식: {file.content_type}")
 
     contents = await file.read()
     if len(contents) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=422, detail="파일 크기가 10MB를 초과합니다")
+        raise ValidationError("파일 크기가 10MB를 초과합니다")
 
     # 2. 이미지 저장
     ext = "jpg" if file.content_type == "image/jpeg" else "png"
@@ -271,7 +271,7 @@ async def get_prescription_detail(
     pharmacy_id: int,
     record_id: int,
 ) -> PrescriptionOcrDetailResponse:
-    from fastapi import HTTPException
+    from app.exceptions import NotFoundError
 
     result = await db.execute(
         select(PrescriptionOcrRecord).where(
@@ -281,7 +281,7 @@ async def get_prescription_detail(
     )
     record = result.scalar_one_or_none()
     if not record:
-        raise HTTPException(status_code=404, detail="처방전을 찾을 수 없습니다")
+        raise NotFoundError("처방전을 찾을 수 없습니다")
 
     drugs_result = await db.execute(
         select(PrescriptionOcrDrug).where(PrescriptionOcrDrug.record_id == record_id)
@@ -308,7 +308,7 @@ async def update_drug(
     frequency: str | None,
     days: int | None,
 ) -> PrescriptionOcrDrugOut:
-    from fastapi import HTTPException
+    from app.exceptions import NotFoundError, ValidationError
 
     # 레코드 소유권 확인
     rec_result = await db.execute(
@@ -318,7 +318,7 @@ async def update_drug(
         )
     )
     if not rec_result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="처방전을 찾을 수 없습니다")
+        raise NotFoundError("처방전을 찾을 수 없습니다")
 
     result = await db.execute(
         select(PrescriptionOcrDrug).where(
@@ -328,13 +328,13 @@ async def update_drug(
     )
     item = result.scalar_one_or_none()
     if not item:
-        raise HTTPException(status_code=404, detail="약품 항목을 찾을 수 없습니다")
+        raise NotFoundError("약품 항목을 찾을 수 없습니다")
 
     if drug_id is not None:
         drug_result = await db.execute(select(Drug).where(Drug.id == drug_id))
         drug = drug_result.scalar_one_or_none()
         if not drug:
-            raise HTTPException(status_code=422, detail="약품을 찾을 수 없습니다")
+            raise ValidationError("약품을 찾을 수 없습니다")
         item.confirmed_drug_id = drug_id
         item.matched_drug_name = drug.name
         item.is_narcotic = drug.category == "NARCOTIC"
@@ -361,7 +361,7 @@ async def confirm_prescription(
     user: User,
 ) -> PrescriptionConfirmResponse:
     """확인 완료 → 상태만 CONFIRMED 변경 (재고 반영 없음)."""
-    from fastapi import HTTPException
+    from app.exceptions import NotFoundError, ValidationError
 
     result = await db.execute(
         select(PrescriptionOcrRecord).where(
@@ -371,12 +371,11 @@ async def confirm_prescription(
     )
     record = result.scalar_one_or_none()
     if not record:
-        raise HTTPException(status_code=404, detail="처방전을 찾을 수 없습니다")
+        raise NotFoundError("처방전을 찾을 수 없습니다")
 
     if record.ocr_status not in ("COMPLETED",):
-        raise HTTPException(
-            status_code=422,
-            detail=f"확인 불가 (현재 상태: {record.ocr_status})",
+        raise ValidationError(
+            f"확인 불가 (현재 상태: {record.ocr_status})",
         )
 
     # 모든 약품 확인 여부 체크
@@ -387,9 +386,8 @@ async def confirm_prescription(
 
     unconfirmed = [d for d in drugs if not d.is_confirmed]
     if unconfirmed:
-        raise HTTPException(
-            status_code=422,
-            detail=f"미확인 항목이 {len(unconfirmed)}개 있습니다. 모든 항목을 확인 후 처리하세요.",
+        raise ValidationError(
+            f"미확인 항목이 {len(unconfirmed)}개 있습니다. 모든 항목을 확인 후 처리하세요.",
         )
 
     record.ocr_status = "CONFIRMED"
@@ -407,7 +405,7 @@ async def cancel_prescription(
     pharmacy_id: int,
     record_id: int,
 ) -> None:
-    from fastapi import HTTPException
+    from app.exceptions import NotFoundError
 
     result = await db.execute(
         select(PrescriptionOcrRecord).where(
@@ -417,6 +415,6 @@ async def cancel_prescription(
     )
     record = result.scalar_one_or_none()
     if not record:
-        raise HTTPException(status_code=404, detail="처방전을 찾을 수 없습니다")
+        raise NotFoundError("처방전을 찾을 수 없습니다")
 
     record.ocr_status = "CANCELLED"

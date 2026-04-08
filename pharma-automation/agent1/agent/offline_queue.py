@@ -91,3 +91,16 @@ class OfflineQueue:
     def pending_count(self) -> int:
         cursor = self.conn.execute("SELECT COUNT(*) FROM queue")
         return cursor.fetchone()[0]
+
+    def close(self):
+        """Close SQLite connection."""
+        if self.conn:
+            self.conn.close()
+            self.conn = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False

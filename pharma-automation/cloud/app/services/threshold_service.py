@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fastapi import HTTPException, status
+from app.exceptions import DuplicateEntryError, NotFoundError
 from sqlalchemy import and_, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,9 +41,7 @@ async def create_threshold(
     drug_result = await db.execute(select(Drug).where(Drug.id == req.drug_id))
     drug = drug_result.scalar_one_or_none()
     if not drug:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Drug not found"
-        )
+        raise NotFoundError("Drug not found")
 
     th = DrugThreshold(
         pharmacy_id=pharmacy_id,
@@ -56,10 +54,7 @@ async def create_threshold(
         await db.flush()
     except IntegrityError:
         await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Threshold already exists for this drug",
-        )
+        raise DuplicateEntryError("Threshold already exists for this drug")
 
     return _build_item_response(th, drug.name, drug.category)
 
@@ -122,10 +117,7 @@ async def update_threshold(
     )
     th = result.scalar_one_or_none()
     if not th:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Threshold not found",
-        )
+        raise NotFoundError("Threshold not found")
 
     th.min_quantity = req.min_quantity
     th.is_active = req.is_active
@@ -157,9 +149,6 @@ async def delete_threshold(
     )
     th = result.scalar_one_or_none()
     if not th:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Threshold not found",
-        )
+        raise NotFoundError("Threshold not found")
 
     await db.delete(th)

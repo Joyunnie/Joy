@@ -1,9 +1,14 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import HTTPException, status
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.exceptions import (
+    DuplicateEntryError,
+    NotFoundError,
+    ValidationError,
+    VersionConflictError,
+)
 from app.models.tables import (
     AlertLog,
     Drug,
@@ -128,9 +133,7 @@ async def create_otc_item(
     drug_result = await db.execute(select(Drug).where(Drug.id == req.drug_id))
     drug = drug_result.scalar_one_or_none()
     if not drug:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Drug not found"
-        )
+        raise NotFoundError("Drug not found")
 
     # 중복 확인
     dup_result = await db.execute(
@@ -142,10 +145,7 @@ async def create_otc_item(
         )
     )
     if dup_result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="OTC inventory item already exists for this drug",
-        )
+        raise DuplicateEntryError("OTC inventory item already exists for this drug")
 
     now = datetime.now(timezone.utc)
     inv = OtcInventory(
@@ -269,10 +269,7 @@ async def get_otc_item(
     )
     inv = result.scalar_one_or_none()
     if not inv:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="OTC inventory item not found",
-        )
+        raise NotFoundError("OTC inventory item not found")
 
     drug_name, min_qty = await _get_drug_and_threshold(
         db, pharmacy_id, inv.drug_id
@@ -297,17 +294,11 @@ async def update_otc_item(
     )
     inv = result.scalar_one_or_none()
     if not inv:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="OTC inventory item not found",
-        )
+        raise NotFoundError("OTC inventory item not found")
 
     # Optimistic locking
     if inv.version != req.version:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Data has been modified by another user",
-        )
+        raise VersionConflictError("Data has been modified by another user")
 
     now = datetime.now(timezone.utc)
     # PUT = 전체 덮어쓰기
@@ -342,10 +333,7 @@ async def delete_otc_item(
     )
     inv = result.scalar_one_or_none()
     if not inv:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="OTC inventory item not found",
-        )
+        raise NotFoundError("OTC inventory item not found")
 
     # P16: audit log 기록
     audit = InventoryAuditLog(
@@ -382,25 +370,18 @@ async def batch_update_locations(
     )
     layout = layout_result.scalar_one_or_none()
     if not layout:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Shelf layout not found",
-        )
+        raise NotFoundError("Shelf layout not found")
 
     # 범위 검증 + 중복 칸 검증
     seen_positions: set[tuple[int, int]] = set()
     for a in req.assignments:
         if a.row >= layout.rows or a.col >= layout.cols:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Position ({a.row},{a.col}) is out of bounds for {layout.rows}x{layout.cols} layout",
+            raise ValidationError(
+                f"Position ({a.row},{a.col}) is out of bounds for {layout.rows}x{layout.cols} layout"
             )
         pos = (a.row, a.col)
         if pos in seen_positions:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"Duplicate position ({a.row},{a.col})",
-            )
+            raise ValidationError(f"Duplicate position ({a.row},{a.col})")
         seen_positions.add(pos)
 
     loc_field_key = (
@@ -419,10 +400,7 @@ async def batch_update_locations(
         )
         inv = inv_result.scalar_one_or_none()
         if not inv:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"OTC inventory item {a.item_id} not found",
-            )
+            raise NotFoundError(f"OTC inventory item {a.item_id} not found")
 
         loc_value = f"{req.layout_id}:{a.row},{a.col}"
         setattr(inv, loc_field_key, loc_value)
@@ -446,10 +424,7 @@ async def batch_remove_locations(
     )
     layout = layout_result.scalar_one_or_none()
     if not layout:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Shelf layout not found",
-        )
+        raise NotFoundError("Shelf layout not found")
 
     loc_field_key = (
         "display_location" if layout.location_type == "DISPLAY" else "storage_location"
@@ -466,8 +441,5 @@ async def batch_remove_locations(
         )
         inv = inv_result.scalar_one_or_none()
         if not inv:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"OTC inventory item {item_id} not found",
-            )
+            raise NotFoundError(f"OTC inventory item {item_id} not found")
         setattr(inv, loc_field_key, None)

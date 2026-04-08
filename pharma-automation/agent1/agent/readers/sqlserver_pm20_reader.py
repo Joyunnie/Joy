@@ -226,6 +226,13 @@ class SqlServerPM20Reader(PM20Reader):
         if self._conn:
             try:
                 self._conn.close()
-            except Exception:
-                pass
+            except pymssql.Error:
+                logger.debug("Error closing SQL Server connection (ignored)")
             self._conn = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False

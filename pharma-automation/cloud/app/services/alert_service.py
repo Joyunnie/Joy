@@ -53,15 +53,15 @@ async def get_alerts(
 
 
 async def mark_alert_read(db: AsyncSession, alert_id: int, pharmacy_id: int) -> AlertReadResponse:
-    from fastapi import HTTPException
+    from app.exceptions import ForbiddenError, NotFoundError
 
     result = await db.execute(select(AlertLog).where(AlertLog.id == alert_id))
     alert = result.scalar_one_or_none()
     if not alert:
-        raise HTTPException(status_code=404, detail="Alert not found")
+        raise NotFoundError("Alert not found")
 
     if alert.pharmacy_id != pharmacy_id:
-        raise HTTPException(status_code=403, detail="Access denied")
+        raise ForbiddenError("Access denied")
 
     now = datetime.now(timezone.utc)
     alert.read_at = now

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fastapi import HTTPException, status
+from app.exceptions import NotFoundError, ValidationError
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,10 +38,7 @@ async def create_layout(
     req: ShelfLayoutCreateRequest,
 ) -> ShelfLayoutResponse:
     if req.location_type not in VALID_LOCATION_TYPES:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="location_type must be DISPLAY or STORAGE",
-        )
+        raise ValidationError("location_type must be DISPLAY or STORAGE")
 
     position = req.position if req.position in VALID_POSITIONS else "front"
 
@@ -91,10 +88,7 @@ async def update_layout(
     )
     layout = result.scalar_one_or_none()
     if not layout:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Shelf layout not found",
-        )
+        raise NotFoundError("Shelf layout not found")
 
     old_rows, old_cols = layout.rows, layout.cols
     layout.name = req.name
@@ -126,10 +120,7 @@ async def delete_layout(
     )
     layout = result.scalar_one_or_none()
     if not layout:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Shelf layout not found",
-        )
+        raise NotFoundError("Shelf layout not found")
 
     # P26: 삭제 전 해당 layout_id를 참조하는 otc_inventory 위치 null로 초기화
     prefix = f"{layout_id}:"
@@ -170,15 +161,11 @@ async def update_cell_drugs(
     )
     layout = result.scalar_one_or_none()
     if not layout:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Shelf layout not found",
-        )
+        raise NotFoundError("Shelf layout not found")
 
     if row < 0 or row >= layout.rows or col < 0 or col >= layout.cols:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Cell ({row},{col}) is out of bounds for {layout.rows}x{layout.cols} grid",
+        raise ValidationError(
+            f"Cell ({row},{col}) is out of bounds for {layout.rows}x{layout.cols} grid",
         )
 
     cell_drugs = dict(layout.cell_drugs or {})

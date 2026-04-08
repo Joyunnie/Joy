@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import axios from 'axios';
 import api from '../api/client.ts';
 import type { DrugListResponse, DrugOut, PrescriptionConfirmResponse, PrescriptionOcrDetailResponse, PrescriptionOcrDrugOut, RpaCommandOut } from '../types/api.ts';
 import Modal from './Modal.tsx';
@@ -61,8 +62,11 @@ export default function PrescriptionDetailModal({ recordId, onClose, onConfirmed
       showToast(`확인 완료: ${data.confirmed_count}건`);
       onConfirmed();
     } catch (err: unknown) {
-      const resp = (err as { response?: { data?: { detail?: string } } }).response;
-      onError(resp?.data?.detail ?? '확인에 실패했습니다');
+      if (axios.isAxiosError(err)) {
+        onError(err.response?.data?.detail ?? '확인에 실패했습니다');
+      } else {
+        onError('확인에 실패했습니다');
+      }
     } finally {
       setConfirming(false);
     }

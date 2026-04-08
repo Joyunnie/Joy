@@ -76,13 +76,13 @@ async def upload_and_process(
 
     # 1. 파일 검증
     if file.content_type not in ALLOWED_TYPES:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=422, detail=f"지원하지 않는 파일 형식: {file.content_type}")
+        from app.exceptions import ValidationError
+        raise ValidationError(f"지원하지 않는 파일 형식: {file.content_type}")
 
     contents = await file.read()
     if len(contents) > MAX_FILE_SIZE:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=422, detail="파일 크기가 10MB를 초과합니다")
+        from app.exceptions import ValidationError
+        raise ValidationError("파일 크기가 10MB를 초과합니다")
 
     # 2. 이미지 저장
     ext = "jpg" if file.content_type == "image/jpeg" else "png"
@@ -287,14 +287,25 @@ async def list_receipts(
     )
     records = result.scalars().all()
 
-    # 각 레코드의 item 수 가져오기
-    items_out = []
-    for rec in records:
+    # 단일 쿼리로 모든 레코드의 item 수 가져오기 (N+1 → 2 쿼리)
+    record_ids = [rec.id for rec in records]
+    if record_ids:
         count_result = await db.execute(
-            select(func.count(ReceiptOcrItem.id)).where(ReceiptOcrItem.record_id == rec.id)
+            select(
+                ReceiptOcrItem.record_id,
+                func.count(ReceiptOcrItem.id).label("cnt"),
+            )
+            .where(ReceiptOcrItem.record_id.in_(record_ids))
+            .group_by(ReceiptOcrItem.record_id)
         )
-        item_count = count_result.scalar() or 0
-        items_out.append(_record_to_out(rec, item_count))
+        count_map = {row.record_id: row.cnt for row in count_result.all()}
+    else:
+        count_map = {}
+
+    items_out = [
+        _record_to_out(rec, count_map.get(rec.id, 0))
+        for rec in records
+    ]
 
     return ReceiptListResponse(items=items_out, total=total)
 
@@ -315,8 +326,8 @@ async def get_receipt_detail(
     )
     record = result.scalar_one_or_none()
     if not record:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="영수증을 찾을 수 없습니다")
+        from app.exceptions import NotFoundError
+        raise NotFoundError("영수증을 찾을 수 없습니다")
 
     items_result = await db.execute(
         select(ReceiptOcrItem).where(ReceiptOcrItem.record_id == record_id)
@@ -350,8 +361,8 @@ async def update_item(
         )
     )
     if not rec_result.scalar_one_or_none():
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="영수증을 찾을 수 없습니다")
+        from app.exceptions import NotFoundError
+        raise NotFoundError("영수증을 찾을 수 없습니다")
 
     result = await db.execute(
         select(ReceiptOcrItem).where(
@@ -361,16 +372,16 @@ async def update_item(
     )
     item = result.scalar_one_or_none()
     if not item:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="항목을 찾을 수 없습니다")
+        from app.exceptions import NotFoundError
+        raise NotFoundError("항목을 찾을 수 없습니다")
 
     if drug_id is not None:
         # drug 존재 확인
         drug_result = await db.execute(select(Drug).where(Drug.id == drug_id))
         drug = drug_result.scalar_one_or_none()
         if not drug:
-            from fastapi import HTTPException
-            raise HTTPException(status_code=422, detail="약품을 찾을 수 없습니다")
+            from app.exceptions import ValidationError
+            raise ValidationError("약품을 찾을 수 없습니다")
         item.confirmed_drug_id = drug_id
         item.matched_drug_name = drug.name
 
@@ -407,12 +418,12 @@ async def confirm_intake(
     )
     record = result.scalar_one_or_none()
     if not record:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="영수증을 찾을 수 없습니다")
+        from app.exceptions import NotFoundError
+        raise NotFoundError("영수증을 찾을 수 없습니다")
 
     if record.intake_status != "PENDING":
-        from fastapi import HTTPException
-        raise HTTPException(status_code=422, detail=f"입고 확정 불가 (현재 상태: {record.intake_status})")
+        from app.exceptions import ValidationError
+        raise ValidationError(f"입고 확정 불가 (현재 상태: {record.intake_status})")
 
     # 모든 아이템 확인 여부 체크
     items_result = await db.execute(
@@ -422,10 +433,9 @@ async def confirm_intake(
 
     unconfirmed = [i for i in items if not i.is_confirmed]
     if unconfirmed:
-        from fastapi import HTTPException
-        raise HTTPException(
-            status_code=422,
-            detail=f"미확인 항목이 {len(unconfirmed)}개 있습니다. 모든 항목을 확인 후 입고 확정하세요.",
+        from app.exceptions import ValidationError
+        raise ValidationError(
+            f"미확인 항목이 {len(unconfirmed)}개 있습니다. 모든 항목을 확인 후 입고 확정하세요.",
         )
 
     confirmed_count = 0
@@ -536,7 +546,7 @@ async def cancel_receipt(
     )
     record = result.scalar_one_or_none()
     if not record:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="영수증을 찾을 수 없습니다")
+        from app.exceptions import NotFoundError
+        raise NotFoundError("영수증을 찾을 수 없습니다")
 
     record.intake_status = "CANCELLED"

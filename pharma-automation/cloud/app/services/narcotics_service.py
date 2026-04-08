@@ -1,6 +1,12 @@
 from datetime import datetime, timedelta, timezone
 
-from fastapi import HTTPException, status
+from app.exceptions import (
+    BadRequestError,
+    DuplicateEntryError,
+    InsufficientStockError,
+    NotFoundError,
+    VersionConflictError,
+)
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -139,10 +145,7 @@ async def _get_active_inventory(
     )
     inv = result.scalar_one_or_none()
     if not inv:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Narcotics inventory item not found",
-        )
+        raise NotFoundError("Narcotics inventory item not found")
     return inv
 
 
@@ -206,14 +209,9 @@ async def create_narcotics_item(
     drug_result = await db.execute(select(Drug).where(Drug.id == req.drug_id))
     drug = drug_result.scalar_one_or_none()
     if not drug:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Drug not found"
-        )
+        raise NotFoundError("Drug not found")
     if drug.category != "NARCOTIC":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Drug is not a NARCOTIC category",
-        )
+        raise BadRequestError("Drug is not a NARCOTIC category")
 
     # 중복 확인 (pharmacy_id, drug_id, lot_number) — lock row for reactivation
     dup_result = await db.execute(
@@ -233,10 +231,7 @@ async def create_narcotics_item(
 
     if existing:
         if existing.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="Narcotics inventory item already exists for this drug and lot",
-            )
+            raise DuplicateEntryError("Narcotics inventory item already exists for this drug and lot")
         # Reactivate soft-deleted record
         existing.is_active = True
         existing.current_quantity += req.quantity
@@ -350,10 +345,7 @@ async def get_narcotics_item(
     )
     inv = result.scalar_one_or_none()
     if not inv:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Narcotics inventory item not found",
-        )
+        raise NotFoundError("Narcotics inventory item not found")
 
     drug_name, min_qty = await _get_drug_and_threshold(
         db, pharmacy_id, inv.drug_id
@@ -371,10 +363,7 @@ async def update_narcotics_item(
     inv = await _get_active_inventory(db, pharmacy_id, item_id)
 
     if inv.version != req.version:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Data has been modified by another user",
-        )
+        raise VersionConflictError("Data has been modified by another user")
 
     now = datetime.now(timezone.utc)
     old_quantity = inv.current_quantity
@@ -429,10 +418,7 @@ async def delete_narcotics_item(
     inv = await _get_active_inventory(db, pharmacy_id, item_id)
 
     if inv.version != req.version:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Data has been modified by another user",
-        )
+        raise VersionConflictError("Data has been modified by another user")
 
     old_quantity = inv.current_quantity
 
@@ -471,16 +457,10 @@ async def dispense_narcotics(
     inv = await _get_active_inventory(db, pharmacy_id, item_id)
 
     if inv.version != req.version:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Data has been modified by another user",
-        )
+        raise VersionConflictError("Data has been modified by another user")
 
     if inv.current_quantity < req.quantity:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Insufficient stock",
-        )
+        raise InsufficientStockError("Insufficient stock")
 
     now = datetime.now(timezone.utc)
     inv.current_quantity -= req.quantity
@@ -523,16 +503,10 @@ async def return_narcotics(
     inv = await _get_active_inventory(db, pharmacy_id, item_id)
 
     if inv.version != req.version:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Data has been modified by another user",
-        )
+        raise VersionConflictError("Data has been modified by another user")
 
     if inv.current_quantity < req.quantity:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Insufficient stock",
-        )
+        raise InsufficientStockError("Insufficient stock")
 
     now = datetime.now(timezone.utc)
     inv.current_quantity -= req.quantity
@@ -575,10 +549,7 @@ async def list_transactions(
         )
     )
     if not inv_result.scalar_one_or_none():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Narcotics inventory item not found",
-        )
+        raise NotFoundError("Narcotics inventory item not found")
 
     base = select(NarcoticsTransaction).where(
         and_(

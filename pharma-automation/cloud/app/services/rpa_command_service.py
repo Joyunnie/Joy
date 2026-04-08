@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fastapi import HTTPException, status
+from app.exceptions import NotFoundError, ValidationError
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,7 +21,7 @@ async def create_command(
     payload: dict,
 ) -> RpaCommand:
     if command_type not in ("NARCOTICS_INPUT", "PRESCRIPTION_INPUT"):
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Invalid command_type")
+        raise ValidationError("Invalid command_type")
 
     cmd = RpaCommand(
         pharmacy_id=pharmacy_id,
@@ -67,12 +67,11 @@ async def update_command_status(
     )
     cmd = result.scalar_one_or_none()
     if not cmd:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Command not found")
+        raise NotFoundError("Command not found")
 
     allowed = _VALID_TRANSITIONS.get(cmd.status, set())
     if new_status not in allowed:
-        raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+        raise ValidationError(
             f"Cannot transition from {cmd.status} to {new_status}",
         )
 

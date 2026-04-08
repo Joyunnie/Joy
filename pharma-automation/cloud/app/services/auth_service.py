@@ -4,11 +4,16 @@ from datetime import datetime, timedelta, timezone
 
 import bcrypt
 import jwt
-from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.exceptions import (
+    AuthenticationError,
+    DuplicateEntryError,
+    ForbiddenError,
+    NotFoundError,
+)
 from app.models.tables import Pharmacy, RefreshToken, User
 from app.schemas.auth import (
     AccessTokenResponse,
@@ -60,18 +65,18 @@ async def register_user(db: AsyncSession, pharmacy_id: int, invite_code: str,
     result = await db.execute(select(Pharmacy).where(Pharmacy.id == pharmacy_id))
     pharmacy = result.scalar_one_or_none()
     if pharmacy is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pharmacy not found")
+        raise NotFoundError("Pharmacy not found")
 
     # 2. invite_code 검증
     if pharmacy.invite_code != invite_code:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid invite code")
+        raise ForbiddenError("Invalid invite code")
 
     # 3. 중복 검사
     existing = await db.execute(
         select(User).where(User.pharmacy_id == pharmacy_id, User.username == username)
     )
     if existing.scalar_one_or_none() is not None:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already exists")
+        raise DuplicateEntryError("Username already exists")
 
     # 4. 사용자 생성
     user = User(
@@ -93,10 +98,10 @@ async def login(db: AsyncSession, pharmacy_id: int, username: str, password: str
     user = result.scalar_one_or_none()
 
     if user is None or not verify_password(password, user.password_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        raise AuthenticationError("Invalid credentials")
 
     if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User is inactive")
+        raise AuthenticationError("User is inactive")
 
     access_token = create_access_token(user.id, user.pharmacy_id, user.role)
     refresh_token = await create_refresh_token(db, user.id)
@@ -112,16 +117,16 @@ async def refresh_access_token(db: AsyncSession, refresh_token: str) -> AccessTo
     rt = result.scalar_one_or_none()
 
     if rt is None or rt.is_revoked:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or revoked refresh token")
+        raise AuthenticationError("Invalid or revoked refresh token")
 
     if rt.expires_at < datetime.now(timezone.utc):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expired")
+        raise AuthenticationError("Refresh token expired")
 
     # user 조회 + is_active 확인
     user_result = await db.execute(select(User).where(User.id == rt.user_id))
     user = user_result.scalar_one_or_none()
     if user is None or not user.is_active:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
+        raise AuthenticationError("User not found or inactive")
 
     access_token = create_access_token(user.id, user.pharmacy_id, user.role)
     return AccessTokenResponse(access_token=access_token)

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import api from '../api/client.ts';
 import type {
   DrugListResponse,
@@ -258,12 +259,9 @@ function ThresholdAddModal({
       await api.post('/thresholds', body);
       onSuccess();
     } catch (err: unknown) {
-      if (err && typeof err === 'object' && 'response' in err) {
-        const resp = (err as { response?: { status?: number } }).response;
-        if (resp?.status === 409) {
-          onError('이 약품의 최소수량이 이미 설정되어 있습니다');
-          return;
-        }
+      if (axios.isAxiosError(err) && err.response?.status === 409) {
+        onError('이 약품의 최소수량이 이미 설정되어 있습니다');
+        return;
       }
       onError('추가에 실패했습니다');
     } finally {

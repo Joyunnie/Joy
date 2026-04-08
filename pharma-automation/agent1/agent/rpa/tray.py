@@ -71,14 +71,14 @@ class TrayManager:
                     current_keys.add(key)
                     if self._check_hotkey(current_keys):
                         self._on_toggle()
-                except Exception:
-                    pass
+                except (AttributeError, TypeError, OSError) as e:
+                    logger.debug("Hotkey press error: %s", e)
 
             def on_release(key):
                 try:
                     current_keys.discard(key)
-                except Exception:
-                    pass
+                except (AttributeError, TypeError) as e:
+                    logger.debug("Hotkey release error: %s", e)
 
             with keyboard.Listener(on_press=on_press, on_release=on_release) as listener:
                 self._hotkey_listener = listener
@@ -116,8 +116,8 @@ class TrayManager:
                 color = (0, 128, 0) if new_state else (128, 0, 0)
                 self._icon.icon = Image.new("RGB", (16, 16), color=color)
                 self._icon.notify(f"RPA {state_str}", "PharmRPA")
-            except Exception:
-                pass
+            except (ImportError, OSError) as e:
+                logger.debug("Icon update failed: %s", e)
 
     def _on_quit(self, *_args):
         """트레이 종료."""
