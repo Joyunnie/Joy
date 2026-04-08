@@ -21,10 +21,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from app.models.tables import Base
 target_metadata = Base.metadata
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
+# Override sqlalchemy.url from PHARMA_DATABASE_URL env var.
+# Alembic uses sync psycopg2, so replace the asyncpg driver prefix.
+_db_url = os.environ.get("PHARMA_DATABASE_URL", "")
+if _db_url:
+    _db_url = _db_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+    config.set_main_option("sqlalchemy.url", _db_url)
 
 
 def run_migrations_offline() -> None:
