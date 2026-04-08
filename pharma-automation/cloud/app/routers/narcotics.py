@@ -35,7 +35,7 @@ async def list_narcotics_items(
     low_stock_only: bool = Query(False),
     search: str | None = Query(None),
     limit: int = Query(50, le=200),
-    offset: int = Query(0),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     return await narcotics_service.list_narcotics_items(
@@ -108,7 +108,7 @@ async def list_transactions(
     user: User = Depends(get_current_user),
     transaction_type: str | None = Query(None),
     limit: int = Query(50, le=200),
-    offset: int = Query(0),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     return await narcotics_service.list_transactions(

@@ -2,9 +2,14 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from sqlalchemy import text
 
 from app.config import settings
 from app.database import engine
+from app.rate_limit import limiter
 from app.routers import alerts, auth, drugs, inventory, narcotics, otc, predictions, prescription_ocr, receipt_ocr, rpa_commands, shelf_layouts, sync, thresholds, todos
 from app.services.ocr_engine import init_ocr_engine
 
@@ -23,12 +28,31 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# --- Rate limiting ---
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request, exc):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Too many requests. Please try again later."},
+    )
+
+
+# --- CORS ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "http://220.71.178.7",
+        "http://220.71.178.7:80",
+        "http://localhost:3000",
+        "http://localhost:5173",
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-API-Key"],
 )
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
@@ -49,4 +73,12 @@ app.include_router(todos.router, prefix="/api/v1/todos", tags=["todos"])
 
 @app.get("/health")
 async def health():
-    return {"status": "ok"}
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        return {"status": "ok"}
+    except Exception:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "error", "detail": "Database unreachable"},
+        )

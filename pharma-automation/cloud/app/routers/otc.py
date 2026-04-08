@@ -34,7 +34,7 @@ async def list_otc_items(
     layout_id: int | None = Query(None),
     unplaced_for_layout: int | None = Query(None),
     limit: int = Query(50, le=200),
-    offset: int = Query(0),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     return await otc_service.list_otc_items(

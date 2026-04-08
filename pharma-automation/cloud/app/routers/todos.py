@@ -37,7 +37,7 @@ async def list_todos(
     filter: TodoFilter = Query("all"),
     sort: str = Query("due_date"),
     limit: int = Query(50, le=200),
-    offset: int = Query(0),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     base = select(Todo).where(Todo.pharmacy_id == user.pharmacy_id)

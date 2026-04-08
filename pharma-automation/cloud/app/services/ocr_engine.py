@@ -28,9 +28,10 @@ class GoogleVisionOcrEngine(OcrEngine):
                 "features": [{"type": "TEXT_DETECTION"}],
             }]
         }
-        url = f"https://vision.googleapis.com/v1/images:annotate?key={self._api_key}"
+        url = "https://vision.googleapis.com/v1/images:annotate"
+        headers = {"x-goog-api-key": self._api_key}
         async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.post(url, json=payload)
+            resp = await client.post(url, json=payload, headers=headers)
             resp.raise_for_status()
 
         data = resp.json()

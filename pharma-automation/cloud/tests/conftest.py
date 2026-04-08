@@ -1,5 +1,10 @@
 import hashlib
+import os
 from collections.abc import AsyncGenerator
+
+# Must set env vars BEFORE importing app modules (Settings loaded at import time)
+os.environ.setdefault("PHARMA_JWT_SECRET_KEY", "test-jwt-secret-key-for-testing-only")
+os.environ.setdefault("PHARMA_DATABASE_URL", "postgresql+asyncpg://pharma_user:7357fb737e9a89d124fa450f72e6b73d@localhost:5432/pharma")
 
 import bcrypt
 import pytest_asyncio
@@ -31,7 +36,7 @@ from app.models.tables import (
     VisitDrug,
 )
 
-TEST_DATABASE_URL = "postgresql+asyncpg://pharma_user:pharma_pass@localhost:5432/pharma"
+TEST_DATABASE_URL = "postgresql+asyncpg://pharma_user:7357fb737e9a89d124fa450f72e6b73d@localhost:5432/pharma"
 TEST_API_KEY = "test-api-key-12345"
 TEST_API_KEY_HASH = hashlib.sha256(TEST_API_KEY.encode()).hexdigest()
 TEST_INVITE_CODE = "TEST-INVITE"
@@ -55,6 +60,9 @@ async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 app.dependency_overrides[get_db] = override_get_db
+
+# Disable rate limiter for existing tests (test_security.py re-enables it)
+app.state.limiter.enabled = False
 
 _seed_cache: dict | None = None
 

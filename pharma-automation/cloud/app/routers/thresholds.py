@@ -30,7 +30,7 @@ async def list_thresholds(
     search: str | None = Query(None),
     category: str | None = Query(None),
     limit: int = Query(50, le=200),
-    offset: int = Query(0),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     return await threshold_service.list_thresholds(

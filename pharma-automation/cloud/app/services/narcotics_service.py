@@ -127,13 +127,15 @@ async def _get_active_inventory(
 ) -> NarcoticsInventory:
     """Fetch inventory record. 404 if not found or is_active=false."""
     result = await db.execute(
-        select(NarcoticsInventory).where(
+        select(NarcoticsInventory)
+        .where(
             and_(
                 NarcoticsInventory.id == item_id,
                 NarcoticsInventory.pharmacy_id == pharmacy_id,
                 NarcoticsInventory.is_active == True,  # noqa: E712
             )
         )
+        .with_for_update()
     )
     inv = result.scalar_one_or_none()
     if not inv:
@@ -213,15 +215,17 @@ async def create_narcotics_item(
             detail="Drug is not a NARCOTIC category",
         )
 
-    # 중복 확인 (pharmacy_id, drug_id, lot_number)
+    # 중복 확인 (pharmacy_id, drug_id, lot_number) — lock row for reactivation
     dup_result = await db.execute(
-        select(NarcoticsInventory).where(
+        select(NarcoticsInventory)
+        .where(
             and_(
                 NarcoticsInventory.pharmacy_id == pharmacy_id,
                 NarcoticsInventory.drug_id == req.drug_id,
                 NarcoticsInventory.lot_number == req.lot_number,
             )
         )
+        .with_for_update()
     )
     existing = dup_result.scalar_one_or_none()
 

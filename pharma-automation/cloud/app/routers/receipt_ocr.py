@@ -3,10 +3,12 @@ from datetime import date
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.requests import Request
 
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.tables import User
+from app.rate_limit import get_pharmacy_key, limiter
 from app.schemas.receipt_ocr import (
     ConfirmResponse,
     ReceiptItemUpdateRequest,
@@ -31,7 +33,9 @@ def _check_ocr_available():
 
 
 @router.post("/upload", response_model=ReceiptOcrResponse, status_code=201)
+@limiter.limit("10/minute", key_func=get_pharmacy_key)
 async def upload_receipt(
+    request: Request,
     file: UploadFile = File(...),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

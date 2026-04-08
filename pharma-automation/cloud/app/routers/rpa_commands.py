@@ -72,7 +72,7 @@ async def update_command_status(
 async def list_commands(
     status: str | None = Query(None),
     limit: int = Query(50, le=200),
-    offset: int = Query(0),
+    offset: int = Query(0, ge=0),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):

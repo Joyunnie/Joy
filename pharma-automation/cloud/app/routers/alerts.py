@@ -16,7 +16,7 @@ async def get_alerts(
     alert_type: str | None = Query(None),
     unread_only: bool = Query(False),
     limit: int = Query(50, le=200),
-    offset: int = Query(0),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     return await alert_service.get_alerts(
