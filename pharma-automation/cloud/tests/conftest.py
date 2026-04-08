@@ -4,7 +4,11 @@ from collections.abc import AsyncGenerator
 
 # Must set env vars BEFORE importing app modules (Settings loaded at import time)
 os.environ.setdefault("PHARMA_JWT_SECRET_KEY", "test-jwt-secret-key-for-testing-only")
-os.environ.setdefault("PHARMA_DATABASE_URL", "postgresql+asyncpg://pharma_user:3d90bc9a70efc56cee50c2434c9c2007@localhost:5432/pharma")
+_TEST_DB_URL = os.environ.get(
+    "PHARMA_TEST_DATABASE_URL",
+    "postgresql+asyncpg://pharma_user:testpass@localhost:5432/pharma",
+)
+os.environ.setdefault("PHARMA_DATABASE_URL", _TEST_DB_URL)
 
 import bcrypt
 import pytest_asyncio
@@ -36,7 +40,7 @@ from app.models.tables import (
     VisitDrug,
 )
 
-TEST_DATABASE_URL = "postgresql+asyncpg://pharma_user:3d90bc9a70efc56cee50c2434c9c2007@localhost:5432/pharma"
+TEST_DATABASE_URL = _TEST_DB_URL
 TEST_API_KEY = "test-api-key-12345"
 TEST_API_KEY_HASH = hashlib.sha256(TEST_API_KEY.encode()).hexdigest()
 TEST_INVITE_CODE = "TEST-INVITE"

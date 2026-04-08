@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.exceptions import ServiceError
 from app.models.tables import AlertLog
 from app.schemas.api import AlertListResponse, AlertOut, AlertReadResponse
 
@@ -53,8 +54,6 @@ async def get_alerts(
 
 
 async def mark_alert_read(db: AsyncSession, alert_id: int, pharmacy_id: int) -> AlertReadResponse:
-    from app.exceptions import ServiceError
-
     result = await db.execute(select(AlertLog).where(AlertLog.id == alert_id))
     alert = result.scalar_one_or_none()
     if not alert:

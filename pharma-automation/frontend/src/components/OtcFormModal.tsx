@@ -4,13 +4,14 @@ import api from '../api/client.ts';
 import type { DrugListResponse, DrugOut, OtcCreateRequest, OtcItemResponse, OtcUpdateRequest } from '../types/api.ts';
 import Modal from './Modal.tsx';
 
-interface Props {
-  mode: 'add' | 'edit';
-  item?: OtcItemResponse;
+type Props = {
   onClose: () => void;
   onSuccess: () => void;
   onError: (msg: string) => void;
-}
+} & (
+  | { mode: 'add'; item?: never }
+  | { mode: 'edit'; item: OtcItemResponse }
+);
 
 export default function OtcFormModal({ mode, item, onClose, onSuccess, onError }: Props) {
   const [drugSearch, setDrugSearch] = useState('');
@@ -52,9 +53,9 @@ export default function OtcFormModal({ mode, item, onClose, onSuccess, onError }
           current_quantity: quantity,
           display_location: displayLoc || null,
           storage_location: storageLoc || null,
-          version: item!.version,
+          version: item.version,
         };
-        await api.put(`/otc-inventory/${item!.id}`, body);
+        await api.put(`/otc-inventory/${item.id}`, body);
       }
       onSuccess();
     } catch (err: unknown) {
@@ -113,7 +114,7 @@ export default function OtcFormModal({ mode, item, onClose, onSuccess, onError }
           </div>
         ) : (
           <div className="bg-gray-50 rounded-lg p-2 text-sm font-medium text-gray-700">
-            {item?.drug_name ?? `Drug #${item?.drug_id}`}
+            {item.drug_name ?? `Drug #${item.drug_id}`}
           </div>
         )}
         <div>

@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
+from app.exceptions import ServiceError
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -114,7 +115,7 @@ def _maybe_create_low_stock_alert(
     low_stock_alerts.append(
         LowStockAlertOut(
             drug_name=drug_name or "",
-            current_quantity=int(current_quantity) if isinstance(current_quantity, float) else current_quantity,
+            current_quantity=round(current_quantity) if isinstance(current_quantity, float) else current_quantity,
             min_quantity=threshold.min_quantity,
         )
     )
@@ -219,7 +220,6 @@ async def sync_cassette_mapping(
     # Validate all drugs exist upfront
     for mapping in req.mappings:
         if mapping.drug_standard_code not in drug_map:
-            from app.exceptions import ServiceError
             raise ServiceError(f"Drug not found: {mapping.drug_standard_code}", 422)
 
     # 2. Prefetch existing inventories

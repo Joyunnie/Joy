@@ -1,7 +1,6 @@
 """영수증 OCR 서비스: 업로드 → OCR → 매칭 → 중복감지 → 입고확정."""
 import logging
 import os
-import shutil
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
@@ -10,6 +9,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.exceptions import ServiceError
 from app.models.tables import (
     Drug,
     DrugStock,
@@ -76,12 +76,10 @@ async def upload_and_process(
 
     # 1. 파일 검증
     if file.content_type not in ALLOWED_TYPES:
-        from app.exceptions import ServiceError
         raise ServiceError(f"지원하지 않는 파일 형식: {file.content_type}", 422)
 
     contents = await file.read()
     if len(contents) > MAX_FILE_SIZE:
-        from app.exceptions import ServiceError
         raise ServiceError("파일 크기가 10MB를 초과합니다", 422)
 
     # 2. 이미지 저장
@@ -326,7 +324,6 @@ async def get_receipt_detail(
     )
     record = result.scalar_one_or_none()
     if not record:
-        from app.exceptions import ServiceError
         raise ServiceError("영수증을 찾을 수 없습니다", 404)
 
     items_result = await db.execute(
@@ -361,7 +358,6 @@ async def update_item(
         )
     )
     if not rec_result.scalar_one_or_none():
-        from app.exceptions import ServiceError
         raise ServiceError("영수증을 찾을 수 없습니다", 404)
 
     result = await db.execute(
@@ -372,7 +368,6 @@ async def update_item(
     )
     item = result.scalar_one_or_none()
     if not item:
-        from app.exceptions import ServiceError
         raise ServiceError("항목을 찾을 수 없습니다", 404)
 
     if drug_id is not None:
@@ -380,7 +375,6 @@ async def update_item(
         drug_result = await db.execute(select(Drug).where(Drug.id == drug_id))
         drug = drug_result.scalar_one_or_none()
         if not drug:
-            from app.exceptions import ServiceError
             raise ServiceError("약품을 찾을 수 없습니다", 422)
         item.confirmed_drug_id = drug_id
         item.matched_drug_name = drug.name
@@ -418,11 +412,9 @@ async def confirm_intake(
     )
     record = result.scalar_one_or_none()
     if not record:
-        from app.exceptions import ServiceError
         raise ServiceError("영수증을 찾을 수 없습니다", 404)
 
     if record.intake_status != "PENDING":
-        from app.exceptions import ServiceError
         raise ServiceError(f"입고 확정 불가 (현재 상태: {record.intake_status})", 422)
 
     # 모든 아이템 확인 여부 체크
@@ -433,7 +425,6 @@ async def confirm_intake(
 
     unconfirmed = [i for i in items if not i.is_confirmed]
     if unconfirmed:
-        from app.exceptions import ServiceError
         raise ServiceError(
             f"미확인 항목이 {len(unconfirmed)}개 있습니다. 모든 항목을 확인 후 입고 확정하세요.", 422,
         )
@@ -546,7 +537,6 @@ async def cancel_receipt(
     )
     record = result.scalar_one_or_none()
     if not record:
-        from app.exceptions import ServiceError
         raise ServiceError("영수증을 찾을 수 없습니다", 404)
 
     record.intake_status = "CANCELLED"

@@ -2,6 +2,7 @@
 import io
 
 import pytest
+import pytest_asyncio
 from httpx import AsyncClient
 
 from app.services.ocr_engine import MockOcrEngine, init_ocr_engine, _engine_instance
@@ -17,7 +18,7 @@ def setup_mock_ocr():
 # --- cleanup ---
 
 
-@pytest.fixture(autouse=True)
+@pytest_asyncio.fixture(autouse=True)
 async def cleanup_receipt_data(seed_data):
     """테스트 전 receipt 데이터 정리."""
     from tests.conftest import seed_session_factory

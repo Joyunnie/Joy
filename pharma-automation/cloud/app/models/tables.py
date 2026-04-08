@@ -205,6 +205,7 @@ class VisitPrediction(Base):
     __table_args__ = (
         Index("idx_predictions_pharmacy_patient", "pharmacy_id", "patient_hash"),
         Index("idx_predictions_date", "predicted_visit_date"),
+        Index("idx_predictions_pharmacy_date", "pharmacy_id", "predicted_visit_date"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -222,6 +223,9 @@ class VisitPrediction(Base):
 # 11. receipt_ocr_records
 class ReceiptOcrRecord(Base):
     __tablename__ = "receipt_ocr_records"
+    __table_args__ = (
+        Index("idx_receipt_ocr_pharmacy_created", "pharmacy_id", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
@@ -244,6 +248,9 @@ class ReceiptOcrRecord(Base):
 # 12. receipt_ocr_items
 class ReceiptOcrItem(Base):
     __tablename__ = "receipt_ocr_items"
+    __table_args__ = (
+        Index("idx_receipt_ocr_items_record", "record_id"),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     record_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("receipt_ocr_records.id", ondelete="CASCADE"))
@@ -265,6 +272,12 @@ class AlertLog(Base):
     __tablename__ = "alert_logs"
     __table_args__ = (
         Index("idx_alert_logs_pharmacy", "pharmacy_id"),
+        Index("idx_alert_logs_pharmacy_sent", "pharmacy_id", "sent_at"),
+        Index(
+            "idx_alert_dedup",
+            "pharmacy_id", "alert_type", "ref_table", "ref_id", "sent_at",
+            postgresql_where="read_at IS NULL",
+        ),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -296,6 +309,9 @@ class AtdpsCommand(Base):
 # 15. prescription_ocr_records
 class PrescriptionOcrRecord(Base):
     __tablename__ = "prescription_ocr_records"
+    __table_args__ = (
+        Index("idx_prescription_ocr_pharmacy_created", "pharmacy_id", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
@@ -322,6 +338,9 @@ class PrescriptionOcrRecord(Base):
 # 16. prescription_ocr_drugs
 class PrescriptionOcrDrug(Base):
     __tablename__ = "prescription_ocr_drugs"
+    __table_args__ = (
+        Index("idx_prescription_ocr_drugs_record", "record_id"),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     record_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("prescription_ocr_records.id", ondelete="CASCADE"))
@@ -365,6 +384,7 @@ class NarcoticsTransaction(Base):
     __tablename__ = "narcotics_transactions"
     __table_args__ = (
         Index("idx_narcotics_tx_inventory", "narcotics_inventory_id"),
+        Index("idx_narcotics_tx_pharmacy", "pharmacy_id", "narcotics_inventory_id"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)

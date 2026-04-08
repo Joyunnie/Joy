@@ -9,6 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.exceptions import ServiceError
 from app.models.tables import (
     Drug,
     PrescriptionOcrDrug,
@@ -72,7 +73,7 @@ async def upload_and_process(
     file: UploadFile,
 ) -> PrescriptionOcrResponse:
     """이미지 업로드 → OCR → 파싱 → 매칭 → 중복감지 → DB 저장."""
-    from app.exceptions import ServiceError
+
 
     # 1. 파일 검증
     if file.content_type not in ALLOWED_TYPES:
@@ -281,7 +282,7 @@ async def get_prescription_detail(
     pharmacy_id: int,
     record_id: int,
 ) -> PrescriptionOcrDetailResponse:
-    from app.exceptions import ServiceError
+
 
     result = await db.execute(
         select(PrescriptionOcrRecord).where(
@@ -318,7 +319,7 @@ async def update_drug(
     frequency: str | None,
     days: int | None,
 ) -> PrescriptionOcrDrugOut:
-    from app.exceptions import ServiceError
+
 
     # 레코드 소유권 확인
     rec_result = await db.execute(
@@ -371,7 +372,7 @@ async def confirm_prescription(
     user: User,
 ) -> PrescriptionConfirmResponse:
     """확인 완료 → 상태만 CONFIRMED 변경 (재고 반영 없음)."""
-    from app.exceptions import ServiceError
+
 
     result = await db.execute(
         select(PrescriptionOcrRecord).where(
@@ -415,7 +416,7 @@ async def cancel_prescription(
     pharmacy_id: int,
     record_id: int,
 ) -> None:
-    from app.exceptions import ServiceError
+
 
     result = await db.execute(
         select(PrescriptionOcrRecord).where(
