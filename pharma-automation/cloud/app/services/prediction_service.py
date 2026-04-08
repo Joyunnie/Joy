@@ -49,39 +49,61 @@ async def get_predictions(
     )
     predictions = result.scalars().all()
 
+    # Bulk prefetch visits, drugs, and inventory (~3 queries instead of 2+N per prediction)
+    visit_ids = [vp.last_visit_id for vp in predictions if vp.last_visit_id]
+
+    # Prefetch last visits
+    if visit_ids:
+        visit_result = await db.execute(
+            select(PatientVisitHistory).where(PatientVisitHistory.id.in_(visit_ids))
+        )
+        visit_map = {v.id: v for v in visit_result.scalars().all()}
+    else:
+        visit_map = {}
+
+    # Prefetch visit_drugs + drug info for all visit_ids at once
+    visit_drug_map: dict[int, list[tuple]] = {}  # {visit_id: [(vd, drug), ...]}
+    all_drug_ids: set[int] = set()
+    if visit_ids:
+        vd_result = await db.execute(
+            select(VisitDrug, Drug)
+            .join(Drug, VisitDrug.drug_id == Drug.id)
+            .where(VisitDrug.visit_id.in_(visit_ids))
+        )
+        for vd, drug in vd_result.all():
+            visit_drug_map.setdefault(vd.visit_id, []).append((vd, drug))
+            all_drug_ids.add(drug.id)
+
+    # Prefetch inventory for all drug_ids at once
+    if all_drug_ids:
+        inv_result = await db.execute(
+            select(PrescriptionInventory).where(
+                and_(
+                    PrescriptionInventory.pharmacy_id == pharmacy_id,
+                    PrescriptionInventory.drug_id.in_(all_drug_ids),
+                )
+            )
+        )
+        inv_map = {inv.drug_id: inv for inv in inv_result.scalars().all()}
+    else:
+        inv_map = {}
+
+    # Build response in memory
     out: list[PredictionOut] = []
     for vp in predictions:
         alert_days = vp.alert_days_before or pharmacy.default_alert_days_before
         alert_date = vp.predicted_visit_date - timedelta(days=alert_days)
         is_overdue = vp.predicted_visit_date < today
 
-        # Get based_on_visit_date and needed drugs
         based_on_visit_date = None
         needed_drugs: list[NeededDrugOut] = []
         if vp.last_visit_id:
-            visit_result = await db.execute(
-                select(PatientVisitHistory).where(PatientVisitHistory.id == vp.last_visit_id)
-            )
-            last_visit = visit_result.scalar_one_or_none()
+            last_visit = visit_map.get(vp.last_visit_id)
             if last_visit:
                 based_on_visit_date = last_visit.visit_date
 
-            # Get visit_drugs with drug info and inventory
-            vd_result = await db.execute(
-                select(VisitDrug, Drug)
-                .join(Drug, VisitDrug.drug_id == Drug.id)
-                .where(VisitDrug.visit_id == vp.last_visit_id)
-            )
-            for vd, drug in vd_result.all():
-                inv_result = await db.execute(
-                    select(PrescriptionInventory).where(
-                        and_(
-                            PrescriptionInventory.pharmacy_id == pharmacy_id,
-                            PrescriptionInventory.drug_id == drug.id,
-                        )
-                    )
-                )
-                inv = inv_result.scalar_one_or_none()
+            for vd, drug in visit_drug_map.get(vp.last_visit_id, []):
+                inv = inv_map.get(drug.id)
                 needed_drugs.append(
                     NeededDrugOut(
                         drug_name=drug.name,
