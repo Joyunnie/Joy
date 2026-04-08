@@ -127,8 +127,8 @@ class TestNarcoticHandler:
 
     @patch("agent1.agent.rpa.narcotic_handler.window_utils")
     @patch("agent1.agent.rpa.narcotic_handler.input_utils")
-    def test_dur_review_handled_with_f12(self, mock_input, mock_window):
-        """DUR 처방검토 화면이 뜨면 F12 전송."""
+    def test_dur_review_bulk_apply(self, mock_input, mock_window):
+        """DUR 처방검토 화면이 뜨면 A 체크 → 일괄적용 → F12."""
         from agent1.agent.rpa.narcotic_handler import DUR_REVIEW_TITLE, NarcoticHandler
 
         fs = FailsafeManager()
@@ -138,21 +138,15 @@ class TestNarcoticHandler:
         mock_window.find_window_by_title.return_value = mock_win
         mock_window.activate_window.return_value = True
 
-        # DUR만 True, 그 이후엔 False (사유 선택 팝업 없음)
-        call_counts = {"dur": 0}
-
         def is_visible(title):
-            if title == DUR_REVIEW_TITLE:
-                call_counts["dur"] += 1
-                # 첫 번째 is_window_visible(DUR) = True (화면 감지)
-                # 두 번째 이후(사유선택 루프) = False
-                return call_counts["dur"] == 1
-            return False
+            return title == DUR_REVIEW_TITLE
 
         mock_window.is_window_visible.side_effect = is_visible
 
         success, msg = handler.execute({"quantity": 1})
         assert success is True
+        # A 체크박스 + 일괄적용 = 2 clicks (+ complete_button = 3 total)
+        assert mock_input.click.call_count == 3
         # F12 키 전송 확인
         f12_calls = [c for c in mock_input.press_key.call_args_list if c.args[0] == "f12"]
         assert len(f12_calls) == 1
@@ -174,7 +168,7 @@ class TestNarcoticHandler:
         # drug_count=6 (< 7) → 결제/봉투 화면 감지 시도 자체를 안 함
         success, msg = handler.execute({"quantity": 1, "drug_count": 6})
         assert success is True
-        # is_window_visible 호출 횟수: 질병기호(1) + DUR(1) = 2회
+        # is_window_visible 호출: 질병기호 + DUR + 운전경고 = 3회
         # 결제/봉투는 is_window_visible 호출 없음
         visible_titles = [c.args[0] for c in mock_window.is_window_visible.call_args_list]
         from agent1.agent.rpa.narcotic_handler import BAG_SELECTION_TITLE, PAYMENT_SCREEN_TITLE
@@ -206,8 +200,8 @@ class TestNarcoticHandler:
 
     @patch("agent1.agent.rpa.narcotic_handler.window_utils")
     @patch("agent1.agent.rpa.narcotic_handler.input_utils")
-    def test_bag_selection_handled_with_middle_button(self, mock_input, mock_window):
-        """약품 7종 이상이고 봉투 선택 화면이 뜨면 가운데 버튼 클릭."""
+    def test_bag_selection_handled_with_ctrl2(self, mock_input, mock_window):
+        """약품 7종 이상이고 봉투 선택 화면이 뜨면 Ctrl+2 전송."""
         from agent1.agent.rpa.narcotic_handler import BAG_SELECTION_TITLE, NarcoticHandler
 
         fs = FailsafeManager()
@@ -224,8 +218,11 @@ class TestNarcoticHandler:
 
         success, msg = handler.execute({"quantity": 1, "drug_count": 7})
         assert success is True
-        # complete_button(1) + bag_middle_button(1) = 2회
-        assert mock_input.click.call_count == 2
+        # Ctrl+2 hotkey 전송 확인
+        hotkey_calls = [c for c in mock_input.hotkey.call_args_list if c.args == ("ctrl", "2")]
+        assert len(hotkey_calls) == 1
+        # click은 complete_button 1회만 (bag은 hotkey로 처리)
+        assert mock_input.click.call_count == 1
 
 
 class TestPrescriptionHandler:
@@ -271,6 +268,104 @@ class TestPrescriptionHandler:
         success, msg = handler.execute({"patient_name": "홍길동", "drugs": []})
         assert success is False
         assert "약품이 없습니다" in msg
+
+    @patch("agent1.agent.rpa.prescription_handler.window_utils")
+    @patch("agent1.agent.rpa.prescription_handler.input_utils")
+    def test_dur_review_bulk_apply(self, mock_input, mock_window):
+        """처방전 입력 후 DUR 화면이 뜨면 A 체크 → 일괄적용 → F12."""
+        from agent1.agent.rpa.pm20_controller import PM20Controller
+        from agent1.agent.rpa.prescription_handler import DUR_REVIEW_TITLE, PrescriptionHandler
+
+        fs = FailsafeManager()
+        pm20 = PM20Controller()
+
+        mock_win = MagicMock()
+        mock_window.find_window_by_title.return_value = mock_win
+        mock_window.activate_window.return_value = True
+
+        def is_visible(title):
+            if title == DUR_REVIEW_TITLE:
+                return True
+            # 처방조제 화면은 열려 있어야 함
+            return title == "처방조제"
+
+        mock_window.is_window_visible.side_effect = is_visible
+
+        handler = PrescriptionHandler(fs, pm20)
+        payload = {
+            "patient_name": "홍길동",
+            "drugs": [{"drug_name": "약품A"}],
+        }
+        success, msg = handler.execute(payload)
+        assert success is True
+        # F12 전송 확인
+        f12_calls = [c for c in mock_input.press_key.call_args_list if c.args[0] == "f12"]
+        assert len(f12_calls) == 1
+
+    @patch("agent1.agent.rpa.prescription_handler.window_utils")
+    @patch("agent1.agent.rpa.prescription_handler.input_utils")
+    def test_payment_and_bag_with_7plus_drugs(self, mock_input, mock_window):
+        """약품 7종 이상: 결제 ESC + 봉투 Ctrl+2."""
+        from agent1.agent.rpa.pm20_controller import PM20Controller
+        from agent1.agent.rpa.prescription_handler import (
+            BAG_SELECTION_TITLE,
+            PAYMENT_SCREEN_TITLE,
+            PrescriptionHandler,
+        )
+
+        fs = FailsafeManager()
+        pm20 = PM20Controller()
+
+        mock_win = MagicMock()
+        mock_window.find_window_by_title.return_value = mock_win
+        mock_window.activate_window.return_value = True
+
+        def is_visible(title):
+            if title in (PAYMENT_SCREEN_TITLE, BAG_SELECTION_TITLE, "처방조제"):
+                return True
+            return False
+
+        mock_window.is_window_visible.side_effect = is_visible
+
+        handler = PrescriptionHandler(fs, pm20)
+        drugs = [{"drug_name": f"약품{i}"} for i in range(7)]
+        payload = {"patient_name": "홍길동", "drugs": drugs}
+        success, msg = handler.execute(payload)
+        assert success is True
+        # ESC 전송 확인
+        esc_calls = [c for c in mock_input.press_key.call_args_list if c.args[0] == "escape"]
+        assert len(esc_calls) == 1
+        # Ctrl+2 전송 확인
+        hotkey_calls = [c for c in mock_input.hotkey.call_args_list if c.args == ("ctrl", "2")]
+        assert len(hotkey_calls) == 1
+
+    @patch("agent1.agent.rpa.prescription_handler.window_utils")
+    @patch("agent1.agent.rpa.prescription_handler.input_utils")
+    def test_payment_bag_skipped_below_threshold(self, mock_input, mock_window):
+        """약품 7종 미만이면 결제/봉투 처리 스킵."""
+        from agent1.agent.rpa.pm20_controller import PM20Controller
+        from agent1.agent.rpa.prescription_handler import (
+            BAG_SELECTION_TITLE,
+            PAYMENT_SCREEN_TITLE,
+            PrescriptionHandler,
+        )
+
+        fs = FailsafeManager()
+        pm20 = PM20Controller()
+
+        mock_win = MagicMock()
+        mock_window.find_window_by_title.return_value = mock_win
+        mock_window.activate_window.return_value = True
+        mock_window.is_window_visible.return_value = True  # 처방조제 화면은 열려있음
+
+        handler = PrescriptionHandler(fs, pm20)
+        drugs = [{"drug_name": f"약품{i}"} for i in range(3)]
+        payload = {"patient_name": "홍길동", "drugs": drugs}
+        success, msg = handler.execute(payload)
+        assert success is True
+        visible_titles = [c.args[0] for c in mock_window.is_window_visible.call_args_list]
+        assert PAYMENT_SCREEN_TITLE not in visible_titles
+        assert BAG_SELECTION_TITLE not in visible_titles
 
 
 class TestRpaManager:

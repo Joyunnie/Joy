@@ -31,7 +31,20 @@ DAYS_X = 490
 SAVE_BUTTON_X = 600
 SAVE_BUTTON_Y = 500
 
+# 선택적 팝업 창 제목 키워드
+DUR_REVIEW_TITLE = "DUR"
 DRIVING_WARNING_TITLE = "운전"
+PAYMENT_SCREEN_TITLE = "수납"
+BAG_SELECTION_TITLE = "봉투"
+
+# DUR 처방검토 화면 좌표 (일괄적용 방식)
+DUR_CHECKBOX_A_X = 350
+DUR_CHECKBOX_A_Y = 400
+DUR_BULK_APPLY_X = 500
+DUR_BULK_APPLY_Y = 400
+
+# 약품 7종 이상일 때만 결제/봉투 화면이 뜸
+MULTI_DRUG_THRESHOLD = 7
 
 STEP_TIMEOUT = 30.0
 OPTIONAL_WAIT = 1.0
@@ -74,6 +87,7 @@ class PrescriptionHandler:
             if not drugs:
                 return False, "입력할 약품이 없습니다"
 
+            drug_count = len(drugs)
             for idx, drug in enumerate(drugs):
                 if not self._input_drug(idx, drug):
                     return False, f"약품 입력 실패: {drug.get('drug_name', '?')}"
@@ -82,11 +96,22 @@ class PrescriptionHandler:
             if not self._save():
                 return False, "저장 실패"
 
-            # [선택] 운전 경고 팝업 → Enter (법 개정으로 추가, 마약류 외 약품에도 뜰 수 있음)
+            # [선택] DUR 처방검토 화면 → 사유 A 일괄적용 → F12
+            self._handle_dur_review()
+
+            # [선택] 운전 경고 팝업 → Enter
             self._handle_driving_warning()
 
-            logger.info("처방전 입력 완료 (%d건)", len(drugs))
-            return True, f"처방전 입력 완료 ({len(drugs)}건)"
+            # [선택, 7종 이상] 수납 화면 → ESC
+            if drug_count >= MULTI_DRUG_THRESHOLD:
+                self._handle_payment_screen()
+
+            # [선택, 7종 이상] 봉투 약품 선택 화면 → Ctrl+2
+            if drug_count >= MULTI_DRUG_THRESHOLD:
+                self._handle_bag_selection()
+
+            logger.info("처방전 입력 완료 (%d건)", drug_count)
+            return True, f"처방전 입력 완료 ({drug_count}건)"
 
         except Exception as e:
             logger.error("처방전 입력 실패: %s", e)
@@ -179,6 +204,42 @@ class PrescriptionHandler:
         logger.info("저장 완료")
         return True
 
+    def _handle_dur_review(self):
+        """[선택] DUR 처방검토 화면 → 사유 A 일괄적용 → F12.
+
+        1. 사유선택 섹션에서 A 체크박스 클릭
+        2. "일괄적용" 버튼 클릭 (모든 약품에 사유 A 적용)
+        3. F12 (확인)
+        1초 대기 후 화면이 없으면 스킵.
+        """
+        time.sleep(OPTIONAL_WAIT)
+        if not window_utils.is_window_visible(DUR_REVIEW_TITLE):
+            logger.debug("DUR 처방검토 화면 없음 → 스킵")
+            return
+
+        logger.info("DUR 처방검토 화면 감지 → 일괄적용")
+        window = window_utils.find_window_by_title(DUR_REVIEW_TITLE, timeout=2.0)
+        if window:
+            window_utils.activate_window(window)
+
+        # 사유 A 체크박스 클릭
+        checkbox_x = self._get("dur_checkbox_a_x", DUR_CHECKBOX_A_X)
+        checkbox_y = self._get("dur_checkbox_a_y", DUR_CHECKBOX_A_Y)
+        input_utils.click(checkbox_x, checkbox_y)
+        time.sleep(0.3)
+
+        # 일괄적용 버튼 클릭
+        bulk_x = self._get("dur_bulk_apply_x", DUR_BULK_APPLY_X)
+        bulk_y = self._get("dur_bulk_apply_y", DUR_BULK_APPLY_Y)
+        input_utils.click(bulk_x, bulk_y)
+        time.sleep(0.5)
+
+        # F12 확인
+        input_utils.press_key("f12")
+        time.sleep(0.5)
+
+        logger.info("DUR 처방검토 일괄적용 완료")
+
     def _handle_driving_warning(self):
         """[선택] 운전 경고 팝업 감지 → Enter 키 전송.
 
@@ -195,4 +256,39 @@ class PrescriptionHandler:
         if window:
             window_utils.activate_window(window)
         input_utils.press_key("enter")
+        time.sleep(0.5)
+
+    def _handle_payment_screen(self):
+        """[선택, 약품 7종 이상] 수납 화면 감지 → ESC 키 전송.
+
+        1초 대기 후 화면이 없으면 스킵.
+        """
+        time.sleep(OPTIONAL_WAIT)
+        if not window_utils.is_window_visible(PAYMENT_SCREEN_TITLE):
+            logger.debug("결제 화면 없음 → 스킵")
+            return
+
+        logger.info("결제 화면 감지 → ESC 전송")
+        window = window_utils.find_window_by_title(PAYMENT_SCREEN_TITLE, timeout=2.0)
+        if window:
+            window_utils.activate_window(window)
+        input_utils.press_key("escape")
+        time.sleep(0.5)
+
+    def _handle_bag_selection(self):
+        """[선택, 약품 7종 이상] 봉투 약품 선택 화면 감지 → Ctrl+2.
+
+        Ctrl+2 = "자동(6품목)" 버튼 단축키. 팝업이 자동으로 닫힘.
+        1초 대기 후 화면이 없으면 스킵.
+        """
+        time.sleep(OPTIONAL_WAIT)
+        if not window_utils.is_window_visible(BAG_SELECTION_TITLE):
+            logger.debug("봉투 약품 선택 화면 없음 → 스킵")
+            return
+
+        logger.info("봉투 약품 선택 화면 감지 → Ctrl+2 (자동 6품목)")
+        window = window_utils.find_window_by_title(BAG_SELECTION_TITLE, timeout=2.0)
+        if window:
+            window_utils.activate_window(window)
+        input_utils.hotkey("ctrl", "2")
         time.sleep(0.5)

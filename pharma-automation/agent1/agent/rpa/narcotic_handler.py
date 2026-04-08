@@ -8,11 +8,10 @@ from __future__ import annotations
   2) 재고 목록에서 위→아래 순서로 더블클릭 (조제수량 = 사용수량 될 때까지)
   3) "완료" 버튼 클릭
   4) [선택] 질병기호 팝업 → "계속 진행" 클릭
-  5) [선택] DUR 처방검토 화면 → F12 전송.
-     사유 선택이 필요한 약품이 있으면: 해당 행 클릭 → A 체크 → 확인. 여러 약품이면 각각 반복.
+  5) [선택] DUR 처방검토 화면 → 사유 A 선택 → 일괄적용 → F12
   6) [선택] 운전 경고 팝업 → Enter (법 개정으로 추가, 마약류 외 약품에도 뜰 수 있음)
   7) [선택, 약품 7종 이상] 수납 화면 → ESC 키
-  8) [선택, 약품 7종 이상] 봉투 약품 선택 화면 → 가운데 버튼 클릭
+  8) [선택, 약품 7종 이상] 봉투 약품 선택 화면 → Ctrl+2 (자동 6품목)
 
 각 선택 단계는 1초 대기 후 화면 감지 → 없으면 스킵.
 """
@@ -46,17 +45,11 @@ COMPLETE_BUTTON_Y = 450
 CONTINUE_BUTTON_X = 300
 CONTINUE_BUTTON_Y = 350
 
-# DUR 처방검토 화면 좌표
-DUR_DRUG_ROW_START_X = 150
-DUR_DRUG_ROW_START_Y = 200
-DUR_DRUG_ROW_HEIGHT = 22
+# DUR 처방검토 화면 좌표 (일괄적용 방식)
 DUR_CHECKBOX_A_X = 350
-DUR_CONFIRM_BUTTON_X = 450
-DUR_CONFIRM_BUTTON_Y = 500
-
-# 봉투 약품 선택 화면 - 가운데 버튼
-BAG_MIDDLE_BUTTON_X = 400
-BAG_MIDDLE_BUTTON_Y = 350
+DUR_CHECKBOX_A_Y = 400
+DUR_BULK_APPLY_X = 500
+DUR_BULK_APPLY_Y = 400
 
 STEP_TIMEOUT = 30.0  # 각 단계 타임아웃
 OPTIONAL_WAIT = 1.0  # 선택적 팝업 대기 시간
@@ -192,11 +185,11 @@ class NarcoticHandler:
         time.sleep(0.5)
 
     def _step5_handle_dur_review(self, drug_count: int):
-        """[선택] DUR 처방검토 화면 → F12 전송.
+        """[선택] DUR 처방검토 화면 → 사유 A 일괄적용 → F12.
 
-        사유 선택이 필요한 약품이 있으면:
-          - 해당 약품 행 클릭 → A 체크박스 클릭 → 확인 버튼 클릭
-          - 여러 약품이면 각각 반복 (최대 drug_count 회)
+        1. 사유선택 섹션에서 A 체크박스 클릭
+        2. "일괄적용" 버튼 클릭 (모든 약품에 사유 A 적용)
+        3. F12 (확인)
         1초 대기 후 화면이 없으면 스킵.
         """
         time.sleep(OPTIONAL_WAIT)
@@ -204,42 +197,28 @@ class NarcoticHandler:
             logger.debug("DUR 처방검토 화면 없음 → 스킵")
             return
 
-        logger.info("DUR 처방검토 화면 감지 → F12 전송")
+        logger.info("DUR 처방검토 화면 감지 → 일괄적용")
         window = window_utils.find_window_by_title(DUR_REVIEW_TITLE, timeout=2.0)
         if window:
             window_utils.activate_window(window)
 
+        # 사유 A 체크박스 클릭
+        checkbox_x = self._get("dur_checkbox_a_x", DUR_CHECKBOX_A_X)
+        checkbox_y = self._get("dur_checkbox_a_y", DUR_CHECKBOX_A_Y)
+        input_utils.click(checkbox_x, checkbox_y)
+        time.sleep(0.3)
+
+        # 일괄적용 버튼 클릭
+        bulk_x = self._get("dur_bulk_apply_x", DUR_BULK_APPLY_X)
+        bulk_y = self._get("dur_bulk_apply_y", DUR_BULK_APPLY_Y)
+        input_utils.click(bulk_x, bulk_y)
+        time.sleep(0.5)
+
+        # F12 확인
         input_utils.press_key("f12")
-        time.sleep(1.0)
+        time.sleep(0.5)
 
-        # 사유 선택 화면이 뜨는 경우 처리 (약품별 반복)
-        max_attempts = max(drug_count, 1)
-        for attempt in range(max_attempts):
-            if not window_utils.is_window_visible(DUR_REVIEW_TITLE):
-                break
-
-            logger.info("DUR 사유 선택 처리 (%d/%d)", attempt + 1, max_attempts)
-            row_x = self._get("dur_drug_row_x", DUR_DRUG_ROW_START_X)
-            row_y = (
-                self._get("dur_drug_row_y", DUR_DRUG_ROW_START_Y)
-                + attempt * self._get("dur_row_height", DUR_DRUG_ROW_HEIGHT)
-            )
-            # 약품 행 클릭
-            input_utils.click(row_x, row_y)
-            time.sleep(0.3)
-
-            # A 체크박스 클릭
-            checkbox_x = self._get("dur_checkbox_a_x", DUR_CHECKBOX_A_X)
-            input_utils.click(checkbox_x, row_y)
-            time.sleep(0.3)
-
-            # 확인 버튼 클릭
-            confirm_x = self._get("dur_confirm_button_x", DUR_CONFIRM_BUTTON_X)
-            confirm_y = self._get("dur_confirm_button_y", DUR_CONFIRM_BUTTON_Y)
-            input_utils.click(confirm_x, confirm_y)
-            time.sleep(0.5)
-
-        logger.info("DUR 처방검토 처리 완료")
+        logger.info("DUR 처방검토 일괄적용 완료")
 
     def _step6_handle_driving_warning(self):
         """[선택] 운전 경고 팝업 감지 → Enter 키 전송.
@@ -277,21 +256,19 @@ class NarcoticHandler:
         time.sleep(0.5)
 
     def _step8_handle_bag_selection(self):
-        """[선택, 약품 7종 이상] 봉투 약품 선택 화면 감지 → 가운데 버튼 클릭.
+        """[선택, 약품 7종 이상] 봉투 약품 선택 화면 감지 → Ctrl+2.
 
+        Ctrl+2 = "자동(6품목)" 버튼 단축키. 팝업이 자동으로 닫힘.
         1초 대기 후 화면이 없으면 스킵.
-        가운데 버튼 = "자동 선택" 류 버튼 (정확한 텍스트는 추후 확인).
         """
         time.sleep(OPTIONAL_WAIT)
         if not window_utils.is_window_visible(BAG_SELECTION_TITLE):
             logger.debug("봉투 약품 선택 화면 없음 → 스킵")
             return
 
-        logger.info("봉투 약품 선택 화면 감지 → 가운데 버튼 클릭")
+        logger.info("봉투 약품 선택 화면 감지 → Ctrl+2 (자동 6품목)")
         window = window_utils.find_window_by_title(BAG_SELECTION_TITLE, timeout=2.0)
         if window:
             window_utils.activate_window(window)
-        x = self._get("bag_middle_button_x", BAG_MIDDLE_BUTTON_X)
-        y = self._get("bag_middle_button_y", BAG_MIDDLE_BUTTON_Y)
-        input_utils.click(x, y)
+        input_utils.hotkey("ctrl", "2")
         time.sleep(0.5)
