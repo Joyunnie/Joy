@@ -8,14 +8,14 @@ from pydantic import BaseModel, Field
 
 class TodoCreate(BaseModel):
     title: str = Field(..., max_length=500)
-    description: Optional[str] = None
+    description: Optional[str] = Field(None, max_length=5000)
     due_date: Optional[datetime] = None
     priority: int = Field(4, ge=1, le=4)
 
 
 class TodoUpdate(BaseModel):
     title: Optional[str] = Field(None, max_length=500)
-    description: Optional[str] = None
+    description: Optional[str] = Field(None, max_length=5000)
     due_date: Optional[datetime] = None
     priority: Optional[int] = Field(None, ge=1, le=4)
 

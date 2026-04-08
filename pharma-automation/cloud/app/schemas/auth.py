@@ -5,7 +5,7 @@ class RegisterRequest(BaseModel):
     pharmacy_id: int
     invite_code: str = Field(..., min_length=1, max_length=20)
     username: str = Field(..., min_length=2, max_length=50)
-    password: str = Field(..., min_length=8)
+    password: str = Field(..., min_length=8, max_length=128)
     role: str = Field(default="STAFF", pattern=r"^(PHARMACIST|STAFF|ADMIN)$")
 
 

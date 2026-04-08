@@ -10,7 +10,7 @@ class NarcoticsCreateRequest(BaseModel):
     drug_id: int
     lot_number: str = Field(..., max_length=50)
     quantity: int = Field(..., gt=0)
-    notes: str | None = None
+    notes: str | None = Field(None, max_length=2000)
 
 
 class NarcoticsUpdateRequest(BaseModel):
@@ -18,7 +18,7 @@ class NarcoticsUpdateRequest(BaseModel):
 
     current_quantity: int = Field(..., ge=0)
     last_inspected_at: datetime | None = None
-    notes: str | None = None
+    notes: str | None = Field(None, max_length=2000)
     version: int
 
 
@@ -34,7 +34,7 @@ class NarcoticsDispenseRequest(BaseModel):
     # PM+20에서 마약류통합관리시스템 법적 보고 처리. 여기선 내부 참조용.
     patient_hash: str | None = Field(None, max_length=64)
     prescription_number: str | None = Field(None, max_length=50)
-    notes: str | None = None
+    notes: str | None = Field(None, max_length=2000)
     version: int
 
 

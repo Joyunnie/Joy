@@ -78,7 +78,7 @@ async def register_user(db: AsyncSession, pharmacy_id: int, invite_code: str,
         pharmacy_id=pharmacy_id,
         username=username,
         password_hash=hash_password(password),
-        role=role,
+        role="STAFF",
     )
     db.add(user)
     await db.flush()
