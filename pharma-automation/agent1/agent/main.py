@@ -34,6 +34,7 @@ class Agent1:
         self.tray_manager = None
         self._stop_event = threading.Event()
         self._last_drug_master_sync: datetime | None = None
+        self._last_visit_proc_dtime: str | None = None
 
     def run(self):
         """메인 루프: config의 polling_interval_seconds 간격으로 sync 실행."""
@@ -122,11 +123,9 @@ class Agent1:
             except Exception as e:
                 logger.error("Drug stock sync failed: %s", e)
 
-            # 2c. 방문 이력 동기화 (매 사이클)
+            # 2c. 방문 이력 동기화 (매 사이클, PROC_DTIME 증분)
             try:
-                lookback = self.config.pm20.get("visit_lookback_days", 7)
-                since = date.today() - timedelta(days=lookback)
-                visits = self.pm20_reader.read_recent_visits(since)
+                visits = self.pm20_reader.read_recent_visits(self._last_visit_proc_dtime)
                 if visits:
                     self._sync_or_queue(
                         "visits",
@@ -149,6 +148,10 @@ class Agent1:
                             ]
                         },
                     )
+                    # Update incremental marker to max proc_dtime from this batch
+                    dtime_values = [v.proc_dtime for v in visits if v.proc_dtime]
+                    if dtime_values:
+                        self._last_visit_proc_dtime = max(dtime_values)
             except Exception as e:
                 logger.error("Visit sync failed: %s", e)
 

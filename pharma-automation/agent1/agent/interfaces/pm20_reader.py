@@ -45,6 +45,7 @@ class VisitRecord:
     visit_date: date
     prescription_days: int
     drugs: list[DrugDispensed] = field(default_factory=list)
+    proc_dtime: str = ""  # TBSID040_03.PROC_DTIME — incremental sync marker
 
 
 class PM20Reader(ABC):
@@ -64,5 +65,13 @@ class PM20Reader(ABC):
         """DA_Goods: 약품 마스터 전체 조회."""
 
     @abstractmethod
-    def read_recent_visits(self, since: date) -> list[VisitRecord]:
-        """DA_Main + DA_SUB_PHARM: 지정 날짜 이후 조제완료(PreState='1') 방문 이력 조회."""
+    def read_recent_visits(self, since_marker: str | None = None) -> list[VisitRecord]:
+        """TBSID040_03 + TBSID040_04: 조제완료 방문 이력 조회.
+
+        Args:
+            since_marker: PROC_DTIME 기반 증분 동기화 마커 (예: '20260101000000').
+                          None이면 초기 백필 시작점 사용.
+
+        Returns:
+            VisitRecord 리스트. 각 레코드의 proc_dtime 중 최대값을 다음 호출의 마커로 사용.
+        """

@@ -55,21 +55,26 @@ FROM DA_Goods g
 WHERE g.Goods_RegNo IS NOT NULL AND g.Goods_RegNo <> ''
 """
 
-# PreState = '1': 조제완료만 동기화
+# TBSID040_03 + TBSID040_04: 조제완료 방문 이력
+# PRES_PRGRS_STATE='3': 조제완료, PRES_GUBUN != 'E': 재고조정 제외
+# PROC_DTIME 기반 증분 동기화 (ASC 정렬 → 마지막 값이 다음 마커)
 SQL_RECENT_VISITS = """
 SELECT
-    m.Preserial,
-    m.CusCode,
-    m.Indate,
-    m.Tdays,
-    sp.Inv_Quan       AS quantity_dispensed,
-    g.Goods_RegNo     AS standard_code
-FROM DA_Main m
-    INNER JOIN DA_SUB_PHARM sp ON m.Preserial = sp.Preserial
-    INNER JOIN DA_Goods g ON sp.Goods_Code = g.Goods_code
-WHERE m.Indate >= %s
-    AND m.PreState = '1'
-ORDER BY m.Preserial
+    h.DRUG_SEQ         AS serial,
+    h.CHRTNO           AS patient_code,
+    h.MPRSC_GRANT_DT   AS visit_date,
+    h.TOT_DD_CNT       AS prescription_days,
+    h.PROC_DTIME       AS proc_datetime,
+    d.DRUG_CODE        AS drug_code,
+    d.MDCN_MQTY        AS quantity_dispensed,
+    g.Goods_RegNo      AS standard_code
+FROM TBSID040_03 h
+    INNER JOIN TBSID040_04 d ON h.DRUG_SEQ = d.DRUG_SEQ
+    LEFT JOIN DA_Goods g ON LTRIM(RTRIM(d.DRUG_CODE)) = LTRIM(RTRIM(g.Goods_code))
+WHERE h.PRES_PRGRS_STATE = '3'
+    AND h.PRES_GUBUN != 'E'
+    AND h.PROC_DTIME > %s
+ORDER BY h.PROC_DTIME ASC
 """
 
 
@@ -177,51 +182,83 @@ class SqlServerPM20Reader(PM20Reader):
                 logger.warning("Skipping drug_master row due to data error: %s (row=%s)", e, row)
         return items
 
-    def read_recent_visits(self, since: date) -> list[VisitRecord]:
-        """DA_Main + DA_SUB_PHARM: 조제완료(PreState='1') 방문 이력."""
-        since_str = since.strftime("%Y%m%d")
-        rows = self._execute_query(SQL_RECENT_VISITS, (since_str,))
+    def read_recent_visits(self, since_marker: str | None = None) -> list[VisitRecord]:
+        """TBSID040_03 + TBSID040_04: 조제완료 방문 이력.
 
-        # Preserial별로 그룹핑
+        Args:
+            since_marker: PROC_DTIME 증분 마커. None이면 '20260101000000' 사용.
+        """
+        if since_marker is None:
+            since_marker = "20260101000000"
+        rows = self._execute_query(SQL_RECENT_VISITS, (since_marker,))
+
+        # DRUG_SEQ별로 그룹핑 (하나의 DRUG_SEQ = 하나의 조제 건)
         groups: dict[str, dict] = defaultdict(lambda: {
-            "cuscode": "",
-            "indate": "",
-            "tdays": 0,
+            "patient_code": "",
+            "visit_date_str": "",
+            "prescription_days": 0,
+            "proc_dtime": "",
             "drugs": [],
         })
 
         for row in rows:
-            preserial = row["Preserial"]
-            g = groups[preserial]
-            g["cuscode"] = row["CusCode"] or ""
-            g["indate"] = row["Indate"] or ""
-            tdays = row["Tdays"] or 0
-            if tdays > g["tdays"]:
-                g["tdays"] = tdays
+            serial = row["serial"]
+            patient_code = (row.get("patient_code") or "").strip()
 
+            # Skip empty patient codes
+            if not patient_code:
+                continue
+
+            g = groups[serial]
+            g["patient_code"] = patient_code
+            g["visit_date_str"] = row.get("visit_date") or ""
+            tdays = row.get("prescription_days") or 0
+            if tdays > g["prescription_days"]:
+                g["prescription_days"] = tdays
+            g["proc_dtime"] = row.get("proc_datetime") or ""
+
+            drug_code = (row.get("drug_code") or "").strip()
             std_code = (row.get("standard_code") or "").strip()
+
+            # Skip internal adjustment codes (ZP prefix)
+            if drug_code.startswith("ZP"):
+                continue
+
+            # Use standard_code from DA_Goods JOIN if available
             if std_code:
                 qty = int(row.get("quantity_dispensed") or 0)
                 g["drugs"].append(DrugDispensed(
                     drug_standard_code=std_code,
                     quantity_dispensed=qty,
                 ))
+            else:
+                logger.debug(
+                    "Skipping drug_code %s (no matching DA_Goods entry) in serial %s",
+                    drug_code, serial,
+                )
 
         visits = []
         for g in groups.values():
-            indate = g["indate"]
-            if len(indate) != 8:
+            visit_date_str = g["visit_date_str"]
+            if len(visit_date_str) != 8:
                 continue
             try:
-                visit_date = date(int(indate[:4]), int(indate[4:6]), int(indate[6:8]))
+                visit_date = date(
+                    int(visit_date_str[:4]),
+                    int(visit_date_str[4:6]),
+                    int(visit_date_str[6:8]),
+                )
             except ValueError:
                 continue
 
+            prescription_days = g["prescription_days"] or 1  # default to 1 if zero/null
+
             visits.append(VisitRecord(
-                patient_hash=self._hash_patient(g["cuscode"]),
+                patient_hash=self._hash_patient(g["patient_code"]),
                 visit_date=visit_date,
-                prescription_days=g["tdays"],
+                prescription_days=prescription_days,
                 drugs=g["drugs"],
+                proc_dtime=g["proc_dtime"],
             ))
 
         return visits
