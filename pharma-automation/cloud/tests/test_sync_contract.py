@@ -81,7 +81,6 @@ class TestDrugStockSyncContract:
             {
                 "drug_standard_code": d["standard_code"],
                 "current_quantity": 100.0 + i,
-                "is_narcotic": i % 10 == 0,  # Every 10th is narcotic
             }
             for i, d in enumerate(drugs)
         ]
@@ -114,7 +113,8 @@ class TestDrugStockSyncContract:
                 stock = stock_by_drug.get(d["id"])
                 assert stock is not None, f"DrugStock missing for {d['standard_code']}"
                 assert float(stock.current_quantity) == 100.0 + i
-                assert stock.is_narcotic == (i % 10 == 0)
+                # is_narcotic determined server-side from drug.category
+                assert stock.is_narcotic is False  # test drugs are PRESCRIPTION
 
     async def test_field_names_match_agent1_dataclass(self, client, seed_data):
         """Verify the exact field names agent1 uses are accepted.

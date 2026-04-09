@@ -30,14 +30,12 @@ logger = logging.getLogger("agent1.pm20_reader")
 # 타입 불일치 가능. LTRIM/RTRIM 적용하고, JOIN 실패 행은 로깅 후 스킵.
 SQL_DRUG_STOCK = """
 SELECT
-    g.Goods_RegNo    AS standard_code,
-    g.Goods_Name     AS drug_name,
-    ts.MDCN_MQTY     AS current_quantity,
-    CASE WHEN md.DRUGCODE IS NOT NULL THEN 1 ELSE 0 END AS is_narcotic
+    ts.DRUG_CODE        AS insurance_code,
+    m.DRUG_NM           AS drug_name,
+    ts.MDCN_MQTY        AS current_quantity
 FROM TEMP_STOCK ts
-    INNER JOIN DA_Goods g ON LTRIM(RTRIM(ts.DRUG_CODE)) = LTRIM(RTRIM(g.Goods_code))
-    LEFT JOIN CD_MINDRUG md ON LTRIM(RTRIM(ts.DRUG_CODE)) = LTRIM(RTRIM(md.DRUGCODE))
-WHERE g.Goods_RegNo IS NOT NULL AND g.Goods_RegNo <> ''
+    INNER JOIN TBSIM040_01 m ON LTRIM(RTRIM(ts.DRUG_CODE)) = LTRIM(RTRIM(m.DRUG_CODE))
+WHERE ts.DRUG_CODE IS NOT NULL AND ts.DRUG_CODE <> ''
 """
 
 SQL_DRUG_MASTER = """
@@ -141,22 +139,20 @@ class SqlServerPM20Reader(PM20Reader):
         return []
 
     def read_drug_stock(self) -> list[DrugStockItem]:
-        """TEMP_STOCK + DA_Goods JOIN: 약품별 현재 재고."""
+        """TEMP_STOCK + TBSIM040_01 JOIN: 약품별 현재 재고."""
         rows = self._execute_query(SQL_DRUG_STOCK)
         items = []
         for row in rows:
             try:
-                std_code = row["standard_code"]
-                if not std_code:
-                    raise ValueError("empty standard_code")
+                ins_code = row["insurance_code"]
+                if not ins_code:
+                    raise ValueError("empty insurance_code")
                 items.append(DrugStockItem(
-                    drug_standard_code=std_code.strip(),
+                    drug_insurance_code=ins_code.strip(),
                     drug_name=row["drug_name"].strip() if row["drug_name"] else "",
                     current_quantity=float(row["current_quantity"] or 0),
-                    is_narcotic=bool(row["is_narcotic"]),
                 ))
             except (KeyError, TypeError, ValueError, AttributeError) as e:
-                # JOIN 실패 또는 데이터 이상 행은 로깅 후 스킵
                 logger.warning("Skipping drug_stock row due to data error: %s (row=%s)", e, row)
         return items
 

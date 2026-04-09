@@ -38,7 +38,7 @@ class TestSyncCycleOrder:
             DrugMasterItem("KD12345", "아모시실린", "제약사A", "PRESCRIPTION"),
         ]
         mock_reader.read_drug_stock.return_value = [
-            DrugStockItem("KD12345", "아모시실린", 50.0, False),
+            DrugStockItem("643507086", "아모시실린", 50.0),
         ]
         mock_reader.read_recent_visits.return_value = [
             VisitRecord(
@@ -100,7 +100,7 @@ class TestSyncCycleErrorHandling:
         mock_reader = MagicMock()
         mock_reader.read_drug_master.return_value = []
         mock_reader.read_drug_stock.return_value = [
-            DrugStockItem("KD12345", "아모시실린", 50.0, False),
+            DrugStockItem("643507086", "아모시실린", 50.0),
         ]
         mock_reader.read_recent_visits.return_value = []
         mock_reader.read_inventory.return_value = []
@@ -123,8 +123,8 @@ class TestSyncPayloadFormat:
         mock_reader = MagicMock()
         mock_reader.read_drug_master.return_value = []
         mock_reader.read_drug_stock.return_value = [
-            DrugStockItem("KD12345", "아모시실린", 50.5, False),
-            DrugStockItem("NC00001", "펜타닐패치", 3.0, True),
+            DrugStockItem("643507086", "아모시실린", 50.5),
+            DrugStockItem("671806320", "펜타닐패치", 3.0),
         ]
         mock_reader.read_recent_visits.return_value = []
         mock_reader.read_inventory.return_value = []
@@ -139,9 +139,9 @@ class TestSyncPayloadFormat:
         assert "items" in payload
         assert "synced_at" in payload
         assert len(payload["items"]) == 2
-        assert payload["items"][0]["drug_standard_code"] == "KD12345"
+        assert payload["items"][0]["drug_insurance_code"] == "643507086"
         assert payload["items"][0]["current_quantity"] == 50.5
-        assert payload["items"][1]["is_narcotic"] is True
+        assert "is_narcotic" not in payload["items"][0]  # determined server-side now
 
     def test_visits_payload(self, agent):
         """visits 페이로드 형식 확인."""

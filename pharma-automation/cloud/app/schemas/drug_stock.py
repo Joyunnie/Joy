@@ -6,9 +6,9 @@ from app.schemas.api import LowStockAlertOut
 
 
 class DrugStockItemIn(BaseModel):
-    drug_standard_code: str
+    drug_insurance_code: str | None = None  # 건강보험 약품코드 (primary)
+    drug_standard_code: str | None = None   # DA_Goods.Goods_RegNo (legacy fallback)
     current_quantity: float
-    is_narcotic: bool = False
 
 
 class SyncDrugStockRequest(BaseModel):

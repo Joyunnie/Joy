@@ -24,7 +24,7 @@ from app.schemas.api import (
     SyncVisitsResponse,
     VisitDrugIn,
 )
-from app.schemas.drug_stock import SyncDrugStockRequest, SyncDrugStockResponse
+from app.schemas.drug_stock import DrugStockItemIn, SyncDrugStockRequest, SyncDrugStockResponse
 from app.schemas.drug_sync import SyncDrugsRequest, SyncDrugsResponse
 
 
@@ -477,12 +477,25 @@ async def sync_drug_stock(
     synced = 0
     skipped = 0
 
-    # 1. Prefetch drugs
-    codes = {item.drug_standard_code for item in req.items}
-    drug_map = await _prefetch_drugs_by_code(db, codes)
+    # 1. Prefetch drugs by insurance_code (primary) and standard_code (legacy fallback)
+    insurance_codes = {item.drug_insurance_code for item in req.items if item.drug_insurance_code}
+    standard_codes = {item.drug_standard_code for item in req.items if item.drug_standard_code}
+    insurance_drug_map = await _prefetch_drugs_by_insurance_code(db, insurance_codes)
+    standard_drug_map = await _prefetch_drugs_by_code(db, standard_codes)
+
+    def _resolve_stock_drug(item: DrugStockItemIn) -> Drug | None:
+        if item.drug_insurance_code:
+            found = insurance_drug_map.get(item.drug_insurance_code)
+            if found:
+                return found
+        if item.drug_standard_code:
+            found = standard_drug_map.get(item.drug_standard_code)
+            if found:
+                return found
+        return None
 
     # 2. Prefetch existing drug_stock for this pharmacy
-    resolved_drug_ids = {d.id for d in drug_map.values()}
+    resolved_drug_ids = {d.id for d in insurance_drug_map.values()} | {d.id for d in standard_drug_map.values()}
     if resolved_drug_ids:
         stock_result = await db.execute(
             select(DrugStock).where(
@@ -506,16 +519,19 @@ async def sync_drug_stock(
 
     # 4. Loop in memory
     for item in req.items:
-        drug = drug_map.get(item.drug_standard_code)
+        drug = _resolve_stock_drug(item)
         if not drug:
             skipped += 1
             continue
+
+        # Determine is_narcotic from cloud drugs table (not from Agent1)
+        is_narcotic = drug.category == "NARCOTIC"
 
         stock = stock_map.get(drug.id)
 
         if stock:
             stock.current_quantity = item.current_quantity
-            stock.is_narcotic = item.is_narcotic
+            stock.is_narcotic = is_narcotic
             stock.synced_at = req.synced_at
             stock.updated_at = datetime.now(timezone.utc)
         else:
@@ -523,7 +539,7 @@ async def sync_drug_stock(
                 pharmacy_id=pharmacy_id,
                 drug_id=drug.id,
                 current_quantity=item.current_quantity,
-                is_narcotic=item.is_narcotic,
+                is_narcotic=is_narcotic,
                 quantity_source="PM20",
                 synced_at=req.synced_at,
             )

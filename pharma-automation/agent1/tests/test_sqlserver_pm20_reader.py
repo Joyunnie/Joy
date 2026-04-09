@@ -35,16 +35,14 @@ class TestReadDrugStock:
         mock_conn.cursor.return_value = cursor
         cursor.fetchall.return_value = [
             {
-                "standard_code": "KD12345",
+                "insurance_code": "643507086",
                 "drug_name": "아모시실린",
                 "current_quantity": Decimal("50.00"),
-                "is_narcotic": 0,
             },
             {
-                "standard_code": "NC00001",
+                "insurance_code": "671806320",
                 "drug_name": "펜타닐패치",
                 "current_quantity": Decimal("5.50"),
-                "is_narcotic": 1,
             },
         ]
 
@@ -52,11 +50,9 @@ class TestReadDrugStock:
 
         assert len(result) == 2
         assert isinstance(result[0], DrugStockItem)
-        assert result[0].drug_standard_code == "KD12345"
+        assert result[0].drug_insurance_code == "643507086"
         assert result[0].drug_name == "아모시실린"
         assert result[0].current_quantity == 50.0
-        assert result[0].is_narcotic is False
-        assert result[1].is_narcotic is True
 
     def test_empty_temp_stock(self, reader):
         r, mock_conn = reader
@@ -67,22 +63,6 @@ class TestReadDrugStock:
         result = r.read_drug_stock()
         assert result == []
 
-    def test_narcotic_flag(self, reader):
-        r, mock_conn = reader
-        cursor = MagicMock()
-        mock_conn.cursor.return_value = cursor
-        cursor.fetchall.return_value = [
-            {
-                "standard_code": "NC99999",
-                "drug_name": "마약류약품",
-                "current_quantity": Decimal("10"),
-                "is_narcotic": 1,
-            },
-        ]
-
-        result = r.read_drug_stock()
-        assert result[0].is_narcotic is True
-
     def test_negative_quantity(self, reader):
         """음수 재고 처리."""
         r, mock_conn = reader
@@ -90,10 +70,9 @@ class TestReadDrugStock:
         mock_conn.cursor.return_value = cursor
         cursor.fetchall.return_value = [
             {
-                "standard_code": "KD12345",
+                "insurance_code": "643507086",
                 "drug_name": "아모시실린",
                 "current_quantity": Decimal("-3.50"),
-                "is_narcotic": 0,
             },
         ]
 
@@ -106,14 +85,14 @@ class TestReadDrugStock:
         cursor = MagicMock()
         mock_conn.cursor.return_value = cursor
         cursor.fetchall.return_value = [
-            {"standard_code": None, "drug_name": "??", "current_quantity": 10, "is_narcotic": 0},
-            {"standard_code": "KD12345", "drug_name": "정상", "current_quantity": Decimal("5"), "is_narcotic": 0},
+            {"insurance_code": None, "drug_name": "??", "current_quantity": 10},
+            {"insurance_code": "643507086", "drug_name": "정상", "current_quantity": Decimal("5")},
         ]
 
         result = r.read_drug_stock()
-        # None standard_code → strip() 실패 → 스킵
+        # None insurance_code → strip() 실패 → 스킵
         assert len(result) == 1
-        assert result[0].drug_standard_code == "KD12345"
+        assert result[0].drug_insurance_code == "643507086"
 
 
 class TestReadDrugMaster:

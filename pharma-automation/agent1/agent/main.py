@@ -111,9 +111,8 @@ class Agent1:
                         {
                             "items": [
                                 {
-                                    "drug_standard_code": s.drug_standard_code,
+                                    "drug_insurance_code": s.drug_insurance_code,
                                     "current_quantity": s.current_quantity,
-                                    "is_narcotic": s.is_narcotic,
                                 }
                                 for s in stock
                             ],
