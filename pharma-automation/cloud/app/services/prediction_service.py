@@ -159,7 +159,6 @@ async def run_daily_predictions(
 
         # 1. Bulk: get last visit per patient using window function
         #    ROW_NUMBER() OVER (PARTITION BY patient_hash ORDER BY visit_date DESC)
-        from sqlalchemy import literal_column
         subq = (
             select(
                 PatientVisitHistory,
