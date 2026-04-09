@@ -138,7 +138,7 @@ class Agent1:
                                     "source": "PM20_SYNC",
                                     "drugs": [
                                         {
-                                            "drug_standard_code": d.drug_standard_code,
+                                            "drug_insurance_code": d.drug_insurance_code,
                                             "quantity_dispensed": d.quantity_dispensed,
                                         }
                                         for d in v.drugs

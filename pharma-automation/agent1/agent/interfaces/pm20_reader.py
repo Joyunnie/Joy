@@ -7,7 +7,7 @@ from datetime import date
 
 @dataclass
 class DrugDispensed:
-    drug_standard_code: str
+    drug_insurance_code: str  # 건강보험 약품코드 (TBSID040_04.DRUG_CODE)
     quantity_dispensed: int
 
 

@@ -22,6 +22,7 @@ from app.schemas.api import (
     SyncInventoryResponse,
     SyncVisitsRequest,
     SyncVisitsResponse,
+    VisitDrugIn,
 )
 from app.schemas.drug_stock import SyncDrugStockRequest, SyncDrugStockResponse
 from app.schemas.drug_sync import SyncDrugsRequest, SyncDrugsResponse
@@ -42,6 +43,18 @@ async def _prefetch_drugs_by_code(
         select(Drug).where(Drug.standard_code.in_(codes))
     )
     return {d.standard_code: d for d in result.scalars().all()}
+
+
+async def _prefetch_drugs_by_insurance_code(
+    db: AsyncSession, codes: set[str],
+) -> dict[str, Drug]:
+    """Fetch Drug rows by insurance_code in one query. Returns {insurance_code: Drug}."""
+    if not codes:
+        return {}
+    result = await db.execute(
+        select(Drug).where(Drug.insurance_code.in_(codes))
+    )
+    return {d.insurance_code: d for d in result.scalars().all() if d.insurance_code}
 
 
 async def _prefetch_thresholds(
@@ -278,12 +291,17 @@ async def sync_visits(
     visit_ids: list[int] = []
     skipped_drugs: list[SkippedDrugOut] = []
 
-    # 1. Prefetch all drugs referenced across all visits
-    all_drug_codes: set[str] = set()
+    # 1. Prefetch all drugs referenced across all visits (by insurance_code and standard_code)
+    all_insurance_codes: set[str] = set()
+    all_standard_codes: set[str] = set()
     for visit_in in req.visits:
         for d in visit_in.drugs:
-            all_drug_codes.add(d.drug_standard_code)
-    drug_map = await _prefetch_drugs_by_code(db, all_drug_codes)
+            if d.drug_insurance_code:
+                all_insurance_codes.add(d.drug_insurance_code)
+            if d.drug_standard_code:
+                all_standard_codes.add(d.drug_standard_code)
+    insurance_drug_map = await _prefetch_drugs_by_insurance_code(db, all_insurance_codes)
+    standard_drug_map = await _prefetch_drugs_by_code(db, all_standard_codes)
 
     # 2. Prefetch existing visits for duplicate detection (bulk by pharmacy)
     #    We need visits matching any (patient_hash, visit_date, source) combo
@@ -302,6 +320,7 @@ async def sync_visits(
         all_existing_visits = []
 
     # 3. Prefetch VisitDrug+Drug for all existing visit IDs (for drug-combo dedup)
+    #    Use insurance_code for comparison (primary), fallback to standard_code
     existing_visit_ids = [v.id for v in all_existing_visits]
     if existing_visit_ids:
         vd_result = await db.execute(
@@ -309,18 +328,33 @@ async def sync_visits(
             .join(Drug, VisitDrug.drug_id == Drug.id)
             .where(VisitDrug.visit_id.in_(existing_visit_ids))
         )
-        # Build {visit_id: sorted list of standard_codes}
         visit_drug_map: dict[int, list[str]] = {}
         for vd, drug in vd_result.all():
-            visit_drug_map.setdefault(vd.visit_id, []).append(drug.standard_code)
+            code = drug.insurance_code or drug.standard_code or ""
+            visit_drug_map.setdefault(vd.visit_id, []).append(code)
         for codes_list in visit_drug_map.values():
             codes_list.sort()
     else:
         visit_drug_map = {}
 
+    # Helper: resolve a VisitDrugIn to a Drug object
+    def _resolve_drug(d: VisitDrugIn) -> Drug | None:
+        if d.drug_insurance_code:
+            found = insurance_drug_map.get(d.drug_insurance_code)
+            if found:
+                return found
+        if d.drug_standard_code:
+            found = standard_drug_map.get(d.drug_standard_code)
+            if found:
+                return found
+        return None
+
+    def _drug_dedup_code(d: VisitDrugIn) -> str:
+        return d.drug_insurance_code or d.drug_standard_code or ""
+
     # 4. Loop in memory
     for visit_in in req.visits:
-        incoming_codes = sorted([d.drug_standard_code for d in visit_in.drugs])
+        incoming_codes = sorted([_drug_dedup_code(d) for d in visit_in.drugs])
 
         # Check for duplicate among existing visits
         is_duplicate = False
@@ -353,11 +387,11 @@ async def sync_visits(
 
         # INSERT visit_drugs
         for drug_in in visit_in.drugs:
-            drug = drug_map.get(drug_in.drug_standard_code)
+            drug = _resolve_drug(drug_in)
             if not drug:
                 skipped_drugs.append(
                     SkippedDrugOut(
-                        drug_standard_code=drug_in.drug_standard_code,
+                        drug_standard_code=drug_in.drug_insurance_code or drug_in.drug_standard_code or "unknown",
                         reason="not_found_in_drugs_master",
                     )
                 )

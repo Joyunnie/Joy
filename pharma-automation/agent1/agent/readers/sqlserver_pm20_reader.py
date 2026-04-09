@@ -66,11 +66,9 @@ SELECT
     h.TOT_DD_CNT       AS prescription_days,
     h.PROC_DTIME       AS proc_datetime,
     d.DRUG_CODE        AS drug_code,
-    d.MDCN_MQTY        AS quantity_dispensed,
-    g.Goods_RegNo      AS standard_code
+    d.MDCN_MQTY        AS quantity_dispensed
 FROM TBSID040_03 h
     INNER JOIN TBSID040_04 d ON h.DRUG_SEQ = d.DRUG_SEQ
-    LEFT JOIN DA_Goods g ON LTRIM(RTRIM(d.DRUG_CODE)) = LTRIM(RTRIM(g.Goods_code))
 WHERE h.PRES_PRGRS_STATE = '3'
     AND h.PRES_GUBUN != 'E'
     AND h.PROC_DTIME > %s
@@ -218,24 +216,16 @@ class SqlServerPM20Reader(PM20Reader):
             g["proc_dtime"] = row.get("proc_datetime") or ""
 
             drug_code = (row.get("drug_code") or "").strip()
-            std_code = (row.get("standard_code") or "").strip()
 
-            # Skip internal adjustment codes (ZP prefix)
-            if drug_code.startswith("ZP"):
+            # Skip internal adjustment codes (ZP prefix) and empty codes
+            if not drug_code or drug_code.startswith("ZP"):
                 continue
 
-            # Use standard_code from DA_Goods JOIN if available
-            if std_code:
-                qty = int(row.get("quantity_dispensed") or 0)
-                g["drugs"].append(DrugDispensed(
-                    drug_standard_code=std_code,
-                    quantity_dispensed=qty,
-                ))
-            else:
-                logger.debug(
-                    "Skipping drug_code %s (no matching DA_Goods entry) in serial %s",
-                    drug_code, serial,
-                )
+            qty = int(row.get("quantity_dispensed") or 0)
+            g["drugs"].append(DrugDispensed(
+                drug_insurance_code=drug_code,
+                quantity_dispensed=qty,
+            ))
 
         visits = []
         for g in groups.values():

@@ -127,6 +127,7 @@ class TestReadDrugMaster:
                 "name": "아모시실린",
                 "manufacturer": "제약사A",
                 "category": "PRESCRIPTION",
+                "insurance_code": None,
             },
             {
                 "standard_code": "NC00001",
@@ -170,7 +171,6 @@ class TestReadRecentVisits:
                 "proc_datetime": "20260301100000",
                 "drug_code": "643507086",
                 "quantity_dispensed": Decimal("30"),
-                "standard_code": "KD12345",
             },
             {
                 "serial": "20260301000001",
@@ -180,7 +180,6 @@ class TestReadRecentVisits:
                 "proc_datetime": "20260301100000",
                 "drug_code": "643507087",
                 "quantity_dispensed": Decimal("20"),
-                "standard_code": "KD67890",
             },
             {
                 "serial": "20260302000001",
@@ -190,7 +189,6 @@ class TestReadRecentVisits:
                 "proc_datetime": "20260302090000",
                 "drug_code": "643507086",
                 "quantity_dispensed": Decimal("10"),
-                "standard_code": "KD12345",
             },
         ]
 
@@ -222,7 +220,6 @@ class TestReadRecentVisits:
                 "proc_datetime": "20260301100000",
                 "drug_code": "643507086",
                 "quantity_dispensed": Decimal("30"),
-                "standard_code": "KD12345",
             },
         ]
 
@@ -244,7 +241,6 @@ class TestReadRecentVisits:
                 "proc_datetime": "20261225080000",
                 "drug_code": "643507086",
                 "quantity_dispensed": Decimal("5"),
-                "standard_code": "KD12345",
             },
         ]
 
@@ -265,7 +261,6 @@ class TestReadRecentVisits:
                 "proc_datetime": "20260101100000",
                 "drug_code": "643507086",
                 "quantity_dispensed": Decimal("10"),
-                "standard_code": "KD12345",
             },
         ]
 
@@ -295,7 +290,6 @@ class TestReadRecentVisits:
                 "proc_datetime": "20260301100000",
                 "drug_code": "ZP0000001354",
                 "quantity_dispensed": Decimal("10"),
-                "standard_code": None,
             },
             {
                 "serial": "20260301000001",
@@ -305,14 +299,13 @@ class TestReadRecentVisits:
                 "proc_datetime": "20260301100000",
                 "drug_code": "643507086",
                 "quantity_dispensed": Decimal("30"),
-                "standard_code": "KD12345",
             },
         ]
 
         result = r.read_recent_visits("20260101000000")
         assert len(result) == 1
         assert len(result[0].drugs) == 1  # Only the non-ZP drug
-        assert result[0].drugs[0].drug_standard_code == "KD12345"
+        assert result[0].drugs[0].drug_insurance_code == "643507086"
 
     def test_zero_prescription_days_defaults_to_1(self, reader):
         """TOT_DD_CNT가 0이면 1로 기본값."""
@@ -328,7 +321,6 @@ class TestReadRecentVisits:
                 "proc_datetime": "20260301100000",
                 "drug_code": "643507086",
                 "quantity_dispensed": Decimal("30"),
-                "standard_code": "KD12345",
             },
         ]
 
@@ -349,7 +341,6 @@ class TestReadRecentVisits:
                 "proc_datetime": "20260301100000",
                 "drug_code": "643507086",
                 "quantity_dispensed": Decimal("30"),
-                "standard_code": "KD12345",
             },
         ]
 

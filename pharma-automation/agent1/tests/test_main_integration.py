@@ -45,7 +45,7 @@ class TestSyncCycleOrder:
                 patient_hash="abc123",
                 visit_date=date(2026, 3, 1),
                 prescription_days=7,
-                drugs=[DrugDispensed("KD12345", 30)],
+                drugs=[DrugDispensed("643507086", 30)],
             ),
         ]
         mock_reader.read_inventory.return_value = []
@@ -153,7 +153,7 @@ class TestSyncPayloadFormat:
                 patient_hash="abc123def456",
                 visit_date=date(2026, 3, 15),
                 prescription_days=14,
-                drugs=[DrugDispensed("KD12345", 30)],
+                drugs=[DrugDispensed("643507086", 30)],
             ),
         ]
         mock_reader.read_inventory.return_value = []
@@ -171,5 +171,5 @@ class TestSyncPayloadFormat:
         assert visit["visit_date"] == "2026-03-15"
         assert visit["prescription_days"] == 14
         assert visit["source"] == "PM20_SYNC"
-        assert visit["drugs"][0]["drug_standard_code"] == "KD12345"
+        assert visit["drugs"][0]["drug_insurance_code"] == "643507086"
         assert visit["drugs"][0]["quantity_dispensed"] == 30
