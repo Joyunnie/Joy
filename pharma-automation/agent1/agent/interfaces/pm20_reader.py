@@ -36,6 +36,7 @@ class DrugMasterItem:
     manufacturer: str | None  # DA_Goods.Goods_Company
     # TODO: Goods_Gubun 값 확인 후 OTC 카테고리 매핑 추가
     category: str             # PRESCRIPTION | NARCOTIC (OTC 구분 현재 불가)
+    insurance_code: str | None = None  # 건강보험 약품코드 (TBSIM040_01.DRUG_CODE via TEMP_STOCK)
 
 
 @dataclass

@@ -47,9 +47,11 @@ SELECT
     g.Goods_Company  AS manufacturer,
     CASE WHEN md.DRUGCODE IS NOT NULL THEN 'NARCOTIC'
          ELSE 'PRESCRIPTION'
-    END AS category
+    END AS category,
+    ts.DRUG_CODE     AS insurance_code
 FROM DA_Goods g
     LEFT JOIN CD_MINDRUG md ON LTRIM(RTRIM(g.Goods_code)) = LTRIM(RTRIM(md.DRUGCODE))
+    LEFT JOIN TEMP_STOCK ts ON LTRIM(RTRIM(g.Goods_code)) = LTRIM(RTRIM(ts.DRUG_CODE))
 WHERE g.Goods_RegNo IS NOT NULL AND g.Goods_RegNo <> ''
 """
 
@@ -161,12 +163,15 @@ class SqlServerPM20Reader(PM20Reader):
         items = []
         for row in rows:
             try:
+                insurance_code_raw = row.get("insurance_code")
+                insurance_code = insurance_code_raw.strip() if insurance_code_raw else None
                 items.append(DrugMasterItem(
                     standard_code=row["standard_code"].strip(),
                     name=row["name"].strip() if row["name"] else "",
                     manufacturer=row["manufacturer"].strip() if row.get("manufacturer") else None,
                     # TODO: Goods_Gubun 값 확인 후 OTC 카테고리 매핑 추가
                     category=row["category"],
+                    insurance_code=insurance_code,
                 ))
             except (KeyError, TypeError, ValueError) as e:
                 logger.warning("Skipping drug_master row due to data error: %s (row=%s)", e, row)

@@ -6,6 +6,7 @@ class DrugMasterIn(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     manufacturer: str | None = None
     category: str = Field(default="PRESCRIPTION", pattern=r"^(PRESCRIPTION|OTC|NARCOTIC)$")
+    insurance_code: str | None = Field(None, max_length=20)
 
 
 class SyncDrugsRequest(BaseModel):

@@ -74,9 +74,15 @@ class RefreshToken(Base):
 # 4. drugs
 class Drug(Base):
     __tablename__ = "drugs"
+    __table_args__ = (
+        Index("idx_drugs_insurance_code", "insurance_code"),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     standard_code: Mapped[str | None] = mapped_column(String(20), unique=True)
+    insurance_code: Mapped[str | None] = mapped_column(
+        String(20), comment="건강보험 약품코드 (TBSIM040_01.DRUG_CODE)"
+    )
     name: Mapped[str] = mapped_column(String(200))
     category: Mapped[str | None] = mapped_column(String(30))  # PRESCRIPTION | OTC | NARCOTIC
     manufacturer: Mapped[str | None] = mapped_column(String(100))

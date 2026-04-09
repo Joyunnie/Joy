@@ -406,6 +406,9 @@ async def sync_drugs(
             if existing.category != drug_in.category:
                 existing.category = drug_in.category
                 changed = True
+            if drug_in.insurance_code and existing.insurance_code != drug_in.insurance_code:
+                existing.insurance_code = drug_in.insurance_code
+                changed = True
             if changed:
                 existing.updated_at = datetime.now(timezone.utc)
                 updated_count += 1
@@ -415,6 +418,7 @@ async def sync_drugs(
                 name=drug_in.name,
                 manufacturer=drug_in.manufacturer,
                 category=drug_in.category,
+                insurance_code=drug_in.insurance_code,
             )
             db.add(drug)
             new_count += 1
