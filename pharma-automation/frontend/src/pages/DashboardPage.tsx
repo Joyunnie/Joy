@@ -1,5 +1,5 @@
 // TODO(Phase 3B): GET /dashboard/summary 통합 API 검토
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const POLL_INTERVAL_MS = 60_000;
 import { Link } from 'react-router-dom';
@@ -88,7 +88,10 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, []);
 
+  const polling = useRef(false);
   const pollAlerts = useCallback(async () => {
+    if (polling.current) return;
+    polling.current = true;
     try {
       const alertData = await fetchAlerts({ unread_only: true, limit: 5 });
       setData(prev => prev ? {
@@ -99,7 +102,8 @@ export default function DashboardPage() {
         })),
       } : null);
     } catch (e) { console.warn('Alert poll failed', e); }
-  }, []);
+    finally { polling.current = false; }
+  }, [fetchAlerts]);
 
   useEffect(() => {
     const id = setInterval(() => {

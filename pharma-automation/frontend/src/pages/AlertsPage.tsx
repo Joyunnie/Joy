@@ -61,9 +61,12 @@ export default function AlertsPage() {
   const [readFilter, setReadFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const loaded = useRef(false);
+  const polling = useRef(false);
   const { toasts, showToast, removeToast } = useToast();
 
   const loadAlerts = useCallback(async () => {
+    if (polling.current) return;
+    polling.current = true;
     if (!loaded.current) setLoading(true);
     try {
       const data = await fetchAlerts({
@@ -79,6 +82,7 @@ export default function AlertsPage() {
       if (!loaded.current) showToast('알림을 불러오지 못했습니다', 'error');
     } finally {
       loaded.current = true;
+      polling.current = false;
       setLoading(false);
     }
   }, [offset, typeFilter, readFilter, showToast]);
@@ -90,7 +94,7 @@ export default function AlertsPage() {
       if (!document.hidden) loadAlerts();
     }, POLL_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [fetchAlerts]);
+  }, [loadAlerts]);
 
   async function markAsRead(alert: AlertOut) {
     if (alert.read_at) return;
