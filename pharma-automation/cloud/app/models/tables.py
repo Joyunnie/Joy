@@ -95,7 +95,7 @@ class OtcInventory(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
-    drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id", ondelete="CASCADE"))
+    drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id", ondelete="RESTRICT"))
     current_quantity: Mapped[int] = mapped_column(Integer, default=0)
     display_location: Mapped[str | None] = mapped_column(String(100))
     storage_location: Mapped[str | None] = mapped_column(String(100))
@@ -140,7 +140,7 @@ class DrugThreshold(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
-    drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id", ondelete="CASCADE"))
+    drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id", ondelete="RESTRICT"))
     min_quantity: Mapped[int] = mapped_column(Integer)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
@@ -170,7 +170,7 @@ class DrugStock(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
-    drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id", ondelete="CASCADE"))
+    drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id", ondelete="RESTRICT"))
     current_quantity: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     is_narcotic: Mapped[bool] = mapped_column(Boolean, default=False)
     quantity_source: Mapped[str] = mapped_column(String(20), default="PM20")
@@ -228,7 +228,7 @@ class VisitPrediction(Base):
     predicted_visit_date: Mapped[date] = mapped_column(Date)
     alert_days_before: Mapped[int | None] = mapped_column(SmallInteger)
     alert_sent: Mapped[bool] = mapped_column(Boolean, default=False)
-    last_visit_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("patient_visit_history.id"))
+    last_visit_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("patient_visit_history.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
 
@@ -313,7 +313,7 @@ class NarcoticsInventory(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
-    drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id", ondelete="CASCADE"))
+    drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id", ondelete="RESTRICT"))
     lot_number: Mapped[str] = mapped_column(String(50))
     current_quantity: Mapped[int] = mapped_column(Integer, default=0)
     last_inspected_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
