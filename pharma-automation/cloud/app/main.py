@@ -9,13 +9,13 @@ from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import text
 
 from app.config import settings
-
-logger = logging.getLogger(__name__)
 from app.database import engine
 from app.exceptions import ServiceError
 from app.rate_limit import limiter
 from app.routers import alerts, auth, canisters, drugs, inventory, narcotics, otc, predictions, receipt_ocr, shelf_layouts, sync, thresholds, todos
 from app.services.ocr_engine import init_ocr_engine
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager

@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import logging
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -7,8 +8,6 @@ import bcrypt
 import jwt
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-logger = logging.getLogger(__name__)
 
 from app.config import settings
 from app.exceptions import ServiceError
@@ -19,6 +18,8 @@ from app.schemas.auth import (
     RegisterResponse,
     TokenResponse,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def hash_password(password: str) -> str:
@@ -65,8 +66,11 @@ async def register_user(db: AsyncSession, pharmacy_id: int, invite_code: str,
     if pharmacy is None:
         raise ServiceError("Pharmacy not found", 404)
 
-    # 2. invite_code 검증
-    if pharmacy.invite_code != invite_code:
+    # 2. invite_code 검증 (timing-safe comparison)
+    if not hmac.compare_digest(
+        (pharmacy.invite_code or "").encode(),
+        invite_code.encode(),
+    ):
         raise ServiceError("Invalid invite code", 403)
 
     # 3. 중복 검사
@@ -81,7 +85,7 @@ async def register_user(db: AsyncSession, pharmacy_id: int, invite_code: str,
         pharmacy_id=pharmacy_id,
         username=username,
         password_hash=hash_password(password),
-        role="STAFF",
+        role=role,
     )
     db.add(user)
     await db.flush()
@@ -147,7 +151,7 @@ async def logout(db: AsyncSession, refresh_token: str) -> LogoutResponse:
 async def cleanup_expired_tokens(db: AsyncSession) -> int:
     """Delete refresh tokens that expired more than 7 days ago.
 
-    Should be called by a scheduled task (e.g. daily cron or batch job).
+    Called by the daily prediction batch job.
     """
     cutoff = datetime.now(timezone.utc) - timedelta(days=7)
     result = await db.execute(
