@@ -204,10 +204,10 @@ export default function TodoPage() {
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
-            className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+            className={`flex-1 py-2 text-sm rounded-md transition-colors ${
               tab === t.key
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-500'
+                ? 'bg-white text-blue-600 font-semibold shadow-sm'
+                : 'text-gray-500 font-medium'
             }`}
           >
             {t.label}
@@ -220,7 +220,7 @@ export default function TodoPage() {
       {/* FAB */}
       <button
         onClick={() => setShowAdd(true)}
-        className="fixed bottom-20 right-4 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-colors z-30"
+        className="fixed bottom-20 right-4 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg shadow-blue-500/25 flex items-center justify-center hover:bg-blue-700 transition-colors z-30"
       >
         <Plus size={24} />
       </button>

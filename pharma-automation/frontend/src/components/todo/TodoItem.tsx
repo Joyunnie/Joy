@@ -48,7 +48,9 @@ export default function TodoItem({ todo, onToggle, onSelect }: TodoItemProps) {
 
   return (
     <div
-      className="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100 active:bg-gray-50"
+      className={`flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-100 active:bg-gray-50 transition-all duration-200 ${
+        todo.is_completed ? 'opacity-60' : ''
+      }`}
       onClick={() => onSelect(todo)}
     >
       {/* Priority indicator */}
