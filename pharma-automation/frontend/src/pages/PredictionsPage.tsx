@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { fetchPredictions } from '../api/predictionsApi.ts';
 import type { PredictionOut } from '../types/api.ts';
 import Card from '../components/common/Card.tsx';
@@ -88,13 +88,18 @@ export default function PredictionsPage() {
         <div className="space-y-4">
           {[...grouped.entries()].map(([date, items]) => (
             <div key={date}>
-              <h3 className="text-sm font-semibold text-gray-500 mb-2 sticky top-0 bg-gray-50 py-1">
+              <h3 className="flex items-center gap-1.5 text-sm font-semibold text-gray-500 mb-2 py-1">
+                <Calendar size={14} className="text-gray-400" />
                 {formatDate(date)}
-                <span className="ml-2 text-xs text-gray-400">{items.length}명</span>
+                <span className="text-xs text-gray-400">{items.length}명</span>
               </h3>
               <div className="space-y-2">
                 {items.map((pred) => (
-                  <Card key={pred.id}>
+                  <Card
+                    key={pred.id}
+                    variant={pred.is_overdue ? 'danger' : 'default'}
+                    borderAccent={pred.is_overdue}
+                  >
                     <div
                       className="flex items-center justify-between cursor-pointer"
                       onClick={() => toggleExpand(pred.id)}
@@ -103,8 +108,13 @@ export default function PredictionsPage() {
                         <span className="text-sm font-mono text-gray-700">
                           {maskHash(pred.patient_hash)}
                         </span>
+                        {pred.needed_drugs.length > 0 && (
+                          <span className="rounded-full bg-blue-100 text-blue-700 text-xs px-2 font-medium">
+                            {pred.needed_drugs.length}
+                          </span>
+                        )}
                         {pred.is_overdue && (
-                          <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">
+                          <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-medium">
                             지남
                           </span>
                         )}

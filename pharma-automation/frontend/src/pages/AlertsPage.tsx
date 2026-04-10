@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Bell, Calendar, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, Bell, Calendar, CheckCheck, ShieldAlert } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { fetchAlerts, markAlertRead } from '../api/alertsApi.ts';
 import type { AlertOut } from '../types/api.ts';
@@ -133,11 +133,34 @@ export default function AlertsPage() {
     setOffset(0);
   }
 
+  async function markAllRead() {
+    const unread = alerts.filter(a => !a.read_at);
+    if (unread.length === 0) return;
+    setAlerts(prev => prev.map(a => a.read_at ? a : { ...a, read_at: new Date().toISOString() }));
+    try {
+      await Promise.all(unread.map(a => markAlertRead(a.id)));
+    } catch {
+      showToast('일괄 읽음 처리에 실패했습니다', 'error');
+      loadAlerts();
+    }
+  }
+
   return (
     <div className="p-4 max-w-lg mx-auto">
       <Toast toasts={toasts} onRemove={removeToast} />
 
-      <PageHeader title="알림" />
+      <PageHeader
+        title="알림"
+        action={
+          <button
+            onClick={markAllRead}
+            className="flex items-center gap-1 text-xs text-gray-500 hover:text-blue-600 transition-colors"
+          >
+            <CheckCheck size={14} />
+            모두 읽음
+          </button>
+        }
+      />
 
       {/* Type filter chips */}
       <FilterChips options={ALERT_TYPES} value={typeFilter} onChange={handleTypeFilter} className="mb-3" />
@@ -184,7 +207,7 @@ export default function AlertsPage() {
                 </div>
                 {(() => { const Icon = alertIcon(alert.alert_type); return <Icon size={18} className="flex-shrink-0 text-gray-500" />; })()}
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm ${!alert.read_at ? 'font-bold text-gray-800' : 'text-gray-600'}`}>
+                  <p className={`text-sm ${!alert.read_at ? 'font-medium text-gray-800' : 'text-gray-500'}`}>
                     {alert.message}
                   </p>
                   <p className="text-xs text-gray-400 mt-1">{timeAgo(alert.sent_at)}</p>
