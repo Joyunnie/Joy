@@ -1,11 +1,12 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../test/mocks/server';
-import TestWrapper from '../test/TestWrapper';
+import TestWrapper, { setupFakeAuth } from '../test/TestWrapper';
 import AlertsPage from './AlertsPage';
 
 describe('AlertsPage', () => {
+  beforeEach(() => setupFakeAuth());
   it('shows empty state when no alerts', async () => {
     render(
       <TestWrapper>

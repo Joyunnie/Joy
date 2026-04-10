@@ -1,24 +1,18 @@
 import logging
 from datetime import datetime, timedelta, timezone
 
-from app.exceptions import ServiceError
-
-logger = logging.getLogger(__name__)
 from sqlalchemy import and_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.exceptions import ServiceError
 from app.models.tables import (
-    AlertLog,
     Drug,
     DrugStock,
-    DrugThreshold,
     PatientVisitHistory,
     PrescriptionInventory,
     VisitDrug,
 )
-from app.services.alert_utils import check_and_create_low_stock_alert
 from app.schemas.api import (
-    LowStockAlertOut,
     SkippedDrugOut,
     SyncCassetteMappingRequest,
     SyncCassetteMappingResponse,
@@ -28,7 +22,10 @@ from app.schemas.api import (
     SyncVisitsResponse,
 )
 from app.schemas.drug_sync import SyncDrugsRequest, SyncDrugsResponse
+from app.services.alert_utils import check_and_create_low_stock_alert
 from app.services.drug_resolver import DrugResolver
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -48,7 +45,16 @@ async def _prefetch_drugs_by_code(
     result = await db.execute(
         select(Drug).where(Drug.standard_code.in_(codes))
     )
-    return {d.standard_code: d for d in result.scalars().all()}
+    drug_map: dict[str, Drug] = {}
+    for d in result.scalars().all():
+        if d.standard_code in drug_map:
+            logger.warning(
+                "standard_code collision: %s maps to drug_id %d and %d — keeping first",
+                d.standard_code, drug_map[d.standard_code].id, d.id,
+            )
+            continue
+        drug_map[d.standard_code] = d
+    return drug_map
 
 
 async def _prefetch_drugs_by_insurance_code(
@@ -63,78 +69,6 @@ async def _prefetch_drugs_by_insurance_code(
     return {d.insurance_code: d for d in result.scalars().all() if d.insurance_code}
 
 
-async def _prefetch_thresholds(
-    db: AsyncSession, pharmacy_id: int, drug_ids: set[int],
-) -> dict[int, DrugThreshold]:
-    """Fetch active thresholds for a set of drug_ids. Returns {drug_id: DrugThreshold}."""
-    if not drug_ids:
-        return {}
-    result = await db.execute(
-        select(DrugThreshold).where(
-            and_(
-                DrugThreshold.pharmacy_id == pharmacy_id,
-                DrugThreshold.drug_id.in_(drug_ids),
-                DrugThreshold.is_active == True,  # noqa: E712
-            )
-        )
-    )
-    return {t.drug_id: t for t in result.scalars().all()}
-
-
-async def _prefetch_recent_alerts(
-    db: AsyncSession, pharmacy_id: int, alert_type: str,
-    ref_table: str, drug_ids: set[int],
-) -> set[int]:
-    """Return set of drug_ids that already have an unread alert in the last 24h."""
-    if not drug_ids:
-        return set()
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
-    result = await db.execute(
-        select(AlertLog.ref_id).where(
-            and_(
-                AlertLog.pharmacy_id == pharmacy_id,
-                AlertLog.alert_type == alert_type,
-                AlertLog.ref_table == ref_table,
-                AlertLog.ref_id.in_(drug_ids),
-                AlertLog.sent_at >= cutoff,
-                AlertLog.read_at.is_(None),
-            )
-        )
-    )
-    return {row[0] for row in result.all()}
-
-
-async def _maybe_create_low_stock_alert(
-    pharmacy_id: int,
-    drug_id: int,
-    drug_name: str | None,
-    current_quantity: float | int,
-    threshold_map: dict[int, DrugThreshold],
-    alerted_ids: set[int],
-    db: AsyncSession,
-    low_stock_alerts: list[LowStockAlertOut],
-    ref_table: str,
-) -> None:
-    """Batch-friendly wrapper: checks prefetched threshold map, then delegates to alert_utils."""
-    threshold = threshold_map.get(drug_id)
-    if not threshold or current_quantity >= threshold.min_quantity:
-        return
-    if drug_id in alerted_ids:
-        return
-    alert_type = "NARCOTICS_LOW" if ref_table == "narcotics_inventory" else "LOW_STOCK"
-    await check_and_create_low_stock_alert(
-        db, pharmacy_id, drug_id, current_quantity, drug_name, alert_type, ref_table,
-    )
-    alerted_ids.add(drug_id)
-    low_stock_alerts.append(
-        LowStockAlertOut(
-            drug_name=drug_name or "",
-            current_quantity=round(current_quantity) if isinstance(current_quantity, float) else current_quantity,
-            min_quantity=threshold.min_quantity,
-        )
-    )
-
-
 # ---------------------------------------------------------------------------
 # sync_inventory: ~4 queries (was 4N)
 # ---------------------------------------------------------------------------
@@ -143,7 +77,6 @@ async def _maybe_create_low_stock_alert(
 async def sync_inventory(
     db: AsyncSession, pharmacy_id: int, req: SyncInventoryRequest
 ) -> SyncInventoryResponse:
-    low_stock_alerts: list[LowStockAlertOut] = []
     synced = 0
 
     # 1. Prefetch drugs
@@ -167,14 +100,7 @@ async def sync_inventory(
     else:
         inv_map = {}
 
-    # 3. Prefetch thresholds + recent alerts for resolved drug_ids
-    resolved_drug_ids = {d.id for d in drug_map.values()}
-    threshold_map = await _prefetch_thresholds(db, pharmacy_id, resolved_drug_ids)
-    alerted_ids = await _prefetch_recent_alerts(
-        db, pharmacy_id, "LOW_STOCK", "prescription_inventory", resolved_drug_ids,
-    )
-
-    # 4. Loop in memory
+    # 3. Loop in memory
     for item in req.items:
         drug = drug_map.get(item.drug_standard_code) if item.drug_standard_code else None
         drug_id = drug.id if drug else None
@@ -206,14 +132,7 @@ async def sync_inventory(
 
         synced += 1
 
-        if drug_id:
-            await _maybe_create_low_stock_alert(
-                pharmacy_id, drug_id, drug_name, item.current_quantity,
-                threshold_map, alerted_ids, db, low_stock_alerts,
-                "prescription_inventory",
-            )
-
-    return SyncInventoryResponse(synced_count=synced, low_stock_alerts=low_stock_alerts)
+    return SyncInventoryResponse(synced_count=synced, low_stock_alerts=[])
 
 
 # ---------------------------------------------------------------------------

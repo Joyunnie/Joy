@@ -1,11 +1,14 @@
 import hashlib
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
 import jwt
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 from app.config import settings
 from app.exceptions import ServiceError
@@ -139,3 +142,18 @@ async def logout(db: AsyncSession, refresh_token: str) -> LogoutResponse:
         rt.revoked_at = datetime.now(timezone.utc)
 
     return LogoutResponse()
+
+
+async def cleanup_expired_tokens(db: AsyncSession) -> int:
+    """Delete refresh tokens that expired more than 7 days ago.
+
+    Should be called by a scheduled task (e.g. daily cron or batch job).
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+    result = await db.execute(
+        delete(RefreshToken).where(RefreshToken.expires_at < cutoff)
+    )
+    deleted = result.rowcount
+    if deleted:
+        logger.info("Cleaned up %d expired refresh tokens", deleted)
+    return deleted

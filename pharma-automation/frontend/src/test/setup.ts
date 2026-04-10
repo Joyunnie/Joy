@@ -2,8 +2,9 @@ import '@testing-library/jest-dom/vitest';
 import { afterAll, afterEach, beforeAll } from 'vitest';
 import { server } from './mocks/server';
 
-// Polyfill localStorage for jsdom (vitest jsdom doesn't always provide full impl)
-if (typeof globalThis.localStorage === 'undefined' || typeof globalThis.localStorage.getItem !== 'function') {
+// jsdom in vitest 4 doesn't always provide a working localStorage.
+// Polyfill only if missing — the jsdom url config handles most cases.
+if (typeof globalThis.localStorage === 'undefined' || typeof globalThis.localStorage.setItem !== 'function') {
   const store: Record<string, string> = {};
   globalThis.localStorage = {
     getItem: (key: string) => store[key] ?? null,

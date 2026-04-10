@@ -1,11 +1,12 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { beforeEach, describe, it, expect } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../test/mocks/server';
-import TestWrapper from '../test/TestWrapper';
+import TestWrapper, { setupFakeAuth } from '../test/TestWrapper';
 import DashboardPage from './DashboardPage';
 
 describe('DashboardPage', () => {
+  beforeEach(() => setupFakeAuth());
   it('shows loading spinner initially', () => {
     const { container } = render(
       <TestWrapper>

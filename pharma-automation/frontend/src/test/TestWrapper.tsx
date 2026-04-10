@@ -1,6 +1,6 @@
 /**
  * Test wrapper that provides Router + AuthContext for page tests.
- * Fakes authentication by setting localStorage tokens before rendering.
+ * Call setupFakeAuth() in beforeEach before rendering.
  */
 import type { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -17,16 +17,18 @@ const FAKE_ACCESS_TOKEN = [
   'fake-signature',
 ].join('.');
 
+/** Call in beforeEach — sets localStorage tokens before render. */
+export function setupFakeAuth() {
+  localStorage.setItem('access_token', FAKE_ACCESS_TOKEN);
+  localStorage.setItem('refresh_token', 'fake-refresh');
+}
+
 interface Props {
   children: ReactNode;
   initialRoute?: string;
 }
 
 export default function TestWrapper({ children, initialRoute = '/' }: Props) {
-  // Set tokens so AuthContext considers us authenticated
-  localStorage.setItem('access_token', FAKE_ACCESS_TOKEN);
-  localStorage.setItem('refresh_token', 'fake-refresh');
-
   return (
     <MemoryRouter initialEntries={[initialRoute]}>
       <AuthProvider>

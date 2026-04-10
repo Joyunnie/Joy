@@ -4,6 +4,7 @@ Verifies that authenticated users can only access data belonging to their
 own pharmacy_id. Tests endpoints beyond the OTC/narcotics isolation tests
 that already exist.
 """
+import bcrypt
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient
@@ -22,95 +23,76 @@ from tests.conftest import seed_session_factory
 
 pytestmark = pytest.mark.asyncio
 
-# We'll seed data into a SECOND pharmacy and verify the test user (pharmacy 7)
-# cannot see it.
 
-_other_pharmacy_id: int | None = None
-_other_user_id: int | None = None
-
-
-async def _ensure_other_pharmacy() -> int:
-    """Create or find a second pharmacy (+ user) for isolation testing."""
-    global _other_pharmacy_id, _other_user_id
-    if _other_pharmacy_id is not None:
-        return _other_pharmacy_id
-
+@pytest_asyncio.fixture(scope="module")
+async def other_pharmacy():
+    """Create a second pharmacy + user for isolation testing (module-scoped)."""
     async with seed_session_factory() as db:
         result = await db.execute(
             select(Pharmacy).where(Pharmacy.name == "격리테스트약국")
         )
-        existing = result.scalar_one_or_none()
-        if existing:
-            _other_pharmacy_id = existing.id
-        else:
-            other = Pharmacy(
+        pharmacy = result.scalar_one_or_none()
+        if not pharmacy:
+            pharmacy = Pharmacy(
                 name="격리테스트약국",
                 patient_hash_salt="other-salt",
                 patient_hash_algorithm="SHA-256",
                 api_key_hash="other-api-key-hash",
                 invite_code="OTHER-CODE",
             )
-            db.add(other)
+            db.add(pharmacy)
             await db.flush()
-            _other_pharmacy_id = other.id
 
-        # Ensure a user exists in the other pharmacy (needed for todo FK)
         user_result = await db.execute(
-            select(User).where(User.pharmacy_id == _other_pharmacy_id)
+            select(User).where(User.pharmacy_id == pharmacy.id)
         )
         user = user_result.scalar_one_or_none()
         if not user:
-            import bcrypt
             user = User(
-                pharmacy_id=_other_pharmacy_id,
+                pharmacy_id=pharmacy.id,
                 username="otheruser",
                 password_hash=bcrypt.hashpw(b"pass", bcrypt.gensalt()).decode(),
                 role="PHARMACIST",
             )
             db.add(user)
             await db.flush()
-        _other_user_id = user.id
 
         await db.commit()
-        return _other_pharmacy_id
+        return {"pharmacy_id": pharmacy.id, "user_id": user.id}
 
 
 @pytest_asyncio.fixture(autouse=True)
-async def cleanup_other(seed_data):
-    """Clean data seeded into the other pharmacy."""
-    other_pid = await _ensure_other_pharmacy()
-    async with seed_session_factory() as db:
-        await db.execute(AlertLog.__table__.delete().where(AlertLog.pharmacy_id == other_pid))
-        await db.execute(VisitPrediction.__table__.delete().where(VisitPrediction.pharmacy_id == other_pid))
-        await db.execute(AtdpsCanister.__table__.delete().where(AtdpsCanister.pharmacy_id == other_pid))
-        await db.execute(ShelfLayout.__table__.delete().where(ShelfLayout.pharmacy_id == other_pid))
-        await db.execute(Todo.__table__.delete().where(Todo.pharmacy_id == other_pid))
-        # Also clean test pharmacy data
-        pid = seed_data["pharmacy_id"]
-        await db.execute(AlertLog.__table__.delete().where(AlertLog.pharmacy_id == pid))
-        await db.execute(AtdpsCanister.__table__.delete().where(AtdpsCanister.pharmacy_id == pid))
-        await db.execute(ShelfLayout.__table__.delete().where(ShelfLayout.pharmacy_id == pid))
-        await db.execute(Todo.__table__.delete().where(Todo.pharmacy_id == pid))
-        await db.commit()
+async def cleanup_other(seed_data, other_pharmacy):
+    """Clean data seeded into both pharmacies."""
+    other_pid = other_pharmacy["pharmacy_id"]
+    pid = seed_data["pharmacy_id"]
+
+    async def _clean():
+        async with seed_session_factory() as db:
+            await db.execute(AlertLog.__table__.delete().where(AlertLog.pharmacy_id == other_pid))
+            await db.execute(VisitPrediction.__table__.delete().where(VisitPrediction.pharmacy_id == other_pid))
+            await db.execute(AtdpsCanister.__table__.delete().where(AtdpsCanister.pharmacy_id == other_pid))
+            await db.execute(ShelfLayout.__table__.delete().where(ShelfLayout.pharmacy_id == other_pid))
+            await db.execute(Todo.__table__.delete().where(Todo.pharmacy_id == other_pid))
+            await db.execute(AlertLog.__table__.delete().where(AlertLog.pharmacy_id == pid))
+            await db.execute(AtdpsCanister.__table__.delete().where(AtdpsCanister.pharmacy_id == pid))
+            await db.execute(ShelfLayout.__table__.delete().where(ShelfLayout.pharmacy_id == pid))
+            await db.execute(Todo.__table__.delete().where(Todo.pharmacy_id == pid))
+            await db.commit()
+
+    await _clean()
     yield
-    async with seed_session_factory() as db:
-        await db.execute(AlertLog.__table__.delete().where(AlertLog.pharmacy_id == other_pid))
-        await db.execute(VisitPrediction.__table__.delete().where(VisitPrediction.pharmacy_id == other_pid))
-        await db.execute(AtdpsCanister.__table__.delete().where(AtdpsCanister.pharmacy_id == other_pid))
-        await db.execute(ShelfLayout.__table__.delete().where(ShelfLayout.pharmacy_id == other_pid))
-        await db.execute(Todo.__table__.delete().where(Todo.pharmacy_id == other_pid))
-        await db.commit()
+    await _clean()
 
 
 class TestAlertIsolation:
     async def test_other_pharmacy_alerts_not_visible(
-        self, client: AsyncClient, auth_headers: dict, seed_data: dict,
+        self, client: AsyncClient, auth_headers: dict, seed_data: dict, other_pharmacy: dict,
     ):
         """Alerts from another pharmacy are not returned."""
-        other_pid = await _ensure_other_pharmacy()
         async with seed_session_factory() as db:
             db.add(AlertLog(
-                pharmacy_id=other_pid,
+                pharmacy_id=other_pharmacy["pharmacy_id"],
                 alert_type="LOW_STOCK",
                 message="Other pharmacy alert",
                 sent_via="IN_APP",
@@ -132,13 +114,12 @@ class TestAlertIsolation:
 
 class TestCanisterIsolation:
     async def test_other_pharmacy_canisters_not_visible(
-        self, client: AsyncClient, auth_headers: dict, seed_data: dict,
+        self, client: AsyncClient, auth_headers: dict, seed_data: dict, other_pharmacy: dict,
     ):
         """Canisters from another pharmacy are not listed."""
-        other_pid = await _ensure_other_pharmacy()
         async with seed_session_factory() as db:
             db.add(AtdpsCanister(
-                pharmacy_id=other_pid,
+                pharmacy_id=other_pharmacy["pharmacy_id"],
                 canister_number=1,
                 drug_code="OTHER001",
                 drug_name="타약국약품",
@@ -160,13 +141,12 @@ class TestCanisterIsolation:
 
 class TestShelfLayoutIsolation:
     async def test_other_pharmacy_layouts_not_visible(
-        self, client: AsyncClient, auth_headers: dict, seed_data: dict,
+        self, client: AsyncClient, auth_headers: dict, seed_data: dict, other_pharmacy: dict,
     ):
         """Shelf layouts from another pharmacy are not listed."""
-        other_pid = await _ensure_other_pharmacy()
         async with seed_session_factory() as db:
             db.add(ShelfLayout(
-                pharmacy_id=other_pid,
+                pharmacy_id=other_pharmacy["pharmacy_id"],
                 name="타약국선반",
                 location_type="DISPLAY",
                 position="front",
@@ -182,20 +162,18 @@ class TestShelfLayoutIsolation:
 
 class TestTodoIsolation:
     async def test_other_pharmacy_todos_not_visible(
-        self, client: AsyncClient, auth_headers: dict, seed_data: dict,
+        self, client: AsyncClient, auth_headers: dict, seed_data: dict, other_pharmacy: dict,
     ):
         """Todos from another pharmacy are not listed."""
-        other_pid = await _ensure_other_pharmacy()
         async with seed_session_factory() as db:
             db.add(Todo(
-                pharmacy_id=other_pid,
+                pharmacy_id=other_pharmacy["pharmacy_id"],
                 title="타약국 할일",
                 priority=4,
-                created_by=_other_user_id,
+                created_by=other_pharmacy["user_id"],
             ))
             await db.commit()
 
-        # Create one in our pharmacy via API
         await client.post(
             "/api/v1/todos",
             json={"title": "우리 할일"},
@@ -209,12 +187,16 @@ class TestTodoIsolation:
         assert items[0]["title"] == "우리 할일"
 
     async def test_cannot_access_other_pharmacy_todo_by_id(
-        self, client: AsyncClient, auth_headers: dict,
+        self, client: AsyncClient, auth_headers: dict, other_pharmacy: dict,
     ):
         """Direct access to another pharmacy's todo by ID returns 404."""
-        other_pid = await _ensure_other_pharmacy()
         async with seed_session_factory() as db:
-            todo = Todo(pharmacy_id=other_pid, title="비밀 할일", priority=4, created_by=_other_user_id)
+            todo = Todo(
+                pharmacy_id=other_pharmacy["pharmacy_id"],
+                title="비밀 할일",
+                priority=4,
+                created_by=other_pharmacy["user_id"],
+            )
             db.add(todo)
             await db.flush()
             todo_id = todo.id
