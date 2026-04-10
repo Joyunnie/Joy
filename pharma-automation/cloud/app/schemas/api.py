@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, model_validator
 class InventoryItemIn(BaseModel):
     cassette_number: int
     drug_standard_code: str | None = None
-    current_quantity: int
+    current_quantity: int = Field(ge=0)
     quantity_source: str = "PM20"
 
 
@@ -52,7 +52,7 @@ class SyncCassetteMappingResponse(BaseModel):
 class VisitDrugIn(BaseModel):
     drug_insurance_code: str | None = None  # 건강보험 약품코드 (TBSID040_04.DRUG_CODE)
     drug_standard_code: str | None = None   # TBSIM040_01.TITLECODE (barcode, optional)
-    quantity_dispensed: int
+    quantity_dispensed: int = Field(gt=0)
 
     @model_validator(mode="after")
     def require_at_least_one_code(self):
