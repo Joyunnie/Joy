@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Pencil } from 'lucide-react';
 import api from '../api/client.ts';
 import PageHeader from '../components/common/PageHeader.tsx';
 import SegmentControl from '../components/common/SegmentControl.tsx';
@@ -233,9 +234,9 @@ export default function ShelfViewPage() {
                     {selectedLayout?.id === l.id && (
                       <span
                         onClick={(e) => { e.stopPropagation(); openEditEditor(l); }}
-                        className="text-blue-500 hover:text-blue-700 cursor-pointer text-sm"
+                        className="text-blue-500 hover:text-blue-700 cursor-pointer"
                       >
-                        &#9998;
+                        <Pencil size={14} />
                       </span>
                     )}
                   </div>
@@ -333,9 +334,9 @@ function CabinetSlot({
       {isSelected && (
         <span
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center text-[10px] bg-blue-500 text-white rounded-full hover:bg-blue-600 cursor-pointer"
+          className="absolute -top-1.5 -right-1.5 w-5 h-5 flex items-center justify-center bg-blue-500 text-white rounded-full hover:bg-blue-600 cursor-pointer"
         >
-          &#9998;
+          <Pencil size={10} />
         </span>
       )}
     </button>

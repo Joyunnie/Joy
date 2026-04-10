@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 
 type CardVariant = 'default' | 'warning' | 'danger' | 'info';
 
@@ -30,9 +30,19 @@ export default function Card({
   const accent = borderAccent ? `border-l-4 ${ACCENT_COLORS[variant]}` : '';
   const interactive = onClick ? 'cursor-pointer hover:shadow-md transition-shadow duration-150' : '';
 
+  function handleKeyDown(e: KeyboardEvent) {
+    if (onClick && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      onClick();
+    }
+  }
+
   return (
     <div
       onClick={onClick}
+      onKeyDown={onClick ? handleKeyDown : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      role={onClick ? 'button' : undefined}
       className={`bg-white rounded-xl shadow-sm border border-gray-100 ${pad} ${accent} ${interactive} ${className}`}
     >
       {children}
