@@ -392,25 +392,24 @@ class TestDrugsSyncContract:
             assert len(drugs) == 1
             assert drugs[0].name == "업서트테스트약품_수정"
 
-    async def test_null_insurance_code_creates_new_each_time(
+    async def test_missing_insurance_code_rejected(
         self, client: AsyncClient, seed_data: dict
     ):
-        """Drug with no insurance_code → inserted (no upsert match possible)."""
+        """Drug without insurance_code → 422 (required field)."""
         suffix = str(int(time.time()))[-6:]
         headers = {"X-API-Key": seed_data["api_key"]}
         drug_payload = {
             "standard_code": f"TC_{suffix}_NUL",
             "name": "보험코드없는약품",
             "category": "PRESCRIPTION",
-            # insurance_code omitted → None
+            # insurance_code omitted → validation error
         }
 
         resp = await client.post(
             "/api/v1/sync/drugs", headers=headers,
             json={"drugs": [drug_payload]},
         )
-        assert resp.status_code == 200
-        assert resp.json()["new_count"] == 1
+        assert resp.status_code == 422
 
     async def test_resolves_prescription_inventory_drug_id(
         self, client: AsyncClient, seed_data: dict

@@ -36,7 +36,10 @@ from app.services.drug_resolver import DrugResolver
 async def _prefetch_drugs_by_code(
     db: AsyncSession, codes: set[str],
 ) -> dict[str, Drug]:
-    """Fetch Drug rows by standard_code in one query. Returns {code: Drug}."""
+    """Fetch Drug rows by standard_code in one query. Returns {code: Drug}.
+
+    Note: standard_code is no longer unique in DB; callers assume no collisions in practice.
+    """
     if not codes:
         return {}
     result = await db.execute(
@@ -423,12 +426,9 @@ async def sync_drugs(
     codes = {d.insurance_code for d in req.drugs if d.insurance_code}
     existing_map = await _prefetch_drugs_by_insurance_code(db, codes)
 
-    # Track drugs with no insurance_code for alerting
-    unmatched_drugs: list[tuple[int, str]] = []  # (drug_id, drug_name)
-
     # 2. Loop in memory
     for drug_in in req.drugs:
-        existing = existing_map.get(drug_in.insurance_code) if drug_in.insurance_code else None
+        existing = existing_map.get(drug_in.insurance_code)
 
         if existing:
             changed = False
@@ -447,10 +447,6 @@ async def sync_drugs(
             if changed:
                 existing.updated_at = datetime.now(timezone.utc)
                 updated_count += 1
-            # Check for unmatched after update
-            final_insurance = drug_in.insurance_code or existing.insurance_code
-            if not final_insurance:
-                unmatched_drugs.append((existing.id, existing.name))
         else:
             drug = Drug(
                 standard_code=drug_in.standard_code,
@@ -461,29 +457,8 @@ async def sync_drugs(
             )
             db.add(drug)
             new_count += 1
-            if not drug_in.insurance_code:
-                # Need flush to get ID for alert ref_id
-                await db.flush()
-                unmatched_drugs.append((drug.id, drug.name))
 
-    # 3. Create alerts for unmatched drugs (dedup: skip if alert already exists)
-    if unmatched_drugs:
-        unmatched_ids = {d[0] for d in unmatched_drugs}
-        existing_alert_ids = await _prefetch_recent_alerts(
-            db, pharmacy_id, "DRUG_CODE_UNMATCHED", "drugs", unmatched_ids,
-        )
-        for drug_id, drug_name in unmatched_drugs:
-            if drug_id not in existing_alert_ids:
-                db.add(AlertLog(
-                    pharmacy_id=pharmacy_id,
-                    alert_type="DRUG_CODE_UNMATCHED",
-                    ref_table="drugs",
-                    ref_id=drug_id,
-                    message=f"{drug_name} 약품코드 매칭 실패 — PAM-Pro에서 확인 필요",
-                    sent_via="IN_APP",
-                ))
-
-    # 4. Resolve PrescriptionInventory.drug_id for unlinked cassette mappings
+    # 3. Resolve PrescriptionInventory.drug_id for unlinked cassette mappings
     # NOTE: Raw SQL bypasses ORM change tracking (audit hooks won't fire).
     await db.flush()  # ensure new Drug rows have IDs
     unlinked = await db.execute(text(
