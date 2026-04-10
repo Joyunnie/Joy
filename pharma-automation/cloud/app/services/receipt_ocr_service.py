@@ -432,35 +432,47 @@ async def confirm_intake(
     confirmed_count = 0
     updated_stocks: list[dict] = []
 
+    # Prefetch all referenced drugs, OTC inventory, and drug_stock in bulk
+    all_drug_ids = {
+        (item.confirmed_drug_id or item.drug_id)
+        for item in items
+        if (item.confirmed_drug_id or item.drug_id)
+    }
+    if all_drug_ids:
+        drug_result = await db.execute(select(Drug).where(Drug.id.in_(all_drug_ids)))
+        drug_map: dict[int, Drug] = {d.id: d for d in drug_result.scalars().all()}
+
+        otc_result = await db.execute(
+            select(OtcInventory).where(
+                and_(OtcInventory.pharmacy_id == pharmacy_id, OtcInventory.drug_id.in_(all_drug_ids))
+            )
+        )
+        otc_map: dict[int, OtcInventory] = {o.drug_id: o for o in otc_result.scalars().all()}
+
+        stock_result = await db.execute(
+            select(DrugStock).where(
+                and_(DrugStock.pharmacy_id == pharmacy_id, DrugStock.drug_id.in_(all_drug_ids))
+            )
+        )
+        stock_map: dict[int, DrugStock] = {s.drug_id: s for s in stock_result.scalars().all()}
+    else:
+        drug_map, otc_map, stock_map = {}, {}, {}
+
     for item in items:
-        # 최종 drug_id와 수량 결정
         final_drug_id = item.confirmed_drug_id or item.drug_id
         final_quantity = item.confirmed_quantity if item.confirmed_quantity is not None else item.quantity
 
         if not final_drug_id or not final_quantity:
             continue
 
-        # 약품 정보 조회 (category 확인)
-        drug_result = await db.execute(select(Drug).where(Drug.id == final_drug_id))
-        drug = drug_result.scalar_one_or_none()
+        drug = drug_map.get(final_drug_id)
         if not drug:
             continue
 
         # P31: OTC 분기 로직
         if drug.category == "OTC":
-            # OTC 약품이면 otc_inventory에 해당 약품이 있는지 확인
-            otc_result = await db.execute(
-                select(OtcInventory).where(
-                    and_(
-                        OtcInventory.pharmacy_id == pharmacy_id,
-                        OtcInventory.drug_id == final_drug_id,
-                    )
-                )
-            )
-            otc_item = otc_result.scalar_one_or_none()
-
+            otc_item = otc_map.get(final_drug_id)
             if otc_item:
-                # OTC이고 otc_inventory에 존재 → otc_inventory 수량 증가
                 otc_item.current_quantity += final_quantity
                 otc_item.updated_at = datetime.now(timezone.utc)
                 otc_item.version += 1
@@ -475,21 +487,11 @@ async def confirm_intake(
                 continue
 
         # OTC가 아니거나, OTC이지만 otc_inventory에 없는 경우 → drug_stock에 반영
-        stock_result = await db.execute(
-            select(DrugStock).where(
-                and_(
-                    DrugStock.pharmacy_id == pharmacy_id,
-                    DrugStock.drug_id == final_drug_id,
-                )
-            )
-        )
-        stock = stock_result.scalar_one_or_none()
-
+        stock = stock_map.get(final_drug_id)
         if stock:
             stock.current_quantity = float(stock.current_quantity) + final_quantity
             stock.updated_at = datetime.now(timezone.utc)
         else:
-            # drug_stock 신규 INSERT
             stock = DrugStock(
                 pharmacy_id=pharmacy_id,
                 drug_id=final_drug_id,
@@ -499,7 +501,7 @@ async def confirm_intake(
                 synced_at=datetime.now(timezone.utc),
             )
             db.add(stock)
-            await db.flush()
+            stock_map[final_drug_id] = stock
 
         updated_stocks.append({
             "drug_id": final_drug_id,
