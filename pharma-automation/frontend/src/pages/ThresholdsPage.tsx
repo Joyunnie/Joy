@@ -163,6 +163,7 @@ export default function ThresholdsPage() {
                     <Toggle
                       checked={item.is_active}
                       onChange={() => handleToggleActive(item)}
+                      ariaLabel="활성 상태 전환"
                     />
                     <button
                       onClick={() => setDeleteItem(item)}
@@ -373,7 +374,7 @@ function ThresholdEditModal({
         </div>
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-700">활성화</span>
-          <Toggle checked={isActive} onChange={setIsActive} />
+          <Toggle checked={isActive} onChange={setIsActive} ariaLabel="활성 상태 전환" />
         </div>
         <button
           onClick={handleSave}
