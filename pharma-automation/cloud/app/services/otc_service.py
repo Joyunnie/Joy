@@ -338,25 +338,49 @@ async def batch_update_locations(
         "display_location" if layout.location_type == "DISPLAY" else "storage_location"
     )
 
-    results: list[OtcItemResponse] = []
-    for a in req.assignments:
-        inv_result = await db.execute(
-            select(OtcInventory).where(
-                and_(
-                    OtcInventory.id == a.item_id,
-                    OtcInventory.pharmacy_id == pharmacy_id,
-                )
+    # Bulk prefetch all OTC items (was 1 query per assignment)
+    item_ids = [a.item_id for a in req.assignments]
+    inv_result = await db.execute(
+        select(OtcInventory).where(
+            and_(
+                OtcInventory.id.in_(item_ids),
+                OtcInventory.pharmacy_id == pharmacy_id,
             )
         )
-        inv = inv_result.scalar_one_or_none()
-        if not inv:
+    )
+    inv_map = {inv.id: inv for inv in inv_result.scalars().all()}
+
+    for a in req.assignments:
+        if a.item_id not in inv_map:
             raise ServiceError(f"OTC inventory item {a.item_id} not found", 404)
 
+    # Bulk prefetch drugs and thresholds (was 2 queries per assignment)
+    drug_ids = list({inv_map[a.item_id].drug_id for a in req.assignments})
+    drug_result = await db.execute(select(Drug).where(Drug.id.in_(drug_ids)))
+    drug_map = {d.id: d for d in drug_result.scalars().all()}
+
+    th_result = await db.execute(
+        select(DrugThreshold).where(
+            and_(
+                DrugThreshold.pharmacy_id == pharmacy_id,
+                DrugThreshold.drug_id.in_(drug_ids),
+                DrugThreshold.is_active == True,  # noqa: E712
+            )
+        )
+    )
+    th_map = {t.drug_id: t for t in th_result.scalars().all()}
+
+    results: list[OtcItemResponse] = []
+    for a in req.assignments:
+        inv = inv_map[a.item_id]
         loc_value = f"{req.layout_id}:{a.row},{a.col}"
         setattr(inv, loc_field_key, loc_value)
 
-        drug_name, min_qty = await _get_drug_and_threshold(db, pharmacy_id, inv.drug_id)
-        results.append(_build_item_response(inv, drug_name, min_qty))
+        drug = drug_map.get(inv.drug_id)
+        th = th_map.get(inv.drug_id)
+        results.append(_build_item_response(
+            inv, drug.name if drug else None, th.min_quantity if th else None,
+        ))
 
     return results
 
@@ -380,16 +404,19 @@ async def batch_remove_locations(
         "display_location" if layout.location_type == "DISPLAY" else "storage_location"
     )
 
-    for item_id in req.item_ids:
-        inv_result = await db.execute(
-            select(OtcInventory).where(
-                and_(
-                    OtcInventory.id == item_id,
-                    OtcInventory.pharmacy_id == pharmacy_id,
-                )
+    # Bulk prefetch all items (was 1 query per item_id)
+    inv_result = await db.execute(
+        select(OtcInventory).where(
+            and_(
+                OtcInventory.id.in_(req.item_ids),
+                OtcInventory.pharmacy_id == pharmacy_id,
             )
         )
-        inv = inv_result.scalar_one_or_none()
+    )
+    inv_map = {inv.id: inv for inv in inv_result.scalars().all()}
+
+    for item_id in req.item_ids:
+        inv = inv_map.get(item_id)
         if not inv:
             raise ServiceError(f"OTC inventory item {item_id} not found", 404)
         setattr(inv, loc_field_key, None)
