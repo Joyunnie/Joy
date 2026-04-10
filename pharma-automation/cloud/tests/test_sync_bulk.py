@@ -158,3 +158,44 @@ class TestSyncInventoryBulk:
         assert resp.status_code == 200
         # Unknown drug = no drug_id = skip insert (synced_count still increments per original logic)
         assert resp.json()["synced_count"] == 1
+
+    async def test_negative_quantity_rejected(self, client: AsyncClient, seed_data):
+        """Sync inventory with current_quantity=-1 returns 422."""
+        resp = await client.post(
+            "/api/v1/sync/inventory",
+            headers={"X-API-Key": seed_data["api_key"]},
+            json={
+                "items": [
+                    {"cassette_number": 1, "current_quantity": -1},
+                ],
+                "synced_at": "2026-04-11T12:00:00Z",
+            },
+        )
+        assert resp.status_code == 422
+
+
+class TestSyncVisitsValidation:
+    """POST /api/v1/sync/visits — quantity validation."""
+
+    async def test_zero_quantity_dispensed_rejected(self, client: AsyncClient, seed_data):
+        """Visit drug with quantity_dispensed=0 returns 422."""
+        resp = await client.post(
+            "/api/v1/sync/visits",
+            headers={"X-API-Key": seed_data["api_key"]},
+            json={
+                "visits": [
+                    {
+                        "patient_hash": "a" * 64,
+                        "visit_date": "2026-04-11",
+                        "prescription_days": 7,
+                        "drugs": [
+                            {
+                                "drug_insurance_code": "999999999",
+                                "quantity_dispensed": 0,
+                            }
+                        ],
+                    }
+                ]
+            },
+        )
+        assert resp.status_code == 422
