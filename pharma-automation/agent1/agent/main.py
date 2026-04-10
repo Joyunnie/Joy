@@ -100,128 +100,108 @@ class Agent1:
 
     def sync_cycle(self):
         """1회 동기화 사이클."""
-        # 1. 오프라인 큐에 미전송 데이터가 있으면 먼저 전송
         self.offline_queue.flush(self.cloud_client)
 
-        # 2. PM+20 동기화
         if self.pm20_reader:
-            # 2a. 약품 마스터 동기화 (하루 1회)
             if self._should_sync_drug_master():
-                try:
-                    drugs = self.pm20_reader.read_drug_master()
-                    if drugs:
-                        self._sync_or_queue(
-                            "drugs",
-                            {
-                                "drugs": [
-                                    {
-                                        "standard_code": d.standard_code,
-                                        "name": d.name,
-                                        "manufacturer": d.manufacturer,
-                                        "category": d.category,
-                                        "insurance_code": d.insurance_code,
-                                    }
-                                    for d in drugs
-                                ]
-                            },
-                        )
-                    self._last_drug_master_sync = datetime.now(timezone.utc)
-                except Exception as e:
-                    logger.error("Drug master sync failed: %s", e)
+                self._sync_drug_master()
+            self._sync_drug_stock()
+            self._sync_visits()
+            self._sync_inventory()
 
-            # 2b. 약품별 재고 동기화 (매 사이클)
-            try:
-                stock = self.pm20_reader.read_drug_stock()
-                if stock:
-                    self._sync_or_queue(
-                        "drug-stock",
-                        {
-                            "items": [
-                                {
-                                    "drug_insurance_code": s.drug_insurance_code,
-                                    "current_quantity": s.current_quantity,
-                                }
-                                for s in stock
-                            ],
-                            "synced_at": datetime.now(timezone.utc).isoformat(),
-                        },
-                    )
-            except Exception as e:
-                logger.error("Drug stock sync failed: %s", e)
-
-            # 2c. 방문 이력 동기화 (매 사이클, PROC_DTIME 증분)
-            try:
-                visits = self.pm20_reader.read_recent_visits(self._last_visit_proc_dtime)
-                if visits:
-                    self._sync_or_queue(
-                        "visits",
-                        {
-                            "visits": [
-                                {
-                                    "patient_hash": v.patient_hash,
-                                    "visit_date": v.visit_date.isoformat(),
-                                    "prescription_days": v.prescription_days,
-                                    "source": "PM20_SYNC",
-                                    "drugs": [
-                                        {
-                                            "drug_insurance_code": d.drug_insurance_code,
-                                            "quantity_dispensed": d.quantity_dispensed,
-                                        }
-                                        for d in v.drugs
-                                    ],
-                                }
-                                for v in visits
-                            ]
-                        },
-                    )
-                    # Update incremental marker to max proc_dtime from this batch
-                    dtime_values = [v.proc_dtime for v in visits if v.proc_dtime]
-                    if dtime_values:
-                        self._last_visit_proc_dtime = max(dtime_values)
-                        self._save_state()
-            except Exception as e:
-                logger.error("Visit sync failed: %s", e)
-
-            # 2d. ATDPS 카세트 재고 (기존, read_inventory — Phase 4B에서 활성화)
-            try:
-                inventory = self.pm20_reader.read_inventory()
-                if inventory:
-                    self._sync_or_queue(
-                        "inventory",
-                        {
-                            "items": [
-                                {
-                                    "cassette_number": item.cassette_number,
-                                    "drug_standard_code": item.drug_standard_code,
-                                    "current_quantity": item.current_quantity,
-                                    "quantity_source": "PM20",
-                                }
-                                for item in inventory
-                            ]
-                        },
-                    )
-            except Exception as e:
-                logger.error("Inventory sync failed: %s", e)
-
-        # 3. ATDPS 카세트 매핑 읽기 (구현체 없으면 스킵)
         if self.atdps_reader and self.atdps_reader.is_available():
-            try:
-                mappings = self.atdps_reader.read_cassette_mappings()
-                self._sync_or_queue(
-                    "cassette-mapping",
+            self._sync_cassette_mapping()
+
+    def _sync_drug_master(self):
+        """약품 마스터 동기화 (하루 1회)."""
+        try:
+            drugs = self.pm20_reader.read_drug_master()
+            if drugs:
+                self._sync_or_queue("drugs", {"drugs": [
                     {
-                        "mappings": [
-                            {
-                                "cassette_number": m.cassette_number,
-                                "drug_standard_code": m.drug_standard_code,
-                                "mapping_source": "ATDPS",
-                            }
-                            for m in mappings
-                        ]
-                    },
-                )
-            except Exception as e:
-                logger.error("ATDPS cassette mapping sync failed: %s", e)
+                        "standard_code": d.standard_code,
+                        "name": d.name,
+                        "manufacturer": d.manufacturer,
+                        "category": d.category,
+                        "insurance_code": d.insurance_code,
+                    }
+                    for d in drugs
+                ]})
+            self._last_drug_master_sync = datetime.now(timezone.utc)
+        except Exception as e:
+            logger.error("Drug master sync failed: %s", e)
+
+    def _sync_drug_stock(self):
+        """약품별 재고 동기화 (매 사이클)."""
+        try:
+            stock = self.pm20_reader.read_drug_stock()
+            if stock:
+                self._sync_or_queue("drug-stock", {
+                    "items": [
+                        {"drug_insurance_code": s.drug_insurance_code, "current_quantity": s.current_quantity}
+                        for s in stock
+                    ],
+                    "synced_at": datetime.now(timezone.utc).isoformat(),
+                })
+        except Exception as e:
+            logger.error("Drug stock sync failed: %s", e)
+
+    def _sync_visits(self):
+        """방문 이력 동기화 (매 사이클, PROC_DTIME 증분)."""
+        try:
+            visits = self.pm20_reader.read_recent_visits(self._last_visit_proc_dtime)
+            if visits:
+                self._sync_or_queue("visits", {"visits": [
+                    {
+                        "patient_hash": v.patient_hash,
+                        "visit_date": v.visit_date.isoformat(),
+                        "prescription_days": v.prescription_days,
+                        "source": "PM20_SYNC",
+                        "drugs": [
+                            {"drug_insurance_code": d.drug_insurance_code, "quantity_dispensed": d.quantity_dispensed}
+                            for d in v.drugs
+                        ],
+                    }
+                    for v in visits
+                ]})
+                dtime_values = [v.proc_dtime for v in visits if v.proc_dtime]
+                if dtime_values:
+                    self._last_visit_proc_dtime = max(dtime_values)
+                    self._save_state()
+        except Exception as e:
+            logger.error("Visit sync failed: %s", e)
+
+    def _sync_inventory(self):
+        """ATDPS 카세트 재고 동기화."""
+        try:
+            inventory = self.pm20_reader.read_inventory()
+            if inventory:
+                self._sync_or_queue("inventory", {"items": [
+                    {
+                        "cassette_number": item.cassette_number,
+                        "drug_standard_code": item.drug_standard_code,
+                        "current_quantity": item.current_quantity,
+                        "quantity_source": "PM20",
+                    }
+                    for item in inventory
+                ]})
+        except Exception as e:
+            logger.error("Inventory sync failed: %s", e)
+
+    def _sync_cassette_mapping(self):
+        """ATDPS 카세트 매핑 동기화."""
+        try:
+            mappings = self.atdps_reader.read_cassette_mappings()
+            self._sync_or_queue("cassette-mapping", {"mappings": [
+                {
+                    "cassette_number": m.cassette_number,
+                    "drug_standard_code": m.drug_standard_code,
+                    "mapping_source": "ATDPS",
+                }
+                for m in mappings
+            ]})
+        except Exception as e:
+            logger.error("ATDPS cassette mapping sync failed: %s", e)
 
     def _sync_or_queue(self, sync_type: str, data: dict):
         """Cloud 전송 시도, 실패 시 오프라인 큐에 저장."""

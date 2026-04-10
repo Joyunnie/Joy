@@ -1,11 +1,10 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.exceptions import ServiceError
 from app.models.tables import (
-    AlertLog,
     Drug,
     DrugThreshold,
     InventoryAuditLog,
@@ -20,53 +19,7 @@ from app.schemas.otc import (
     OtcListResponse,
     OtcUpdateRequest,
 )
-
-
-async def _check_low_stock_alert(
-    db: AsyncSession,
-    pharmacy_id: int,
-    drug_id: int,
-    current_quantity: int,
-    drug_name: str | None,
-) -> None:
-    threshold_result = await db.execute(
-        select(DrugThreshold).where(
-            and_(
-                DrugThreshold.pharmacy_id == pharmacy_id,
-                DrugThreshold.drug_id == drug_id,
-                DrugThreshold.is_active == True,  # noqa: E712
-            )
-        )
-    )
-    threshold = threshold_result.scalar_one_or_none()
-    if not threshold or current_quantity >= threshold.min_quantity:
-        return
-
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
-    dup_result = await db.execute(
-        select(AlertLog).where(
-            and_(
-                AlertLog.pharmacy_id == pharmacy_id,
-                AlertLog.alert_type == "LOW_STOCK",
-                AlertLog.ref_table == "otc_inventory",
-                AlertLog.ref_id == drug_id,
-                AlertLog.sent_at >= cutoff,
-                AlertLog.read_at.is_(None),
-            )
-        )
-    )
-    if dup_result.scalar_one_or_none():
-        return
-
-    alert = AlertLog(
-        pharmacy_id=pharmacy_id,
-        alert_type="LOW_STOCK",
-        ref_table="otc_inventory",
-        ref_id=drug_id,
-        message=f"{drug_name} 재고 부족 (현재: {current_quantity}, 최소: {threshold.min_quantity})",
-        sent_via="IN_APP",
-    )
-    db.add(alert)
+from app.services.alert_utils import check_and_create_low_stock_alert
 
 
 def _build_item_response(
@@ -154,8 +107,9 @@ async def create_otc_item(
     db.add(inv)
     await db.flush()
 
-    await _check_low_stock_alert(
-        db, pharmacy_id, req.drug_id, req.current_quantity, drug.name
+    await check_and_create_low_stock_alert(
+        db, pharmacy_id, req.drug_id, req.current_quantity, drug.name,
+        "LOW_STOCK", "otc_inventory",
     )
 
     _, min_qty = await _get_drug_and_threshold(db, pharmacy_id, req.drug_id)
@@ -308,8 +262,9 @@ async def update_otc_item(
         db, pharmacy_id, inv.drug_id
     )
 
-    await _check_low_stock_alert(
-        db, pharmacy_id, inv.drug_id, req.current_quantity, drug_name
+    await check_and_create_low_stock_alert(
+        db, pharmacy_id, inv.drug_id, req.current_quantity, drug_name,
+        "LOW_STOCK", "otc_inventory",
     )
 
     return _build_item_response(inv, drug_name, min_qty)

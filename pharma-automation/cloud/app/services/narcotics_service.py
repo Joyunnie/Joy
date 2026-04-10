@@ -1,11 +1,10 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from app.exceptions import ServiceError
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.tables import (
-    AlertLog,
     Drug,
     DrugThreshold,
     InventoryAuditLog,
@@ -23,56 +22,10 @@ from app.schemas.narcotics import (
     NarcoticsTransactionOut,
     NarcoticsUpdateRequest,
 )
+from app.services.alert_utils import check_and_create_low_stock_alert
 
 
 # --- Helpers ---
-
-
-async def _check_narcotics_low_alert(
-    db: AsyncSession,
-    pharmacy_id: int,
-    drug_id: int,
-    current_quantity: int,
-    drug_name: str | None,
-) -> None:
-    threshold_result = await db.execute(
-        select(DrugThreshold).where(
-            and_(
-                DrugThreshold.pharmacy_id == pharmacy_id,
-                DrugThreshold.drug_id == drug_id,
-                DrugThreshold.is_active == True,  # noqa: E712
-            )
-        )
-    )
-    threshold = threshold_result.scalar_one_or_none()
-    if not threshold or current_quantity >= threshold.min_quantity:
-        return
-
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
-    dup_result = await db.execute(
-        select(AlertLog).where(
-            and_(
-                AlertLog.pharmacy_id == pharmacy_id,
-                AlertLog.alert_type == "NARCOTICS_LOW",
-                AlertLog.ref_table == "narcotics_inventory",
-                AlertLog.ref_id == drug_id,
-                AlertLog.sent_at >= cutoff,
-                AlertLog.read_at.is_(None),
-            )
-        )
-    )
-    if dup_result.scalar_one_or_none():
-        return
-
-    alert = AlertLog(
-        pharmacy_id=pharmacy_id,
-        alert_type="NARCOTICS_LOW",
-        ref_table="narcotics_inventory",
-        ref_id=drug_id,
-        message=f"{drug_name} 마약류 재고 부족 (현재: {current_quantity}, 최소: {threshold.min_quantity})",
-        sent_via="IN_APP",
-    )
-    db.add(alert)
 
 
 def _build_item_response(
@@ -260,8 +213,9 @@ async def create_narcotics_item(
         user_id,
     )
 
-    await _check_narcotics_low_alert(
-        db, pharmacy_id, req.drug_id, inv.current_quantity, drug.name
+    await check_and_create_low_stock_alert(
+        db, pharmacy_id, req.drug_id, inv.current_quantity, drug.name,
+        "NARCOTICS_LOW", "narcotics_inventory",
     )
 
     _, min_qty = await _get_drug_and_threshold(db, pharmacy_id, req.drug_id)
@@ -395,8 +349,9 @@ async def update_narcotics_item(
     drug_name, min_qty = await _get_drug_and_threshold(
         db, pharmacy_id, inv.drug_id
     )
-    await _check_narcotics_low_alert(
-        db, pharmacy_id, inv.drug_id, inv.current_quantity, drug_name
+    await check_and_create_low_stock_alert(
+        db, pharmacy_id, inv.drug_id, inv.current_quantity, drug_name,
+        "NARCOTICS_LOW", "narcotics_inventory",
     )
 
     return _build_item_response(inv, drug_name, min_qty)
@@ -479,8 +434,9 @@ async def dispense_narcotics(
     drug_name, min_qty = await _get_drug_and_threshold(
         db, pharmacy_id, inv.drug_id
     )
-    await _check_narcotics_low_alert(
-        db, pharmacy_id, inv.drug_id, inv.current_quantity, drug_name
+    await check_and_create_low_stock_alert(
+        db, pharmacy_id, inv.drug_id, inv.current_quantity, drug_name,
+        "NARCOTICS_LOW", "narcotics_inventory",
     )
 
     return _build_item_response(inv, drug_name, min_qty)
