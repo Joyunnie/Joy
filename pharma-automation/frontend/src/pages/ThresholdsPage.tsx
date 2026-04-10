@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, X } from 'lucide-react';
+import { X } from 'lucide-react';
+import PageHeader from '../components/common/PageHeader.tsx';
 import axios from 'axios';
 import api from '../api/client.ts';
 import type {
@@ -102,23 +103,18 @@ export default function ThresholdsPage() {
     <div className="p-4 max-w-lg mx-auto">
       <Toast toasts={toasts} onRemove={removeToast} />
 
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
+      <PageHeader
+        title="최소수량 설정"
+        onBack={() => navigate('/inventory')}
+        action={
           <button
-            onClick={() => navigate('/inventory')}
-            className="text-gray-500 hover:text-gray-700"
+            onClick={() => setAddOpen(true)}
+            className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
           >
-            <ArrowLeft size={20} />
+            추가
           </button>
-          <h2 className="text-xl font-bold text-gray-800">최소수량 설정</h2>
-        </div>
-        <button
-          onClick={() => setAddOpen(true)}
-          className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-        >
-          추가
-        </button>
-      </div>
+        }
+      />
 
       <div className="flex items-center gap-3 mb-4">
         <SearchInput value={search} onChange={handleSearch} placeholder="약품명 검색..." />

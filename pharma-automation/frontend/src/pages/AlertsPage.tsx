@@ -4,6 +4,7 @@ import type { LucideIcon } from 'lucide-react';
 import { fetchAlerts, markAlertRead } from '../api/alertsApi.ts';
 import type { AlertOut } from '../types/api.ts';
 import Card from '../components/common/Card.tsx';
+import PageHeader from '../components/common/PageHeader.tsx';
 import Pagination from '../components/Pagination.tsx';
 import EmptyState from '../components/EmptyState.tsx';
 import Spinner from '../components/Spinner.tsx';
@@ -136,7 +137,7 @@ export default function AlertsPage() {
     <div className="p-4 max-w-lg mx-auto">
       <Toast toasts={toasts} onRemove={removeToast} />
 
-      <h2 className="text-xl font-bold text-gray-800 mb-4">알림</h2>
+      <PageHeader title="알림" />
 
       {/* Type filter chips */}
       <FilterChips options={ALERT_TYPES} value={typeFilter} onChange={handleTypeFilter} className="mb-3" />

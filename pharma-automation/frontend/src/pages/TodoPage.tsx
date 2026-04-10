@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
+import PageHeader from '../components/common/PageHeader.tsx';
 import {
   fetchTodos,
   createTodo,
@@ -195,7 +196,7 @@ export default function TodoPage() {
     <div className="p-4 pb-20 max-w-lg mx-auto">
       <Toast toasts={toasts} onRemove={removeToast} />
 
-      <h2 className="text-xl font-bold text-gray-800 mb-4">할일</h2>
+      <PageHeader title="할일" />
 
       {/* Segment tabs */}
       <div className="flex bg-gray-100 rounded-lg p-1 mb-4">

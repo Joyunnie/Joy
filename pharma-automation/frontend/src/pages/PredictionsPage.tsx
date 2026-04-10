@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { fetchPredictions } from '../api/predictionsApi.ts';
 import type { PredictionOut } from '../types/api.ts';
 import Card from '../components/common/Card.tsx';
+import PageHeader from '../components/common/PageHeader.tsx';
 import EmptyState from '../components/EmptyState.tsx';
 import Spinner from '../components/Spinner.tsx';
 import FilterChips from '../components/FilterChips.tsx';
@@ -74,7 +75,7 @@ export default function PredictionsPage() {
     <div className="p-4 max-w-lg mx-auto">
       <Toast toasts={toasts} onRemove={removeToast} />
 
-      <h2 className="text-xl font-bold text-gray-800 mb-4">내원 예측</h2>
+      <PageHeader title="내원 예측" />
 
       {/* Days ahead chips */}
       <FilterChips options={DAYS_OPTIONS} value={daysAhead} onChange={setDaysAhead} className="mb-4" />

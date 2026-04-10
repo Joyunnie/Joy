@@ -8,6 +8,7 @@ import { fetchAlerts } from '../api/alertsApi.ts';
 import { fetchPredictions } from '../api/predictionsApi.ts';
 import { fetchTodos, toggleComplete, type TodoItem } from '../api/todos.ts';
 import Spinner from '../components/Spinner.tsx';
+import PageHeader from '../components/common/PageHeader.tsx';
 import type {
   InventoryStatusResponse,
   NarcoticsListResponse,
@@ -141,7 +142,7 @@ export default function DashboardPage() {
 
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto">
-      <h2 className="text-xl font-bold text-gray-800">대시보드</h2>
+      <PageHeader title="대시보드" />
 
       {/* 오늘 할 일 */}
       <Link

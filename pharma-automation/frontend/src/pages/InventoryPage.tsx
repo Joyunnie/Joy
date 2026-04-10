@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import api from '../api/client.ts';
 import Card from '../components/common/Card.tsx';
+import PageHeader from '../components/common/PageHeader.tsx';
 import type {
   OtcItemResponse,
   OtcListResponse,
@@ -73,7 +74,7 @@ export default function InventoryPage() {
     <div className="p-4 max-w-lg mx-auto">
       <Toast toasts={toasts} onRemove={removeToast} />
 
-      <h2 className="text-xl font-bold text-gray-800 mb-3">OTC 재고</h2>
+      <PageHeader title="OTC 재고" />
       <div className="flex flex-row items-center gap-2 mb-4 overflow-x-auto whitespace-nowrap">
         <button
           onClick={() => navigate('/receipt-ocr')}

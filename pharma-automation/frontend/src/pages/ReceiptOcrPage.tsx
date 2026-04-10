@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import api from '../api/client.ts';
+import PageHeader from '../components/common/PageHeader.tsx';
 import type { ReceiptListResponse, ReceiptOcrRecordOut, ReceiptOcrResponse } from '../types/api.ts';
 import Pagination from '../components/Pagination.tsx';
 import EmptyState from '../components/EmptyState.tsx';
@@ -79,20 +80,18 @@ export default function ReceiptOcrPage() {
     <div className="p-4 max-w-lg mx-auto">
       <Toast toasts={toasts} onRemove={removeToast} />
 
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <button onClick={() => navigate('/inventory')} className="text-gray-500 hover:text-gray-700">
-            <ArrowLeft size={20} />
+      <PageHeader
+        title="입고 OCR"
+        onBack={() => navigate('/inventory')}
+        action={
+          <button
+            onClick={() => setUploadOpen(true)}
+            className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+          >
+            촬영
           </button>
-          <h2 className="text-xl font-bold text-gray-800">입고 OCR</h2>
-        </div>
-        <button
-          onClick={() => setUploadOpen(true)}
-          className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-        >
-          촬영
-        </button>
-      </div>
+        }
+      />
 
       {/* 상태 필터 */}
       <div className="flex gap-1.5 mb-4">

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
 import api from '../api/client.ts';
+import PageHeader from '../components/common/PageHeader.tsx';
 import type {
   ShelfLayoutListResponse,
   ShelfLayoutResponse,
@@ -104,18 +104,7 @@ export default function ShelfViewPage() {
     <div className="p-4 max-w-lg mx-auto">
       <Toast toasts={toasts} onRemove={removeToast} />
 
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate('/inventory')}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <ArrowLeft size={20} />
-          </button>
-          <h2 className="text-xl font-bold text-gray-800">약장 관리</h2>
-        </div>
-      </div>
+      <PageHeader title="약장 관리" onBack={() => navigate('/inventory')} />
 
       {/* Location type tabs */}
       <div className="flex gap-2 mb-4">
