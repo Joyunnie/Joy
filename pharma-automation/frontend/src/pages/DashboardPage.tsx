@@ -146,7 +146,7 @@ export default function DashboardPage() {
       {/* 오늘 할 일 */}
       <Link
         to="/todos"
-        className="block bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow border border-gray-100"
+        className="block bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow duration-150 border border-gray-100"
       >
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-gray-600">오늘 할 일</h3>
@@ -187,7 +187,7 @@ export default function DashboardPage() {
         {/* Card 1: Alerts */}
         <Link
           to="/alerts"
-          className="block bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow border border-gray-100"
+          className="block bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow duration-150 border border-gray-100"
         >
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-gray-600">새 알림</h3>
@@ -213,7 +213,7 @@ export default function DashboardPage() {
         {/* Card 2: Low Stock */}
         <Link
           to="/inventory"
-          className="block bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow border border-gray-100"
+          className="block bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow duration-150 border border-gray-100"
         >
           <h3 className="text-sm font-semibold text-gray-600 mb-2">재고 부족</h3>
           <p className="text-3xl font-bold text-orange-600">{totalLowStock}건</p>
@@ -227,7 +227,7 @@ export default function DashboardPage() {
         {/* Card 3: Predictions */}
         <Link
           to="/predictions"
-          className="block bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow border border-gray-100"
+          className="block bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow duration-150 border border-gray-100"
         >
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-gray-600">예상 내원</h3>

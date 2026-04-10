@@ -3,6 +3,7 @@ import { AlertTriangle, Bell, Calendar, ShieldAlert } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { fetchAlerts, markAlertRead } from '../api/alertsApi.ts';
 import type { AlertOut } from '../types/api.ts';
+import Card from '../components/common/Card.tsx';
 import Pagination from '../components/Pagination.tsx';
 import EmptyState from '../components/EmptyState.tsx';
 import Spinner from '../components/Spinner.tsx';
@@ -32,12 +33,12 @@ function alertIcon(type: string): LucideIcon {
   }
 }
 
-function alertColor(type: string): string {
+function alertVariant(type: string): 'warning' | 'danger' | 'info' | 'default' {
   switch (type) {
-    case 'LOW_STOCK': return 'border-l-orange-400';
-    case 'NARCOTICS_LOW': return 'border-l-red-500';
-    case 'VISIT_APPROACHING': return 'border-l-blue-400';
-    default: return 'border-l-gray-300';
+    case 'LOW_STOCK': return 'warning';
+    case 'NARCOTICS_LOW': return 'danger';
+    case 'VISIT_APPROACHING': return 'info';
+    default: return 'default';
   }
 }
 
@@ -165,10 +166,12 @@ export default function AlertsPage() {
         <>
           <div className="space-y-2">
             {alerts.map((alert) => (
-              <div
+              <Card
                 key={alert.id}
                 onClick={() => markAsRead(alert)}
-                className={`flex items-start gap-3 p-3 bg-white rounded-lg border-l-4 shadow-sm cursor-pointer transition-colors hover:bg-gray-50 ${alertColor(alert.alert_type)}`}
+                variant={alertVariant(alert.alert_type)}
+                borderAccent
+                className="flex items-start gap-3"
               >
                 {/* Unread dot */}
                 <div className="flex-shrink-0 mt-1">
@@ -185,7 +188,7 @@ export default function AlertsPage() {
                   </p>
                   <p className="text-xs text-gray-400 mt-1">{timeAgo(alert.sent_at)}</p>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
           <Pagination total={total} limit={LIMIT} offset={offset} onChange={setOffset} />

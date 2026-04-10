@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import api from '../api/client.ts';
+import Card from '../components/common/Card.tsx';
 import type {
   OtcItemResponse,
   OtcListResponse,
@@ -121,11 +122,10 @@ export default function InventoryPage() {
         <>
           <div className="space-y-2">
             {items.map((item) => (
-              <div
+              <Card
                 key={item.id}
-                className={`bg-white rounded-lg shadow-sm p-3 border ${
-                  item.is_low_stock ? 'border-red-300' : 'border-gray-100'
-                }`}
+                variant={item.is_low_stock ? 'danger' : 'default'}
+                borderAccent={item.is_low_stock}
               >
                 <div className="flex items-start justify-between">
                   <div
@@ -155,7 +155,7 @@ export default function InventoryPage() {
                     <X size={18} />
                   </button>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
           <Pagination total={total} limit={LIMIT} offset={offset} onChange={setOffset} />

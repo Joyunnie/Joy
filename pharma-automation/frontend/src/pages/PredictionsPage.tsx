@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { fetchPredictions } from '../api/predictionsApi.ts';
 import type { PredictionOut } from '../types/api.ts';
+import Card from '../components/common/Card.tsx';
 import EmptyState from '../components/EmptyState.tsx';
 import Spinner from '../components/Spinner.tsx';
 import FilterChips from '../components/FilterChips.tsx';
@@ -92,10 +93,7 @@ export default function PredictionsPage() {
               </h3>
               <div className="space-y-2">
                 {items.map((pred) => (
-                  <div
-                    key={pred.id}
-                    className="bg-white rounded-lg shadow-sm border border-gray-100 p-3"
-                  >
+                  <Card key={pred.id}>
                     <div
                       className="flex items-center justify-between cursor-pointer"
                       onClick={() => toggleExpand(pred.id)}
@@ -132,7 +130,7 @@ export default function PredictionsPage() {
                         ))}
                       </div>
                     )}
-                  </div>
+                  </Card>
                 ))}
               </div>
             </div>
