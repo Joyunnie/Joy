@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { fetchPredictions } from '../api/predictionsApi.ts';
 import type { PredictionOut } from '../types/api.ts';
 import EmptyState from '../components/EmptyState.tsx';
@@ -111,9 +112,10 @@ export default function PredictionsPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-gray-400">{pred.prediction_method}</span>
-                        <span className="text-gray-400 text-xs">
-                          {expanded.has(pred.id) ? '▲' : '▼'}
-                        </span>
+                        {expanded.has(pred.id)
+                          ? <ChevronUp size={14} className="text-gray-400" />
+                          : <ChevronDown size={14} className="text-gray-400" />
+                        }
                       </div>
                     </div>
 

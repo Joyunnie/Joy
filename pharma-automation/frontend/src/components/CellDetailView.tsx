@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import Modal from './Modal.tsx';
 
 interface CellDetailViewProps {
@@ -237,9 +238,9 @@ export default function CellDetailView({
                     e.stopPropagation();
                     handleRemove(i);
                   }}
-                  className="ml-0.5 w-4 h-4 flex items-center justify-center text-gray-400 hover:text-red-500 text-xs rounded-full hover:bg-red-50"
+                  className="ml-0.5 w-4 h-4 flex items-center justify-center text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50"
                 >
-                  &times;
+                  <X size={10} />
                 </button>
               </div>
             ))}

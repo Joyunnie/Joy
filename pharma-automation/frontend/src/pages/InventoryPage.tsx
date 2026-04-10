@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { X } from 'lucide-react';
 import api from '../api/client.ts';
 import type {
   OtcItemResponse,
@@ -149,9 +150,9 @@ export default function InventoryPage() {
                   </div>
                   <button
                     onClick={() => setDeleteItem(item)}
-                    className="text-gray-400 hover:text-red-500 text-lg leading-none ml-2"
+                    className="text-gray-400 hover:text-red-500 ml-2"
                   >
-                    &times;
+                    <X size={18} />
                   </button>
                 </div>
               </div>

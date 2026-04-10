@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, X } from 'lucide-react';
 import axios from 'axios';
 import api from '../api/client.ts';
 import type {
@@ -105,9 +106,9 @@ export default function ThresholdsPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigate('/inventory')}
-            className="text-gray-500 hover:text-gray-700 text-sm"
+            className="text-gray-500 hover:text-gray-700"
           >
-            &larr;
+            <ArrowLeft size={20} />
           </button>
           <h2 className="text-xl font-bold text-gray-800">최소수량 설정</h2>
         </div>
@@ -175,9 +176,9 @@ export default function ThresholdsPage() {
                   </div>
                   <button
                     onClick={() => setDeleteItem(item)}
-                    className="text-gray-400 hover:text-red-500 text-lg leading-none ml-2"
+                    className="text-gray-400 hover:text-red-500 ml-2"
                   >
-                    &times;
+                    <X size={18} />
                   </button>
                 </div>
               </div>

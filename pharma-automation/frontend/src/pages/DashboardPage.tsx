@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ChevronRight } from 'lucide-react';
 
 const POLL_INTERVAL_MS = 60_000;
 import { Link } from 'react-router-dom';
@@ -149,7 +150,7 @@ export default function DashboardPage() {
       >
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-gray-600">오늘 할 일</h3>
-          <span className="text-xs text-blue-500">더보기 &rarr;</span>
+          <ChevronRight size={16} className="text-gray-400" />
         </div>
         {todos.length > 0 ? (
           <ul className="space-y-2">
@@ -230,7 +231,7 @@ export default function DashboardPage() {
         >
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-gray-600">예상 내원</h3>
-            <span className="text-xs text-blue-500">더보기 &rarr;</span>
+            <ChevronRight size={16} className="text-gray-400" />
           </div>
           <div className="flex items-baseline gap-2">
             <p className="text-3xl font-bold text-blue-600">

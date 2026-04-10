@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import axios from 'axios';
 import api from '../api/client.ts';
 import Modal from './Modal.tsx';
@@ -78,9 +79,9 @@ export default function FileUploadModal<T>({ endpoint, title, onClose, onSuccess
             <img src={preview} alt="미리보기" className="w-full max-h-60 object-contain rounded-lg border border-gray-200" />
             <button
               onClick={() => { setPreview(null); setFile(null); }}
-              className="absolute top-1 right-1 bg-white/80 rounded-full w-6 h-6 flex items-center justify-center text-gray-600 hover:text-red-500 text-sm"
+              className="absolute top-1 right-1 bg-white/80 rounded-full w-6 h-6 flex items-center justify-center text-gray-600 hover:text-red-500"
             >
-              &times;
+              <X size={14} />
             </button>
           </div>
         ) : (

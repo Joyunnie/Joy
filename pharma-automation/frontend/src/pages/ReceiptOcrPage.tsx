@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, X } from 'lucide-react';
 import api from '../api/client.ts';
 import type { ReceiptListResponse, ReceiptOcrRecordOut, ReceiptOcrResponse } from '../types/api.ts';
 import Pagination from '../components/Pagination.tsx';
@@ -81,7 +82,7 @@ export default function ReceiptOcrPage() {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <button onClick={() => navigate('/inventory')} className="text-gray-500 hover:text-gray-700">
-            &larr;
+            <ArrowLeft size={20} />
           </button>
           <h2 className="text-xl font-bold text-gray-800">입고 OCR</h2>
         </div>
@@ -144,9 +145,9 @@ export default function ReceiptOcrPage() {
                   {rec.intake_status === 'PENDING' && (
                     <button
                       onClick={(e) => { e.stopPropagation(); handleDelete(rec.id); }}
-                      className="text-gray-400 hover:text-red-500 text-lg leading-none ml-2"
+                      className="text-gray-400 hover:text-red-500 ml-2"
                     >
-                      &times;
+                      <X size={18} />
                     </button>
                   )}
                 </div>

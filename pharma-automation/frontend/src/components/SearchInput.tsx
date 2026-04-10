@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Search, X } from 'lucide-react';
 
 interface SearchInputProps {
   value: string;
@@ -30,9 +31,7 @@ export default function SearchInput({
 
   return (
     <div className="relative w-full">
-      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
-        &#x1F50D;
-      </span>
+      <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
       <input
         type="text"
         value={local}
@@ -43,9 +42,9 @@ export default function SearchInput({
       {local && (
         <button
           onClick={handleClear}
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none"
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
         >
-          &times;
+          <X size={16} />
         </button>
       )}
     </div>

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AlertTriangle, Bell, Calendar, ShieldAlert } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { fetchAlerts, markAlertRead } from '../api/alertsApi.ts';
 import type { AlertOut } from '../types/api.ts';
 import Pagination from '../components/Pagination.tsx';
@@ -21,12 +23,12 @@ const READ_FILTERS = [
   { value: 'read', label: '읽음' },
 ] as const;
 
-function alertIcon(type: string): string {
+function alertIcon(type: string): LucideIcon {
   switch (type) {
-    case 'LOW_STOCK': return '\u26A0\uFE0F';
-    case 'NARCOTICS_LOW': return '\uD83D\uDED1';
-    case 'VISIT_APPROACHING': return '\uD83D\uDCC5';
-    default: return '\uD83D\uDD14';
+    case 'LOW_STOCK': return AlertTriangle;
+    case 'NARCOTICS_LOW': return ShieldAlert;
+    case 'VISIT_APPROACHING': return Calendar;
+    default: return Bell;
   }
 }
 
@@ -176,7 +178,7 @@ export default function AlertsPage() {
                     <span className="inline-block w-2 h-2" />
                   )}
                 </div>
-                <span className="text-lg flex-shrink-0">{alertIcon(alert.alert_type)}</span>
+                {(() => { const Icon = alertIcon(alert.alert_type); return <Icon size={18} className="flex-shrink-0 text-gray-500" />; })()}
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm ${!alert.read_at ? 'font-bold text-gray-800' : 'text-gray-600'}`}>
                     {alert.message}

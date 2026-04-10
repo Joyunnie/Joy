@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Plus } from 'lucide-react';
 import {
   fetchTodos,
   createTodo,
@@ -218,9 +219,9 @@ export default function TodoPage() {
       {/* FAB */}
       <button
         onClick={() => setShowAdd(true)}
-        className="fixed bottom-20 right-4 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center text-2xl hover:bg-blue-700 transition-colors z-30"
+        className="fixed bottom-20 right-4 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-700 transition-colors z-30"
       >
-        +
+        <Plus size={24} />
       </button>
 
       {/* Quick add panel */}

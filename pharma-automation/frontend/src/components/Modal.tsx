@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import { X } from 'lucide-react';
 
 interface ModalProps {
   isOpen: boolean;
@@ -31,9 +32,9 @@ export default function Modal({ isOpen, onClose, title, children, footer }: Moda
           <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-xl leading-none"
+            className="text-gray-400 hover:text-gray-600"
           >
-            &times;
+            <X size={20} />
           </button>
         </div>
         <div className="p-4 overflow-y-auto flex-1 min-h-0">{children}</div>

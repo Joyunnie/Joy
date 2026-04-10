@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import api from '../api/client.ts';
 import type {
   ShelfLayoutListResponse,
@@ -108,9 +109,9 @@ export default function ShelfViewPage() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => navigate('/inventory')}
-            className="text-gray-500 hover:text-gray-700 text-sm"
+            className="text-gray-500 hover:text-gray-700"
           >
-            &larr;
+            <ArrowLeft size={20} />
           </button>
           <h2 className="text-xl font-bold text-gray-800">약장 관리</h2>
         </div>
