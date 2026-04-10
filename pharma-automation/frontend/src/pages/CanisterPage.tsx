@@ -137,12 +137,12 @@ export default function CanisterPage() {
               key={slot.number}
               onClick={() => handleSlotClick(slot.number)}
               className={`
-                rounded-lg p-1.5 text-left border transition-colors min-h-[56px]
+                rounded-lg p-1.5 text-left transition-colors min-h-[56px]
                 ${isEditing
-                  ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-300'
+                  ? 'border border-blue-500 bg-blue-50 ring-2 ring-blue-300'
                   : filled
-                    ? 'border-gray-300 bg-white hover:border-blue-400'
-                    : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                    ? 'border border-l-2 border-l-blue-400 border-gray-200 bg-white hover:border-blue-400'
+                    : 'border border-dashed border-gray-300 bg-gray-50 hover:border-gray-400'
                 }
               `}
             >
@@ -159,7 +159,7 @@ export default function CanisterPage() {
 
       {/* Edit Panel */}
       {editing && (
-        <div className="fixed bottom-14 left-0 right-0 bg-white border-t shadow-lg p-4 z-40">
+        <div className="fixed bottom-14 left-0 right-0 bg-white rounded-t-2xl border-t border-gray-200 shadow-lg p-4 z-40">
           <div className="max-w-lg mx-auto">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-bold text-sm">슬롯 #{editing.canisterNumber}</h2>

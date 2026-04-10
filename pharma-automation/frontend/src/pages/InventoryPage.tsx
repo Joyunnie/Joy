@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X } from 'lucide-react';
+import { Camera, LayoutGrid, Plus, Settings, X } from 'lucide-react';
 import api from '../api/client.ts';
 import Card from '../components/common/Card.tsx';
 import PageHeader from '../components/common/PageHeader.tsx';
@@ -75,29 +75,33 @@ export default function InventoryPage() {
       <Toast toasts={toasts} onRemove={removeToast} />
 
       <PageHeader title="OTC 재고" />
-      <div className="flex flex-row items-center gap-2 mb-4 overflow-x-auto whitespace-nowrap">
+      <div className="flex flex-row items-center gap-2 mb-4 overflow-x-auto whitespace-nowrap scrollbar-hide">
         <button
           onClick={() => navigate('/receipt-ocr')}
-          className="h-9 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors min-w-fit"
+          className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors min-w-fit"
         >
+          <Camera size={16} />
           입고OCR
         </button>
         <button
           onClick={() => navigate('/shelf')}
-          className="h-9 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors min-w-fit"
+          className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors min-w-fit"
         >
+          <LayoutGrid size={16} />
           약장보기
         </button>
         <button
           onClick={() => navigate('/thresholds')}
-          className="h-9 px-3 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors min-w-fit"
+          className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors min-w-fit"
         >
+          <Settings size={16} />
           최소수량
         </button>
         <button
           onClick={() => setAddOpen(true)}
-          className="h-9 px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors min-w-fit"
+          className="flex items-center gap-1.5 bg-blue-600 rounded-xl px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors min-w-fit"
         >
+          <Plus size={16} />
           추가
         </button>
       </div>
@@ -138,7 +142,7 @@ export default function InventoryPage() {
                         {item.drug_name ?? `Drug #${item.drug_id}`}
                       </p>
                       {item.is_low_stock && (
-                        <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">
+                        <span className="text-xs bg-red-100 text-red-600 rounded-full px-2 py-0.5 font-medium">
                           부족
                         </span>
                       )}
