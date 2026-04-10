@@ -4,6 +4,8 @@ import logging
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.utils.timezone import KST
+
 from app.models.tables import (
     AlertLog,
     AtdpsCanister,
@@ -30,7 +32,7 @@ async def get_predictions(
     limit: int = 200,
     offset: int = 0,
 ) -> PredictionListResponse:
-    today = date.today()
+    today = datetime.now(KST).date()
     cutoff = today + timedelta(days=days_ahead)
 
     # Get pharmacy for default_alert_days_before
@@ -134,7 +136,7 @@ async def run_daily_predictions(
 
     Bulk-prefetch pattern: ~5 queries per pharmacy instead of ~500.
     """
-    today = date.today()
+    today = datetime.now(KST).date()
     lookback_date = today - timedelta(days=lookback_days)
 
     # Get pharmacies
