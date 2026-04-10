@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session, engine
 from app.services.prediction_service import run_daily_predictions
+from app.services.auth_service import cleanup_expired_tokens
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -27,6 +28,8 @@ async def main(args: argparse.Namespace) -> None:
             dry_run=args.dry_run,
         )
         if not args.dry_run:
+            expired = await cleanup_expired_tokens(db)
+            stats["expired_tokens_cleaned"] = expired
             await db.commit()
 
     await engine.dispose()

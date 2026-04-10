@@ -10,6 +10,11 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./docs/db-schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pharma_user"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
   cloud:
     build: ./cloud
@@ -23,7 +28,8 @@ services:
     volumes:
       - uploads:/app/uploads
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: unless-stopped
   frontend:
     build: ./frontend

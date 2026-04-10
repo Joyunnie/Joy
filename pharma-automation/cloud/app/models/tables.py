@@ -408,7 +408,7 @@ class AtdpsCanister(Base):
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"), default=7)
+    pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
     canister_number: Mapped[int] = mapped_column(Integer)
     drug_code: Mapped[str] = mapped_column(String(20))
     drug_name: Mapped[str] = mapped_column(String(200))
