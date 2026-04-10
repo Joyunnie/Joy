@@ -334,6 +334,7 @@ class NarcoticsTransaction(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
+    # ondelete defaults to RESTRICT — intentional: preserve audit trail
     narcotics_inventory_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("narcotics_inventory.id"))
     transaction_type: Mapped[str] = mapped_column(String(20))  # RECEIVE | DISPENSE | DISPOSE | ADJUST | RETURN
     quantity: Mapped[int] = mapped_column(Integer)
@@ -364,26 +365,7 @@ class InventoryAuditLog(Base):
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
 
 
-# 19. backup_logs
-class BackupLog(Base):
-    __tablename__ = "backup_logs"
-    __table_args__ = (
-        Index("idx_backup_logs_pharmacy", "pharmacy_id"),
-    )
-
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
-    started_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ)
-    completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
-    status: Mapped[str] = mapped_column(String(20))  # RUNNING | SUCCESS | FAILED | ABORTED
-    backup_path: Mapped[str | None] = mapped_column(Text)
-    file_count: Mapped[int | None] = mapped_column(Integer)
-    total_bytes: Mapped[int | None] = mapped_column(BigInteger)
-    error_message: Mapped[str | None] = mapped_column(Text)
-    reported_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
-
-
-# 20. todos
+# 19. todos
 class Todo(Base):
     __tablename__ = "todos"
     __table_args__ = (

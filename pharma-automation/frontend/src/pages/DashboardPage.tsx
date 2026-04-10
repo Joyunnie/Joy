@@ -1,4 +1,3 @@
-// TODO(Phase 3B): GET /dashboard/summary 통합 API 검토
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const POLL_INTERVAL_MS = 60_000;
@@ -39,7 +38,6 @@ export default function DashboardPage() {
 
     async function fetchAll() {
       try {
-        // TODO(Phase 3B): GET /dashboard/summary 통합 API 검토
         const [alertsData, otcRes, narcLowRes, prescRes, predData, todosRes] =
           await Promise.all([
             fetchAlerts({ unread_only: true, limit: 5 }),
