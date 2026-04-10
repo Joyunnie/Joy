@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { AlertTriangle, Calendar, ChevronRight, Package } from 'lucide-react';
 
 const POLL_INTERVAL_MS = 60_000;
 import { Link } from 'react-router-dom';
@@ -147,41 +147,50 @@ export default function DashboardPage() {
       {/* 오늘 할 일 */}
       <Link
         to="/todos"
-        className="block bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow duration-150 border border-gray-100"
+        className="block bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-150 border border-gray-100 overflow-hidden"
       >
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-gray-600">오늘 할 일</h3>
+        <div className="flex items-center justify-between bg-gray-50 rounded-t-xl px-4 py-2.5 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-gray-600">오늘 할 일</h3>
+            {todos.length > 0 && (
+              <span className="rounded-full bg-blue-100 text-blue-700 text-xs px-2 font-medium">
+                {todos.length}
+              </span>
+            )}
+          </div>
           <ChevronRight size={16} className="text-gray-400" />
         </div>
-        {todos.length > 0 ? (
-          <ul className="space-y-2">
-            {todos.map((todo) => (
-              <li key={todo.id} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={todo.is_completed}
-                  onChange={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleToggleTodo(todo.id);
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-4 h-4 rounded border-gray-300 text-blue-600 flex-shrink-0"
-                />
-                <span className={`text-sm flex-1 truncate ${todo.is_completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
-                  {todo.title}
-                </span>
-                {todo.due_date && (
-                  <span className="text-xs text-gray-400 flex-shrink-0">
-                    {formatTime(todo.due_date)}
+        <div className="p-4">
+          {todos.length > 0 ? (
+            <ul className="space-y-2">
+              {todos.map((todo) => (
+                <li key={todo.id} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={todo.is_completed}
+                    onChange={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleToggleTodo(todo.id);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 flex-shrink-0"
+                  />
+                  <span className={`text-sm flex-1 truncate ${todo.is_completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>
+                    {todo.title}
                   </span>
-                )}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-gray-400">오늘 할 일이 없습니다</p>
-        )}
+                  {todo.due_date && (
+                    <span className="text-xs text-gray-400 flex-shrink-0">
+                      {formatTime(todo.due_date)}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-gray-400">오늘 할 일이 없습니다</p>
+          )}
+        </div>
       </Link>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -190,13 +199,16 @@ export default function DashboardPage() {
           to="/alerts"
           className="block bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow duration-150 border border-gray-100"
         >
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-gray-600">새 알림</h3>
-            {data.unreadAlerts > 0 && (
-              <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
-                {data.unreadAlerts}
-              </span>
-            )}
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle size={20} className="text-orange-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-gray-600">새 알림</h3>
+              {data.unreadAlerts > 0 && (
+                <span className="text-xs text-orange-600 font-medium">{data.unreadAlerts}건</span>
+              )}
+            </div>
           </div>
           {data.recentAlerts.length > 0 ? (
             <ul className="space-y-1">
@@ -216,9 +228,16 @@ export default function DashboardPage() {
           to="/inventory"
           className="block bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow duration-150 border border-gray-100"
         >
-          <h3 className="text-sm font-semibold text-gray-600 mb-2">재고 부족</h3>
-          <p className="text-3xl font-bold text-orange-600">{totalLowStock}건</p>
-          <div className="mt-2 text-xs text-gray-500 space-y-0.5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+              <Package size={20} className="text-red-500" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-600">재고 부족</h3>
+              <p className="text-2xl font-bold text-red-600">{totalLowStock}건</p>
+            </div>
+          </div>
+          <div className="text-xs text-gray-500 space-y-0.5">
             <p>OTC {data.otcLowStock}건</p>
             <p>전문 {data.prescriptionLowStock}건</p>
             <p>마약류 {data.narcoticsLowStock}건</p>
@@ -230,17 +249,16 @@ export default function DashboardPage() {
           to="/predictions"
           className="block bg-white rounded-xl shadow-sm p-4 hover:shadow-md transition-shadow duration-150 border border-gray-100"
         >
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-gray-600">예상 내원</h3>
-            <ChevronRight size={16} className="text-gray-400" />
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+              <Calendar size={20} className="text-blue-500" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-gray-600">예상 내원</h3>
+              <p className="text-2xl font-bold text-blue-600">{data.predictionsThisWeek}명</p>
+            </div>
           </div>
-          <div className="flex items-baseline gap-2">
-            <p className="text-3xl font-bold text-blue-600">
-              {data.predictionsThisWeek}명
-            </p>
-            <span className="text-sm text-gray-400">이번 주</span>
-          </div>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="text-xs text-gray-500">
             오늘 예상: <span className="font-semibold text-blue-700">{data.predictionsToday}명</span>
           </p>
         </Link>
