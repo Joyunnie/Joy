@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import api from '../api/client.ts';
-import type { PredictionListResponse, PredictionOut } from '../types/api.ts';
+import { fetchPredictions } from '../api/predictionsApi.ts';
+import type { PredictionOut } from '../types/api.ts';
 import EmptyState from '../components/EmptyState.tsx';
 import Toast from '../components/Toast.tsx';
 import { useToast } from '../hooks/useToast.ts';
@@ -41,12 +41,10 @@ export default function PredictionsPage() {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const { toasts, showToast, removeToast } = useToast();
 
-  const fetchPredictions = useCallback(async () => {
+  const loadPredictions = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.get<PredictionListResponse>('/predictions', {
-        params: { days_ahead: daysAhead },
-      });
+      const data = await fetchPredictions(daysAhead);
       setPredictions(data.predictions);
     } catch {
       showToast('예측 데이터를 불러오지 못했습니다', 'error');
@@ -55,7 +53,7 @@ export default function PredictionsPage() {
     }
   }, [daysAhead, showToast]);
 
-  useEffect(() => { fetchPredictions(); }, [fetchPredictions]);
+  useEffect(() => { loadPredictions(); }, [loadPredictions]);
 
   function toggleExpand(id: number) {
     setExpanded((prev) => {
@@ -139,12 +137,8 @@ export default function PredictionsPage() {
                         {pred.needed_drugs.map((drug, idx) => (
                           <div key={idx} className="flex justify-between text-xs">
                             <span className="text-gray-600">{drug.drug_name}</span>
-                            <span className={
-                              drug.in_stock !== null && drug.in_stock < drug.quantity
-                                ? 'text-red-500 font-medium'
-                                : 'text-gray-500'
-                            }>
-                              필요 {drug.quantity} / 재고 {drug.in_stock ?? '-'}
+                            <span className="text-gray-500">
+                              필요 {drug.quantity}
                             </span>
                           </div>
                         ))}

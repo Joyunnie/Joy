@@ -1,14 +1,16 @@
 // TODO(Phase 3B): GET /dashboard/summary 통합 API 검토
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+
+const POLL_INTERVAL_MS = 60_000;
 import { Link } from 'react-router-dom';
 import api from '../api/client.ts';
+import { fetchAlerts } from '../api/alertsApi.ts';
+import { fetchPredictions } from '../api/predictionsApi.ts';
 import { fetchTodos, toggleComplete, type TodoItem } from '../api/todos.ts';
 import type {
-  AlertListResponse,
   InventoryStatusResponse,
   NarcoticsListResponse,
   OtcListResponse,
-  PredictionListResponse,
 } from '../types/api.ts';
 
 interface DashboardData {
@@ -37,11 +39,9 @@ export default function DashboardPage() {
     async function fetchAll() {
       try {
         // TODO(Phase 3B): GET /dashboard/summary 통합 API 검토
-        const [alertsRes, otcRes, narcLowRes, prescRes, predRes, todosRes] =
+        const [alertsData, otcRes, narcLowRes, prescRes, predData, todosRes] =
           await Promise.all([
-            api.get<AlertListResponse>('/alerts', {
-              params: { unread_only: true, limit: 5 },
-            }),
+            fetchAlerts({ unread_only: true, limit: 5 }),
             api.get<OtcListResponse>('/otc-inventory', {
               params: { low_stock_only: true, limit: 1 },
             }),
@@ -51,23 +51,21 @@ export default function DashboardPage() {
             api.get<InventoryStatusResponse>('/inventory/status', {
               params: { low_stock_only: true },
             }),
-            api.get<PredictionListResponse>('/predictions', {
-              params: { days_ahead: 7 },
-            }),
+            fetchPredictions(7),
             fetchTodos('today'),
           ]);
 
         if (cancelled) return;
 
         const today = todayStr();
-        const predictionsToday = predRes.data.predictions.filter(
+        const predictionsToday = predData.predictions.filter(
           (p) => p.predicted_visit_date === today,
         ).length;
 
         setTodos(todosRes.items);
         setData({
-          unreadAlerts: alertsRes.data.total,
-          recentAlerts: alertsRes.data.alerts.map((a) => ({
+          unreadAlerts: alertsData.total,
+          recentAlerts: alertsData.alerts.map((a) => ({
             id: a.id,
             message: a.message,
             alert_type: a.alert_type,
@@ -75,7 +73,7 @@ export default function DashboardPage() {
           otcLowStock: otcRes.data.total,
           prescriptionLowStock: prescRes.data.items.length,
           narcoticsLowStock: narcLowRes.data.total,
-          predictionsThisWeek: predRes.data.predictions.length,
+          predictionsThisWeek: predData.predictions.length,
           predictionsToday,
         });
       } catch {
@@ -88,6 +86,26 @@ export default function DashboardPage() {
     fetchAll();
     return () => { cancelled = true; };
   }, []);
+
+  const pollAlerts = useCallback(async () => {
+    try {
+      const alertData = await fetchAlerts({ unread_only: true, limit: 5 });
+      setData(prev => prev ? {
+        ...prev,
+        unreadAlerts: alertData.total,
+        recentAlerts: alertData.alerts.map(a => ({
+          id: a.id, message: a.message, alert_type: a.alert_type,
+        })),
+      } : null);
+    } catch (e) { console.warn('Alert poll failed', e); }
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!document.hidden) pollAlerts();
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [pollAlerts]);
 
   if (loading) {
     return (

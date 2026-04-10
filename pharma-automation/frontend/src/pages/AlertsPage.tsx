@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
-import api from '../api/client.ts';
-import type { AlertListResponse, AlertOut } from '../types/api.ts';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { fetchAlerts, markAlertRead } from '../api/alertsApi.ts';
+import type { AlertOut } from '../types/api.ts';
 import Pagination from '../components/Pagination.tsx';
 import EmptyState from '../components/EmptyState.tsx';
 import Toast from '../components/Toast.tsx';
@@ -11,7 +11,6 @@ const ALERT_TYPES = [
   { value: 'LOW_STOCK', label: '재고부족' },
   { value: 'NARCOTICS_LOW', label: '마약류' },
   { value: 'VISIT_APPROACHING', label: '내원예측' },
-  { value: 'BACKUP_FAIL', label: '백업' },
 ] as const;
 
 const READ_FILTERS = [
@@ -25,7 +24,6 @@ function alertIcon(type: string): string {
     case 'LOW_STOCK': return '\u26A0\uFE0F';
     case 'NARCOTICS_LOW': return '\uD83D\uDED1';
     case 'VISIT_APPROACHING': return '\uD83D\uDCC5';
-    case 'BACKUP_FAIL': return '\uD83D\uDDA5\uFE0F';
     default: return '\uD83D\uDD14';
   }
 }
@@ -35,7 +33,6 @@ function alertColor(type: string): string {
     case 'LOW_STOCK': return 'border-l-orange-400';
     case 'NARCOTICS_LOW': return 'border-l-red-500';
     case 'VISIT_APPROACHING': return 'border-l-blue-400';
-    case 'BACKUP_FAIL': return 'border-l-gray-400';
     default: return 'border-l-gray-300';
   }
 }
@@ -51,6 +48,7 @@ function timeAgo(dateStr: string): string {
   return `${days}일 전`;
 }
 
+const POLL_INTERVAL_MS = 60_000;
 const LIMIT = 20;
 
 export default function AlertsPage() {
@@ -60,27 +58,37 @@ export default function AlertsPage() {
   const [typeFilter, setTypeFilter] = useState('');
   const [readFilter, setReadFilter] = useState('');
   const [loading, setLoading] = useState(true);
+  const loaded = useRef(false);
   const { toasts, showToast, removeToast } = useToast();
 
-  const fetchAlerts = useCallback(async () => {
-    setLoading(true);
+  const loadAlerts = useCallback(async () => {
+    if (!loaded.current) setLoading(true);
     try {
-      const params: Record<string, unknown> = { limit: LIMIT, offset };
-      if (typeFilter) params.alert_type = typeFilter;
-      if (readFilter === 'unread') params.unread_only = true;
-      if (readFilter === 'read') params.read_only = true;
-
-      const { data } = await api.get<AlertListResponse>('/alerts', { params });
+      const data = await fetchAlerts({
+        limit: LIMIT,
+        offset,
+        alert_type: typeFilter || undefined,
+        unread_only: readFilter === 'unread' || undefined,
+        read_only: readFilter === 'read' || undefined,
+      });
       setAlerts(data.alerts);
       setTotal(data.total);
     } catch {
-      showToast('알림을 불러오지 못했습니다', 'error');
+      if (!loaded.current) showToast('알림을 불러오지 못했습니다', 'error');
     } finally {
+      loaded.current = true;
       setLoading(false);
     }
   }, [offset, typeFilter, readFilter, showToast]);
 
-  useEffect(() => { fetchAlerts(); }, [fetchAlerts]);
+  useEffect(() => { loadAlerts(); }, [loadAlerts]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!document.hidden) loadAlerts();
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, [fetchAlerts]);
 
   async function markAsRead(alert: AlertOut) {
     if (alert.read_at) return;
@@ -93,7 +101,7 @@ export default function AlertsPage() {
     );
 
     try {
-      await api.patch(`/alerts/${alert.id}/read`);
+      await markAlertRead(alert.id);
     } catch {
       // revert
       setAlerts((prev) =>
