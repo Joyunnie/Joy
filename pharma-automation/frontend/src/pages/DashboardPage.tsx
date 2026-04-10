@@ -7,6 +7,7 @@ import api from '../api/client.ts';
 import { fetchAlerts } from '../api/alertsApi.ts';
 import { fetchPredictions } from '../api/predictionsApi.ts';
 import { fetchTodos, toggleComplete, type TodoItem } from '../api/todos.ts';
+import Spinner from '../components/Spinner.tsx';
 import type {
   InventoryStatusResponse,
   NarcoticsListResponse,
@@ -109,9 +110,7 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <span className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-      </div>
+      <Spinner containerHeight="h-64" />
     );
   }
 

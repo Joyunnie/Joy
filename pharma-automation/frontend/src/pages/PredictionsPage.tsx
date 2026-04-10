@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { fetchPredictions } from '../api/predictionsApi.ts';
 import type { PredictionOut } from '../types/api.ts';
 import EmptyState from '../components/EmptyState.tsx';
+import Spinner from '../components/Spinner.tsx';
+import FilterChips from '../components/FilterChips.tsx';
 import Toast from '../components/Toast.tsx';
 import { useToast } from '../hooks/useToast.ts';
 
@@ -73,26 +75,10 @@ export default function PredictionsPage() {
       <h2 className="text-xl font-bold text-gray-800 mb-4">내원 예측</h2>
 
       {/* Days ahead chips */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
-        {DAYS_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            onClick={() => setDaysAhead(opt.value)}
-            className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
-              daysAhead === opt.value
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+      <FilterChips options={DAYS_OPTIONS} value={daysAhead} onChange={setDaysAhead} className="mb-4" />
 
       {loading ? (
-        <div className="flex items-center justify-center h-40">
-          <span className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <Spinner />
       ) : predictions.length === 0 ? (
         <EmptyState message="예측 데이터가 없습니다" />
       ) : (

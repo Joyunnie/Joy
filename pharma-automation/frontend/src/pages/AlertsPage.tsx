@@ -3,6 +3,8 @@ import { fetchAlerts, markAlertRead } from '../api/alertsApi.ts';
 import type { AlertOut } from '../types/api.ts';
 import Pagination from '../components/Pagination.tsx';
 import EmptyState from '../components/EmptyState.tsx';
+import Spinner from '../components/Spinner.tsx';
+import FilterChips from '../components/FilterChips.tsx';
 import Toast from '../components/Toast.tsx';
 import { useToast } from '../hooks/useToast.ts';
 
@@ -130,21 +132,7 @@ export default function AlertsPage() {
       <h2 className="text-xl font-bold text-gray-800 mb-4">알림</h2>
 
       {/* Type filter chips */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide">
-        {ALERT_TYPES.map((t) => (
-          <button
-            key={t.value}
-            onClick={() => handleTypeFilter(t.value)}
-            className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap transition-colors ${
-              typeFilter === t.value
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <FilterChips options={ALERT_TYPES} value={typeFilter} onChange={handleTypeFilter} className="mb-3" />
 
       {/* Read filter */}
       <div className="flex gap-2 mb-4">
@@ -164,9 +152,7 @@ export default function AlertsPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-40">
-          <span className="inline-block w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <Spinner />
       ) : alerts.length === 0 ? (
         <EmptyState message="알림이 없습니다" />
       ) : (
