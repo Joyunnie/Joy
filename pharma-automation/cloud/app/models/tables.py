@@ -94,7 +94,7 @@ class OtcInventory(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
-    drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id"))
+    drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id", ondelete="CASCADE"))
     current_quantity: Mapped[int] = mapped_column(Integer, default=0)
     display_location: Mapped[str | None] = mapped_column(String(100))
     storage_location: Mapped[str | None] = mapped_column(String(100))
@@ -114,7 +114,7 @@ class PrescriptionInventory(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
-    drug_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("drugs.id"))
+    drug_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("drugs.id", ondelete="SET NULL"))
     drug_insurance_code: Mapped[str | None] = mapped_column(String(20), comment="건강보험 약품코드")
     drug_name: Mapped[str | None] = mapped_column(String(200))
     cassette_number: Mapped[int] = mapped_column(SmallInteger)
@@ -139,7 +139,7 @@ class DrugThreshold(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
-    drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id"))
+    drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id", ondelete="CASCADE"))
     min_quantity: Mapped[int] = mapped_column(Integer)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
@@ -169,7 +169,7 @@ class DrugStock(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
-    drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id"))
+    drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id", ondelete="CASCADE"))
     current_quantity: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
     is_narcotic: Mapped[bool] = mapped_column(Boolean, default=False)
     quantity_source: Mapped[str] = mapped_column(String(20), default="PM20")
@@ -206,7 +206,7 @@ class VisitDrug(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     visit_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("patient_visit_history.id", ondelete="CASCADE"))
-    drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id"))
+    drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id", ondelete="CASCADE"))
     quantity_dispensed: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
 
@@ -267,7 +267,7 @@ class ReceiptOcrItem(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     record_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("receipt_ocr_records.id", ondelete="CASCADE"))
-    drug_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("drugs.id"))
+    drug_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("drugs.id", ondelete="SET NULL"))
     item_name: Mapped[str | None] = mapped_column(String(200))
     quantity: Mapped[int | None] = mapped_column(Integer)
     unit_price: Mapped[int | None] = mapped_column(Integer)
@@ -275,7 +275,7 @@ class ReceiptOcrItem(Base):
     match_score: Mapped[float | None] = mapped_column(Float)
     matched_drug_name: Mapped[str | None] = mapped_column(String(200))
     is_confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
-    confirmed_drug_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("drugs.id"))
+    confirmed_drug_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("drugs.id", ondelete="SET NULL"))
     confirmed_quantity: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
 
@@ -311,7 +311,7 @@ class NarcoticsInventory(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
-    drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id"))
+    drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id", ondelete="CASCADE"))
     lot_number: Mapped[str] = mapped_column(String(50))
     current_quantity: Mapped[int] = mapped_column(Integer, default=0)
     last_inspected_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
