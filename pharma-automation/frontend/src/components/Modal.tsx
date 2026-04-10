@@ -24,22 +24,22 @@ export default function Modal({ isOpen, onClose, title, children, footer }: Moda
   return (
     <div className="fixed inset-0 z-[9999] flex items-end justify-center pb-20">
       <div
-        className="absolute inset-0 bg-black/40"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-lg bg-white rounded-t-2xl shadow-xl max-h-[80vh] flex flex-col animate-slide-up">
-        <div className="flex-shrink-0 bg-white flex items-center justify-between px-4 py-3 border-b border-gray-200 rounded-t-2xl">
-          <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
+      <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-xl max-h-[80vh] flex flex-col animate-slide-up">
+        <div className="flex-shrink-0 flex items-center justify-between px-4 py-3 border-b border-gray-200 rounded-t-2xl">
+          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors duration-150"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
         <div className="p-4 overflow-y-auto flex-1 min-h-0">{children}</div>
         {footer && (
-          <div className="flex-shrink-0 bg-white border-t border-gray-200 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] rounded-b-2xl">
+          <div className="flex-shrink-0 border-t border-gray-200 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
             {footer}
           </div>
         )}
