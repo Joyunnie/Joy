@@ -25,7 +25,6 @@ class AgentConfig:
         self.agent = _Section(data.get("agent", {}))
         self.pm20 = _Section(data.get("pm20", {}))
         self.backup = _Section(data.get("backup", {}))
-        self.rpa = _Section(data.get("rpa", {}))
 
     def get_section(self, name: str) -> _Section | None:
         section_data = self._data.get(name)

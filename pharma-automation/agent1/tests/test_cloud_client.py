@@ -118,63 +118,6 @@ class TestGetPredictions:
         assert result == {"predictions": []}
 
 
-class TestGetPendingRpaCommands:
-    """Already has error handling — verify it returns [] on failure."""
-
-    def test_success(self, client):
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = {"commands": [{"id": 1}]}
-        mock_resp.raise_for_status.return_value = None
-        client.session.get = MagicMock(return_value=mock_resp)
-
-        result = client.get_pending_rpa_commands()
-        assert result == [{"id": 1}]
-
-    def test_connection_error_returns_empty_list(self, client):
-        client.session.get = MagicMock(
-            side_effect=requests.ConnectionError("offline")
-        )
-        result = client.get_pending_rpa_commands()
-        assert result == []
-
-    def test_http_error_returns_empty_list(self, client):
-        mock_resp = MagicMock()
-        mock_resp.raise_for_status.side_effect = requests.HTTPError("503")
-        client.session.get = MagicMock(return_value=mock_resp)
-
-        result = client.get_pending_rpa_commands()
-        assert result == []
-
-
-class TestUpdateRpaCommandStatus:
-    def test_success(self, client):
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = {"status": "SUCCESS"}
-        mock_resp.raise_for_status.return_value = None
-        client.session.patch = MagicMock(return_value=mock_resp)
-
-        result = client.update_rpa_command_status(1, "SUCCESS")
-        assert result == {"status": "SUCCESS"}
-
-    def test_with_error_message(self, client):
-        mock_resp = MagicMock()
-        mock_resp.json.return_value = {}
-        mock_resp.raise_for_status.return_value = None
-        client.session.patch = MagicMock(return_value=mock_resp)
-
-        client.update_rpa_command_status(1, "FAILED", "window not found")
-        body = client.session.patch.call_args.kwargs["json"]
-        assert body["status"] == "FAILED"
-        assert body["error_message"] == "window not found"
-
-    def test_failure_returns_none(self, client):
-        client.session.patch = MagicMock(
-            side_effect=requests.ConnectionError("offline")
-        )
-        result = client.update_rpa_command_status(1, "FAILED")
-        assert result is None
-
-
 class TestClientInit:
     """Constructor behavior."""
 

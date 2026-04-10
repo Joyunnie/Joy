@@ -10,10 +10,9 @@ Usage:
 import argparse
 import json
 import logging
-import os
 import signal
 import threading
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 from agent1.agent.cloud_client import CloudClient

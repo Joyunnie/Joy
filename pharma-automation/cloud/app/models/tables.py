@@ -162,7 +162,7 @@ class ShelfLayout(Base):
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
 
 
-# 9. drug_stock — PM+20 TEMP_STOCK 약품별 재고 (카세트 아닌 약품 단위)
+# 9. drug_stock
 class DrugStock(Base):
     __tablename__ = "drug_stock"
     __table_args__ = (UniqueConstraint("pharmacy_id", "drug_id"),)
@@ -196,7 +196,7 @@ class PatientVisitHistory(Base):
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
 
 
-# 9. visit_drugs
+# 11. visit_drugs
 class VisitDrug(Base):
     __tablename__ = "visit_drugs"
     __table_args__ = (
@@ -211,7 +211,7 @@ class VisitDrug(Base):
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
 
 
-# 10. visit_predictions
+# 12. visit_predictions
 class VisitPrediction(Base):
     __tablename__ = "visit_predictions"
     __table_args__ = (
@@ -232,7 +232,7 @@ class VisitPrediction(Base):
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
 
 
-# 11. receipt_ocr_records
+# 13. receipt_ocr_records
 class ReceiptOcrRecord(Base):
     __tablename__ = "receipt_ocr_records"
     __table_args__ = (
@@ -258,7 +258,7 @@ class ReceiptOcrRecord(Base):
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
 
 
-# 12. receipt_ocr_items
+# 14. receipt_ocr_items
 class ReceiptOcrItem(Base):
     __tablename__ = "receipt_ocr_items"
     __table_args__ = (
@@ -280,7 +280,7 @@ class ReceiptOcrItem(Base):
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
 
 
-# 13. alert_logs
+# 15. alert_logs
 class AlertLog(Base):
     __tablename__ = "alert_logs"
     __table_args__ = (
@@ -304,22 +304,7 @@ class AlertLog(Base):
     read_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
 
 
-# 14. atdps_commands
-class AtdpsCommand(Base):
-    __tablename__ = "atdps_commands"
-
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
-    command_type: Mapped[str] = mapped_column(String(20))  # CASSETTE_SCAN | REFILL | DISPENSE | STATUS
-    payload: Mapped[dict | None] = mapped_column(JSONB)
-    status: Mapped[str] = mapped_column(String(20), default="PENDING")
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
-    sent_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
-    executed_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
-    error_message: Mapped[str | None] = mapped_column(Text)
-
-
-# 15. narcotics_inventory
+# 16. narcotics_inventory
 class NarcoticsInventory(Base):
     __tablename__ = "narcotics_inventory"
     __table_args__ = (UniqueConstraint("pharmacy_id", "drug_id", "lot_number"),)
@@ -336,7 +321,7 @@ class NarcoticsInventory(Base):
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
 
 
-# 18. narcotics_transactions
+# 17. narcotics_transactions
 class NarcoticsTransaction(Base):
     __tablename__ = "narcotics_transactions"
     __table_args__ = (
@@ -357,7 +342,7 @@ class NarcoticsTransaction(Base):
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
 
 
-# 19. inventory_audit_log
+# 18. inventory_audit_log
 class InventoryAuditLog(Base):
     __tablename__ = "inventory_audit_log"
     __table_args__ = (
@@ -376,7 +361,7 @@ class InventoryAuditLog(Base):
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
 
 
-# 20. backup_logs
+# 19. backup_logs
 class BackupLog(Base):
     __tablename__ = "backup_logs"
     __table_args__ = (
@@ -395,7 +380,7 @@ class BackupLog(Base):
     reported_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
 
 
-# 19. todos — 약국 공유 할일 메모장
+# 20. todos
 class Todo(Base):
     __tablename__ = "todos"
     __table_args__ = (

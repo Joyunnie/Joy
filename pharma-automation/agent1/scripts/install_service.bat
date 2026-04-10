@@ -133,7 +133,7 @@ echo [INFO] 서비스를 등록합니다...
 "%NSSM%" set "%SERVICE_NAME%" Start SERVICE_AUTO_START
 
 :: 설명
-"%NSSM%" set "%SERVICE_NAME%" Description "Pharma Automation Agent1 - PM+20 sync and RPA service"
+"%NSSM%" set "%SERVICE_NAME%" Description "Pharma Automation Agent1 - PM+20 sync service"
 
 :: --- 환경변수 설정 ---
 :: PYTHONPATH는 setx로는 서비스에 반영되지 않으므로 NSSM AppEnvironmentExtra 사용
