@@ -1,6 +1,7 @@
+import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
@@ -8,10 +9,12 @@ from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import text
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 from app.database import engine
 from app.exceptions import ServiceError
 from app.rate_limit import limiter
-from app.routers import alerts, auth, drugs, inventory, narcotics, otc, predictions, receipt_ocr, shelf_layouts, sync, thresholds, todos
+from app.routers import alerts, auth, canisters, drugs, inventory, narcotics, otc, predictions, receipt_ocr, shelf_layouts, sync, thresholds, todos
 from app.services.ocr_engine import init_ocr_engine
 
 
@@ -50,6 +53,15 @@ async def service_error_handler(request, exc: ServiceError):
     )
 
 
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+    )
+
+
 # --- CORS ---
 app.add_middleware(
     CORSMiddleware,
@@ -76,6 +88,7 @@ app.include_router(thresholds.router)
 app.include_router(shelf_layouts.router)
 app.include_router(receipt_ocr.router)
 app.include_router(todos.router, prefix="/api/v1/todos", tags=["todos"])
+app.include_router(canisters.router, prefix="/api/v1/canisters", tags=["canisters"])
 
 
 @app.get("/health")
