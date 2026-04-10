@@ -14,6 +14,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    func,
 )
 from sqlalchemy import TIMESTAMP
 from sqlalchemy.dialects.postgresql import JSONB
@@ -286,6 +287,7 @@ class AlertLog(Base):
     __table_args__ = (
         Index("idx_alert_logs_pharmacy", "pharmacy_id"),
         Index("idx_alert_logs_pharmacy_sent", "pharmacy_id", "sent_at"),
+        Index("idx_alert_logs_pharmacy_type", "pharmacy_id", "alert_type"),
         Index(
             "idx_alert_dedup",
             "pharmacy_id", "alert_type", "ref_table", "ref_id", "sent_at",
@@ -295,7 +297,7 @@ class AlertLog(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
-    alert_type: Mapped[str] = mapped_column(String(30))  # LOW_STOCK | VISIT_APPROACHING | NARCOTICS_LOW | BACKUP_FAIL
+    alert_type: Mapped[str] = mapped_column(String(30))  # LOW_STOCK | VISIT_APPROACHING | NARCOTICS_LOW
     ref_table: Mapped[str | None] = mapped_column(String(50))
     ref_id: Mapped[int | None] = mapped_column(BigInteger)
     message: Mapped[str] = mapped_column(Text)
@@ -327,6 +329,7 @@ class NarcoticsTransaction(Base):
     __table_args__ = (
         Index("idx_narcotics_tx_inventory", "narcotics_inventory_id"),
         Index("idx_narcotics_tx_pharmacy", "pharmacy_id", "narcotics_inventory_id"),
+        Index("idx_narcotics_tx_pharmacy_created", "pharmacy_id", "created_at"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -412,3 +415,20 @@ class Todo(Base):
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
     updated_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
+
+
+# 21. atdps_canisters — ATDPS 자동조제기 캐니스터 약품 매핑
+class AtdpsCanister(Base):
+    __tablename__ = "atdps_canisters"
+    __table_args__ = (
+        UniqueConstraint("pharmacy_id", "canister_number", name="uq_canister_pharmacy_number"),
+        Index("idx_canisters_pharmacy", "pharmacy_id"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"), default=7)
+    canister_number: Mapped[int] = mapped_column(Integer)
+    drug_code: Mapped[str] = mapped_column(String(20))
+    drug_name: Mapped[str] = mapped_column(String(200))
+    # onupdate is ORM-only: raw SQL UPDATEs won't auto-set updated_at
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default=func.now(), onupdate=func.now())
