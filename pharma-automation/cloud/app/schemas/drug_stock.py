@@ -7,7 +7,7 @@ from app.schemas.api import LowStockAlertOut
 
 class DrugStockItemIn(BaseModel):
     drug_insurance_code: str | None = None  # 건강보험 약품코드 (primary)
-    drug_standard_code: str | None = None   # DA_Goods.Goods_RegNo (legacy fallback)
+    drug_standard_code: str | None = None   # TBSIM040_01.TITLECODE (barcode, optional)
     current_quantity: float
 
     @model_validator(mode="after")

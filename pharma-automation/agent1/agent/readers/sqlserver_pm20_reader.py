@@ -42,42 +42,17 @@ WHERE ts.DRUG_CODE IS NOT NULL AND ts.DRUG_CODE <> ''
 
 SQL_DRUG_MASTER = """
 SELECT
-    g.Goods_RegNo    AS standard_code,
-    g.Goods_code     AS goods_code,
-    g.Goods_Name     AS name,
-    g.Goods_Company  AS manufacturer,
+    m.DRUG_CODE       AS insurance_code,
+    m.ARTCNM          AS name,
+    m.MNF_CO_NM       AS manufacturer,
+    m.TITLECODE       AS standard_code,
     CASE WHEN md.DRUGCODE IS NOT NULL THEN 'NARCOTIC'
          ELSE 'PRESCRIPTION'
     END AS category
-FROM DA_Goods g
-    LEFT JOIN CD_MINDRUG md ON LTRIM(RTRIM(g.Goods_code)) = md.DRUGCODE
-WHERE g.Goods_RegNo IS NOT NULL AND g.Goods_RegNo <> ''
-"""
-
-# Pass 1: TBSID040_04 실제 조제 기록에서 Goods_code → insurance_code 매핑 추출.
-# DA_SUB_PHARM.Preserial = TBSID040_04.DRUG_SEQ (처방 일련번호)
-# DA_SUB_PHARM.Sub_Serial = TBSID040_04.MEDC_SEQ (약품 순번)
-# 실제 조제된 약품만 매핑되므로 활성 약품 99%를 커버한다.
-SQL_GOODS_CODE_TO_INSURANCE = """
-SELECT DISTINCT
-    LTRIM(RTRIM(sp.Goods_code)) AS goods_code,
-    LTRIM(RTRIM(d.DRUG_CODE))   AS insurance_code
-FROM TBSID040_04 d
-    INNER JOIN DA_SUB_PHARM sp ON d.DRUG_SEQ = sp.Preserial
-                               AND d.MEDC_SEQ = sp.Sub_Serial
-WHERE d.DRUG_CODE IS NOT NULL AND d.DRUG_CODE <> ''
-    AND sp.Goods_code IS NOT NULL AND sp.Goods_code <> ''
-"""
-
-# Pass 2 (fallback): TBSIM040_01 약품명 기반 매핑 — pass 1에서 매칭 안 된 약품만.
-# 이름 충돌 시 양쪽 모두 스킵 (잘못된 매칭보다 매칭 없음이 안전).
-SQL_INSURANCE_CODE_BY_NAME = """
-SELECT DISTINCT
-    ts.DRUG_CODE   AS insurance_code,
-    m.ARTCNM       AS drug_name
-FROM TEMP_STOCK ts
-    INNER JOIN TBSIM040_01 m ON LTRIM(RTRIM(ts.DRUG_CODE)) = m.DRUG_CODE
-WHERE ts.DRUG_CODE IS NOT NULL AND ts.DRUG_CODE <> ''
+FROM (SELECT DISTINCT DRUG_CODE FROM TBSID040_04) d
+    INNER JOIN TBSIM040_01 m ON d.DRUG_CODE = m.DRUG_CODE
+    LEFT JOIN CD_MINDRUG md ON m.TITLECODE = md.DRUGCODE
+ORDER BY m.DRUG_CODE
 """
 
 # TBSID040_03 + TBSID040_04: 조제완료 방문 이력
@@ -184,94 +159,27 @@ class SqlServerPM20Reader(PM20Reader):
         return items
 
     def read_drug_master(self) -> list[DrugMasterItem]:
-        """DA_Goods + CD_MINDRUG → 약품 마스터 + 보험코드 매핑.
-
-        Three queries:
-        1. DA_Goods: standard_code, goods_code, name, manufacturer, category
-        2. TBSID040_04 + DA_SUB_PHARM: goods_code → insurance_code (code match, 99% coverage)
-        3. TEMP_STOCK + TBSIM040_01: drug_name → insurance_code (name fallback, collision-safe)
-        """
+        """TBSID040_04 + TBSIM040_01: actually-dispensed prescription drug master."""
         rows = self._execute_query(SQL_DRUG_MASTER)
         items = []
-        goods_code_by_item: dict[int, str] = {}  # index → goods_code for pass 1 lookup
+        seen_codes: set[str] = set()  # deduplicate (3 DRUG_CODEs have 2 rows in TBSIM040_01)
         for row in rows:
             try:
-                goods_code = (row.get("goods_code") or "").strip()
+                ins_code = (row.get("insurance_code") or "").strip()
+                if not ins_code or ins_code in seen_codes:
+                    continue
+                seen_codes.add(ins_code)
+                std_code = (row.get("standard_code") or "").strip()
                 items.append(DrugMasterItem(
-                    standard_code=row["standard_code"].strip(),
-                    name=row["name"].strip() if row["name"] else "",
+                    standard_code=std_code if std_code else None,
+                    name=row["name"].strip() if row.get("name") else "",
                     manufacturer=row["manufacturer"].strip() if row.get("manufacturer") else None,
                     category=row["category"],
+                    insurance_code=ins_code,
                 ))
-                if goods_code:
-                    goods_code_by_item[len(items) - 1] = goods_code
             except (KeyError, TypeError, ValueError) as e:
-                logger.warning("Skipping drug_master row due to data error: %s (row=%s)", e, row)
-
-        # Pass 1: code-based matching via TBSID040_04 dispensing history
-        code_matched = 0
-        try:
-            code_rows = self._execute_query(SQL_GOODS_CODE_TO_INSURANCE)
-            goods_to_insurance: dict[str, str] = {}
-            for r in code_rows:
-                gc = (r.get("goods_code") or "").strip()
-                ic = (r.get("insurance_code") or "").strip()
-                if gc and ic:
-                    goods_to_insurance[gc] = ic
-
-            for idx, item in enumerate(items):
-                gc = goods_code_by_item.get(idx)
-                if gc and gc in goods_to_insurance:
-                    item.insurance_code = goods_to_insurance[gc]
-                    code_matched += 1
-            logger.info(
-                "Drug master pass 1 (code match): %d/%d matched (from %d TBSID040_04 entries)",
-                code_matched, len(items), len(goods_to_insurance),
-            )
-        except Exception as e:
-            logger.warning("Pass 1 code matching failed (non-fatal): %s", e)
-
-        # Pass 2: name-based fallback for items not matched in pass 1
-        name_matched = 0
-        try:
-            name_rows = self._execute_query(SQL_INSURANCE_CODE_BY_NAME)
-            name_to_insurance: dict[str, str | None] = {}
-            for r in name_rows:
-                name = (r.get("drug_name") or "").strip()
-                code = (r.get("insurance_code") or "").strip()
-                if not name or not code:
-                    continue
-                if name in name_to_insurance:
-                    # Collision: same name, different code → skip both
-                    if name_to_insurance[name] != code:
-                        logger.warning(
-                            "Name collision in TBSIM040_01: '%s' → [%s, %s] — skipping both",
-                            name, name_to_insurance[name], code,
-                        )
-                        name_to_insurance[name] = None  # mark as ambiguous
-                else:
-                    name_to_insurance[name] = code
-
-            for item in items:
-                if item.insurance_code:
-                    continue  # already matched in pass 1
-                if item.name:
-                    ins = name_to_insurance.get(item.name)
-                    if ins:  # None means ambiguous collision
-                        item.insurance_code = ins
-                        name_matched += 1
-            logger.info(
-                "Drug master pass 2 (name fallback): %d additional matches",
-                name_matched,
-            )
-        except Exception as e:
-            logger.warning("Pass 2 name matching failed (non-fatal): %s", e)
-
-        total = code_matched + name_matched
-        logger.info(
-            "Drug master insurance_code total: %d/%d matched (code: %d, name: %d)",
-            total, len(items), code_matched, name_matched,
-        )
+                logger.warning("Skipping drug_master row: %s", e)
+        logger.info("Drug master: %d items loaded (all with insurance_code)", len(items))
         return items
 
     def read_recent_visits(self, since_marker: str | None = None) -> list[VisitRecord]:

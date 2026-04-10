@@ -51,7 +51,7 @@ class SyncCassetteMappingResponse(BaseModel):
 
 class VisitDrugIn(BaseModel):
     drug_insurance_code: str | None = None  # 건강보험 약품코드 (TBSID040_04.DRUG_CODE)
-    drug_standard_code: str | None = None   # DA_Goods.Goods_RegNo (legacy)
+    drug_standard_code: str | None = None   # TBSIM040_01.TITLECODE (barcode, optional)
     quantity_dispensed: int
 
     @model_validator(mode="after")

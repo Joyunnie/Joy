@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from app.exceptions import ServiceError
-from sqlalchemy import and_, select
+from sqlalchemy import and_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.tables import (
@@ -43,6 +43,18 @@ async def _prefetch_drugs_by_code(
         select(Drug).where(Drug.standard_code.in_(codes))
     )
     return {d.standard_code: d for d in result.scalars().all()}
+
+
+async def _prefetch_drugs_by_insurance_code(
+    db: AsyncSession, codes: set[str]
+) -> dict[str, Drug]:
+    """Fetch Drug rows by insurance_code. Returns {insurance_code: Drug}."""
+    if not codes:
+        return {}
+    result = await db.execute(
+        select(Drug).where(Drug.insurance_code.in_(codes))
+    )
+    return {d.insurance_code: d for d in result.scalars().all() if d.insurance_code}
 
 
 async def _prefetch_thresholds(
@@ -403,20 +415,20 @@ async def sync_visits(
 async def sync_drugs(
     db: AsyncSession, pharmacy_id: int, req: SyncDrugsRequest
 ) -> SyncDrugsResponse:
-    """DA_Goods → drugs 테이블 UPSERT. standard_code 기준."""
+    """TBSIM040_01 → drugs 테이블 UPSERT. insurance_code 기준."""
     new_count = 0
     updated_count = 0
 
-    # 1. Prefetch all existing drugs by standard_code
-    codes = {d.standard_code for d in req.drugs}
-    existing_map = await _prefetch_drugs_by_code(db, codes)
+    # 1. Prefetch all existing drugs by insurance_code
+    codes = {d.insurance_code for d in req.drugs if d.insurance_code}
+    existing_map = await _prefetch_drugs_by_insurance_code(db, codes)
 
     # Track drugs with no insurance_code for alerting
     unmatched_drugs: list[tuple[int, str]] = []  # (drug_id, drug_name)
 
     # 2. Loop in memory
     for drug_in in req.drugs:
-        existing = existing_map.get(drug_in.standard_code)
+        existing = existing_map.get(drug_in.insurance_code) if drug_in.insurance_code else None
 
         if existing:
             changed = False
@@ -429,8 +441,8 @@ async def sync_drugs(
             if existing.category != drug_in.category:
                 existing.category = drug_in.category
                 changed = True
-            if drug_in.insurance_code and existing.insurance_code != drug_in.insurance_code:
-                existing.insurance_code = drug_in.insurance_code
+            if drug_in.standard_code and existing.standard_code != drug_in.standard_code:
+                existing.standard_code = drug_in.standard_code
                 changed = True
             if changed:
                 existing.updated_at = datetime.now(timezone.utc)
@@ -470,6 +482,23 @@ async def sync_drugs(
                     message=f"{drug_name} 약품코드 매칭 실패 — PAM-Pro에서 확인 필요",
                     sent_via="IN_APP",
                 ))
+
+    # 4. Resolve PrescriptionInventory.drug_id for unlinked cassette mappings
+    # NOTE: Raw SQL bypasses ORM change tracking (audit hooks won't fire).
+    await db.flush()  # ensure new Drug rows have IDs
+    unlinked = await db.execute(text(
+        "SELECT 1 FROM prescription_inventory"
+        " WHERE drug_id IS NULL AND pharmacy_id = :pharmacy_id LIMIT 1"
+    ), {"pharmacy_id": pharmacy_id})
+    if unlinked.first() is not None:
+        await db.execute(text("""
+            UPDATE prescription_inventory pi
+            SET drug_id = d.id
+            FROM drugs d
+            WHERE pi.drug_insurance_code = d.insurance_code
+              AND pi.drug_id IS NULL
+              AND pi.pharmacy_id = :pharmacy_id
+        """), {"pharmacy_id": pharmacy_id})
 
     return SyncDrugsResponse(
         synced_count=new_count + updated_count,

@@ -15,7 +15,7 @@ import pytest_asyncio
 from httpx import AsyncClient
 from sqlalchemy import select
 
-from app.models.tables import Drug, DrugStock, PatientVisitHistory, VisitDrug
+from app.models.tables import Drug, DrugStock, PatientVisitHistory, PrescriptionInventory, VisitDrug
 from tests.conftest import seed_session_factory
 
 pytestmark = pytest.mark.asyncio
@@ -58,7 +58,7 @@ async def _ensure_drugs(count: int) -> list[dict]:
         for i in range(count):
             code = f"CONTRACT_{suffix}_{i:03d}"
             ins_code = f"6{suffix}{i:04d}"  # insurance_code format
-            result = await db.execute(select(Drug).where(Drug.standard_code == code))
+            result = await db.execute(select(Drug).where(Drug.insurance_code == ins_code))
             drug = result.scalar_one_or_none()
             if not drug:
                 drug = Drug(
@@ -72,8 +72,8 @@ async def _ensure_drugs(count: int) -> list[dict]:
 
         # Re-fetch to get IDs
         for i in range(count):
-            code = f"CONTRACT_{suffix}_{i:03d}"
-            result = await db.execute(select(Drug).where(Drug.standard_code == code))
+            ins_code = f"6{suffix}{i:04d}"
+            result = await db.execute(select(Drug).where(Drug.insurance_code == ins_code))
             drug = result.scalar_one()
             drugs_out.append({
                 "id": drug.id,
@@ -347,3 +347,112 @@ class TestVisitsSyncContract:
         resp2 = await client.post("/api/v1/sync/visits", headers=headers, json=payload)
         assert resp2.status_code == 200
         assert resp2.json()["synced_count"] == 1  # deduped, returns existing ID
+
+
+class TestDrugsSyncContract:
+    """Verify sync_drugs upserts by insurance_code and resolves PI."""
+
+    async def test_upsert_by_insurance_code(
+        self, client: AsyncClient, seed_data: dict
+    ):
+        """Same insurance_code sent twice → update, not duplicate."""
+        suffix = str(int(time.time()))[-6:]
+        headers = {"X-API-Key": seed_data["api_key"]}
+        drug_payload = {
+            "standard_code": f"TC_{suffix}_001",
+            "name": "업서트테스트약품",
+            "category": "PRESCRIPTION",
+            "insurance_code": f"7{suffix}0001",
+        }
+
+        # First sync → insert
+        resp1 = await client.post(
+            "/api/v1/sync/drugs", headers=headers,
+            json={"drugs": [drug_payload]},
+        )
+        assert resp1.status_code == 200
+        assert resp1.json()["new_count"] == 1
+
+        # Second sync with updated name → update, not new
+        drug_payload["name"] = "업서트테스트약품_수정"
+        resp2 = await client.post(
+            "/api/v1/sync/drugs", headers=headers,
+            json={"drugs": [drug_payload]},
+        )
+        assert resp2.status_code == 200
+        assert resp2.json()["new_count"] == 0
+        assert resp2.json()["updated_count"] == 1
+
+        # Verify single row in DB
+        async with seed_session_factory() as db:
+            result = await db.execute(
+                select(Drug).where(Drug.insurance_code == f"7{suffix}0001")
+            )
+            drugs = result.scalars().all()
+            assert len(drugs) == 1
+            assert drugs[0].name == "업서트테스트약품_수정"
+
+    async def test_null_insurance_code_creates_new_each_time(
+        self, client: AsyncClient, seed_data: dict
+    ):
+        """Drug with no insurance_code → inserted (no upsert match possible)."""
+        suffix = str(int(time.time()))[-6:]
+        headers = {"X-API-Key": seed_data["api_key"]}
+        drug_payload = {
+            "standard_code": f"TC_{suffix}_NUL",
+            "name": "보험코드없는약품",
+            "category": "PRESCRIPTION",
+            # insurance_code omitted → None
+        }
+
+        resp = await client.post(
+            "/api/v1/sync/drugs", headers=headers,
+            json={"drugs": [drug_payload]},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["new_count"] == 1
+
+    async def test_resolves_prescription_inventory_drug_id(
+        self, client: AsyncClient, seed_data: dict
+    ):
+        """After sync_drugs, PI rows with matching drug_insurance_code get drug_id."""
+        suffix = str(int(time.time()))[-6:]
+        ins_code = f"8{suffix}0001"
+        headers = {"X-API-Key": seed_data["api_key"]}
+        pharmacy_id = seed_data["pharmacy_id"]
+
+        # Pre-create PI row with drug_insurance_code but no drug_id
+        async with seed_session_factory() as db:
+            pi = PrescriptionInventory(
+                pharmacy_id=pharmacy_id,
+                cassette_number=9000 + int(suffix) % 100,
+                current_quantity=50,
+                drug_insurance_code=ins_code,
+                drug_id=None,
+            )
+            db.add(pi)
+            await db.commit()
+            pi_id = pi.id
+
+        # Sync a drug with matching insurance_code
+        resp = await client.post(
+            "/api/v1/sync/drugs", headers=headers,
+            json={"drugs": [{
+                "standard_code": f"TC_{suffix}_PI",
+                "name": "PI연결테스트약품",
+                "category": "PRESCRIPTION",
+                "insurance_code": ins_code,
+            }]},
+        )
+        assert resp.status_code == 200
+
+        # Verify PI.drug_id is now populated
+        async with seed_session_factory() as db:
+            pi = await db.get(PrescriptionInventory, pi_id)
+            assert pi.drug_id is not None
+
+            drug_result = await db.execute(
+                select(Drug).where(Drug.insurance_code == ins_code)
+            )
+            drug = drug_result.scalar_one()
+            assert pi.drug_id == drug.id

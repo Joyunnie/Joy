@@ -29,13 +29,12 @@ class DrugStockItem:
 
 @dataclass
 class DrugMasterItem:
-    """PM+20 DA_Goods 약품 마스터."""
-    standard_code: str        # DA_Goods.Goods_RegNo
-    name: str                 # DA_Goods.Goods_Name
-    manufacturer: str | None  # DA_Goods.Goods_Company
-    # TODO: Goods_Gubun 값 확인 후 OTC 카테고리 매핑 추가
-    category: str             # PRESCRIPTION | NARCOTIC (OTC 구분 현재 불가)
-    insurance_code: str | None = None  # 건강보험 약품코드 (TBSIM040_01.DRUG_CODE via TEMP_STOCK)
+    """PM+20 TBSID040_04 + TBSIM040_01 처방 약품 마스터."""
+    standard_code: str | None  # TBSIM040_01.TITLECODE (barcode), None if absent
+    name: str                  # TBSIM040_01.ARTCNM
+    manufacturer: str | None   # TBSIM040_01.MNF_CO_NM
+    category: str              # PRESCRIPTION | NARCOTIC
+    insurance_code: str | None = None  # TBSIM040_01.DRUG_CODE — guaranteed non-None after read_drug_master()
 
 
 @dataclass
@@ -57,11 +56,11 @@ class PM20Reader(ABC):
 
     @abstractmethod
     def read_drug_stock(self) -> list[DrugStockItem]:
-        """TEMP_STOCK + DA_Goods JOIN: 약품별 현재 재고 수량 조회."""
+        """TEMP_STOCK + TBSIM040_01 JOIN: 약품별 현재 재고 수량 조회."""
 
     @abstractmethod
     def read_drug_master(self) -> list[DrugMasterItem]:
-        """DA_Goods: 약품 마스터 전체 조회."""
+        """TBSID040_04 + TBSIM040_01: 실제 조제된 처방 약품 마스터 조회."""
 
     @abstractmethod
     def read_recent_visits(self, since_marker: str | None = None) -> list[VisitRecord]:
