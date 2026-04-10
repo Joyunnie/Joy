@@ -70,7 +70,7 @@ async def list_todos(
     return TodoListResponse(items=items, total=total)
 
 
-async def get_todo(db: AsyncSession, todo_id: int, pharmacy_id: int) -> Todo:
+async def get_todo(db: AsyncSession, todo_id: int, pharmacy_id: int) -> Todo | None:
     result = await db.execute(
         select(Todo).where(
             and_(Todo.id == todo_id, Todo.pharmacy_id == pharmacy_id)

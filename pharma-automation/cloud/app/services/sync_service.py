@@ -13,6 +13,7 @@ from app.models.tables import (
     PrescriptionInventory,
     VisitDrug,
 )
+from app.services.alert_utils import check_and_create_low_stock_alert
 from app.schemas.api import (
     LowStockAlertOut,
     SkippedDrugOut,
@@ -101,7 +102,7 @@ async def _prefetch_recent_alerts(
     return {row[0] for row in result.all()}
 
 
-def _maybe_create_low_stock_alert(
+async def _maybe_create_low_stock_alert(
     pharmacy_id: int,
     drug_id: int,
     drug_name: str | None,
@@ -112,21 +113,16 @@ def _maybe_create_low_stock_alert(
     low_stock_alerts: list[LowStockAlertOut],
     ref_table: str,
 ) -> None:
-    """Check threshold and create alert if needed (in-memory maps, no DB query)."""
+    """Batch-friendly wrapper: checks prefetched threshold map, then delegates to alert_utils."""
     threshold = threshold_map.get(drug_id)
     if not threshold or current_quantity >= threshold.min_quantity:
         return
     if drug_id in alerted_ids:
         return
-    alert = AlertLog(
-        pharmacy_id=pharmacy_id,
-        alert_type="LOW_STOCK" if ref_table != "narcotics_inventory" else "NARCOTICS_LOW",
-        ref_table=ref_table,
-        ref_id=drug_id,
-        message=f"{drug_name} 재고 부족 (현재: {current_quantity}, 최소: {threshold.min_quantity})",
-        sent_via="IN_APP",
+    alert_type = "NARCOTICS_LOW" if ref_table == "narcotics_inventory" else "LOW_STOCK"
+    await check_and_create_low_stock_alert(
+        db, pharmacy_id, drug_id, current_quantity, drug_name, alert_type, ref_table,
     )
-    db.add(alert)
     alerted_ids.add(drug_id)
     low_stock_alerts.append(
         LowStockAlertOut(
@@ -209,7 +205,7 @@ async def sync_inventory(
         synced += 1
 
         if drug_id:
-            _maybe_create_low_stock_alert(
+            await _maybe_create_low_stock_alert(
                 pharmacy_id, drug_id, drug_name, item.current_quantity,
                 threshold_map, alerted_ids, db, low_stock_alerts,
                 "prescription_inventory",
@@ -553,7 +549,7 @@ async def sync_drug_stock(
 
         synced += 1
 
-        _maybe_create_low_stock_alert(
+        await _maybe_create_low_stock_alert(
             pharmacy_id, drug.id, drug.name, item.current_quantity,
             threshold_map, alerted_ids, db, low_stock_alerts,
             "drug_stock",

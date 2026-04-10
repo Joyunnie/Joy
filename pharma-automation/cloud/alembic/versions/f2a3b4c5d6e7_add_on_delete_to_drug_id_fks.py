@@ -17,6 +17,7 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # Assumes PostgreSQL auto-generated FK constraint names ({table}_{column}_fkey)
     # CASCADE: delete child rows when drug is deleted
     for table, constraint in [
         ("visit_drugs", "visit_drugs_drug_id_fkey"),
