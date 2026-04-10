@@ -6,8 +6,8 @@ class Settings(BaseSettings):
     api_key_hash_algorithm: str = "sha256"
     jwt_secret_key: str  # Required — set PHARMA_JWT_SECRET_KEY
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
-    refresh_token_expire_days: int = 7
+    access_token_expire_minutes: int = 60
+    refresh_token_expire_days: int = 365
 
     # P32: OCR 엔진 설정 ("google_vision" | "mock")
     ocr_engine: str = "google_vision"

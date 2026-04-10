@@ -1,7 +1,6 @@
 // --- Auth ---
 
 export interface LoginRequest {
-  pharmacy_id: number;
   username: string;
   password: string;
 }

@@ -18,7 +18,7 @@ interface AuthState {
 }
 
 interface AuthContextValue extends AuthState {
-  login: (pharmacyId: number, username: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -35,7 +35,6 @@ function decodeJwt(token: string): JwtPayload | null {
 }
 
 function loadInitialState(): AuthState {
-  // TODO: 프로덕션 배포 시 httpOnly 쿠키 전환 검토
   const token = localStorage.getItem('access_token');
   if (!token) {
     return { isAuthenticated: false, pharmacyId: null, username: null, role: null };
@@ -81,21 +80,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = useCallback(async (pharmacyId: number, username: string, password: string) => {
+  const login = useCallback(async (username: string, password: string) => {
     const { data } = await api.post<TokenResponse>('/auth/login', {
-      pharmacy_id: pharmacyId,
       username,
       password,
     });
 
-    // TODO: 프로덕션 배포 시 httpOnly 쿠키 전환 검토
     localStorage.setItem('access_token', data.access_token);
     localStorage.setItem('refresh_token', data.refresh_token);
 
     const payload = decodeJwt(data.access_token);
     setState({
       isAuthenticated: true,
-      pharmacyId: payload?.pharmacy_id ?? pharmacyId,
+      pharmacyId: payload?.pharmacy_id ?? null,
       username,
       role: payload?.role ?? null,
     });
