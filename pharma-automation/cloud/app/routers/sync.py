@@ -12,7 +12,6 @@ from app.schemas.api import (
     SyncVisitsRequest,
     SyncVisitsResponse,
 )
-from app.schemas.drug_stock import SyncDrugStockRequest, SyncDrugStockResponse
 from app.schemas.drug_sync import SyncDrugsRequest, SyncDrugsResponse
 from app.services import sync_service
 
@@ -53,12 +52,3 @@ async def sync_drugs(
     db: AsyncSession = Depends(get_db),
 ):
     return await sync_service.sync_drugs(db, pharmacy.id, req)
-
-
-@router.post("/drug-stock", response_model=SyncDrugStockResponse)
-async def sync_drug_stock(
-    req: SyncDrugStockRequest,
-    pharmacy: Pharmacy = Depends(verify_api_key),
-    db: AsyncSession = Depends(get_db),
-):
-    return await sync_service.sync_drug_stock(db, pharmacy.id, req)

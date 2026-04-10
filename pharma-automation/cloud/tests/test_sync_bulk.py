@@ -52,43 +52,6 @@ class TestSyncDrugsBulk:
         assert resp.json()["synced_count"] == 0
 
 
-class TestSyncDrugStockBulk:
-    """POST /api/v1/sync/drug-stock — bulk prefetch with threshold/alerts."""
-
-    async def test_multiple_items_one_request(
-        self, client: AsyncClient, seed_data, otc_drug_seed, cleanup_drug_stock
-    ):
-        """Sync multiple drug-stock items; only known drugs succeed."""
-        resp = await client.post(
-            "/api/v1/sync/drug-stock",
-            headers={"X-API-Key": seed_data["api_key"]},
-            json={
-                "items": [
-                    {"drug_standard_code": "KD67890", "current_quantity": 100.0},
-                    {"drug_standard_code": "UNKNOWN_XYZ", "current_quantity": 50.0},
-                ],
-                "synced_at": "2026-04-08T00:00:00Z",
-            },
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["synced_count"] == 1
-        assert data["skipped_count"] == 1
-
-    async def test_empty_items_list(
-        self, client: AsyncClient, seed_data, cleanup_drug_stock
-    ):
-        """Empty items list returns zero counts."""
-        resp = await client.post(
-            "/api/v1/sync/drug-stock",
-            headers={"X-API-Key": seed_data["api_key"]},
-            json={"items": [], "synced_at": "2026-04-08T00:00:00Z"},
-        )
-        assert resp.status_code == 200
-        assert resp.json()["synced_count"] == 0
-        assert resp.json()["skipped_count"] == 0
-
-
 class TestSyncVisitsBulk:
     """POST /api/v1/sync/visits — bulk prefetch with duplicate detection."""
 

@@ -12,7 +12,6 @@ import pytest
 from agent1.agent.interfaces.pm20_reader import (
     DrugDispensed,
     DrugMasterItem,
-    DrugStockItem,
     VisitRecord,
 )
 from agent1.agent.main import Agent1
@@ -33,14 +32,11 @@ def agent(tmp_path, mock_config):
 
 
 class TestSyncCycleOrder:
-    def test_drugs_stock_visits_order(self, agent):
-        """sync_cycle은 drugs → drug-stock → visits 순서로 호출."""
+    def test_drugs_visits_order(self, agent):
+        """sync_cycle은 drugs → visits 순서로 호출."""
         mock_reader = MagicMock()
         mock_reader.read_drug_master.return_value = [
             DrugMasterItem("KD12345", "아모시실린", "제약사A", "PRESCRIPTION"),
-        ]
-        mock_reader.read_drug_stock.return_value = [
-            DrugStockItem("643507086", "아모시실린", 50.0),
         ]
         mock_reader.read_recent_visits.return_value = [
             VisitRecord(
@@ -57,7 +53,7 @@ class TestSyncCycleOrder:
 
         calls = agent.cloud_client.post_sync.call_args_list
         sync_types = [c[0][0] for c in calls]
-        assert sync_types == ["drugs", "drug-stock", "visits"]
+        assert sync_types == ["drugs", "visits"]
 
     def test_drug_master_only_once_per_day(self, agent):
         """약품 마스터는 하루 1회만 동기화."""
@@ -65,7 +61,6 @@ class TestSyncCycleOrder:
         mock_reader.read_drug_master.return_value = [
             DrugMasterItem("KD12345", "아모시실린", None, "PRESCRIPTION"),
         ]
-        mock_reader.read_drug_stock.return_value = []
         mock_reader.read_recent_visits.return_value = []
         mock_reader.read_inventory.return_value = []
         agent.pm20_reader = mock_reader
@@ -80,31 +75,26 @@ class TestSyncCycleOrder:
 
 
 class TestSyncCycleErrorHandling:
-    def test_drug_stock_error_does_not_block_visits(self, agent):
-        """drug-stock 에러 시에도 visits 동기화 진행."""
+    def test_visit_error_does_not_block_inventory(self, agent):
+        """visits 에러 시에도 inventory 동기화 진행."""
         mock_reader = MagicMock()
         mock_reader.read_drug_master.return_value = []
-        mock_reader.read_drug_stock.side_effect = Exception("DB error")
-        mock_reader.read_recent_visits.return_value = [
-            VisitRecord("hash1", date(2026, 3, 1), 7, []),
-        ]
+        mock_reader.read_recent_visits.side_effect = Exception("DB error")
         mock_reader.read_inventory.return_value = []
         agent.pm20_reader = mock_reader
         agent._last_drug_master_sync = datetime.now(timezone.utc)
 
         agent.sync_cycle()
 
-        # visits는 여전히 호출됨
-        mock_reader.read_recent_visits.assert_called_once()
+        mock_reader.read_inventory.assert_called_once()
 
     def test_cloud_unreachable_queues(self, agent):
         """Cloud 장애 시 오프라인 큐에 저장."""
         mock_reader = MagicMock()
         mock_reader.read_drug_master.return_value = []
-        mock_reader.read_drug_stock.return_value = [
-            DrugStockItem("643507086", "아모시실린", 50.0),
+        mock_reader.read_recent_visits.return_value = [
+            VisitRecord("hash1", date(2026, 3, 1), 7, [DrugDispensed("643507086", 30)]),
         ]
-        mock_reader.read_recent_visits.return_value = []
         mock_reader.read_inventory.return_value = []
         agent.pm20_reader = mock_reader
         agent._last_drug_master_sync = datetime.now(timezone.utc)
@@ -116,40 +106,14 @@ class TestSyncCycleErrorHandling:
 
         agent.offline_queue.enqueue.assert_called_once()
         call_args = agent.offline_queue.enqueue.call_args
-        assert call_args[0][0] == "drug-stock"
+        assert call_args[0][0] == "visits"
 
 
 class TestSyncPayloadFormat:
-    def test_drug_stock_payload(self, agent):
-        """drug-stock 페이로드 형식 확인."""
-        mock_reader = MagicMock()
-        mock_reader.read_drug_master.return_value = []
-        mock_reader.read_drug_stock.return_value = [
-            DrugStockItem("643507086", "아모시실린", 50.5),
-            DrugStockItem("671806320", "펜타닐패치", 3.0),
-        ]
-        mock_reader.read_recent_visits.return_value = []
-        mock_reader.read_inventory.return_value = []
-        agent.pm20_reader = mock_reader
-        agent._last_drug_master_sync = datetime.now(timezone.utc)
-
-        agent.sync_cycle()
-
-        call_args = agent.cloud_client.post_sync.call_args_list
-        drug_stock_call = next(c for c in call_args if c[0][0] == "drug-stock")
-        payload = drug_stock_call[0][1]
-        assert "items" in payload
-        assert "synced_at" in payload
-        assert len(payload["items"]) == 2
-        assert payload["items"][0]["drug_insurance_code"] == "643507086"
-        assert payload["items"][0]["current_quantity"] == 50.5
-        assert "is_narcotic" not in payload["items"][0]  # determined server-side now
-
     def test_visits_payload(self, agent):
         """visits 페이로드 형식 확인."""
         mock_reader = MagicMock()
         mock_reader.read_drug_master.return_value = []
-        mock_reader.read_drug_stock.return_value = []
         mock_reader.read_recent_visits.return_value = [
             VisitRecord(
                 patient_hash="abc123def456",
@@ -182,7 +146,6 @@ class TestStatePersistence:
         """sync_cycle saves _last_visit_proc_dtime to state.json."""
         mock_reader = MagicMock()
         mock_reader.read_drug_master.return_value = []
-        mock_reader.read_drug_stock.return_value = []
         mock_reader.read_recent_visits.return_value = [
             VisitRecord("hash1", date(2026, 3, 1), 7, [], proc_dtime="20260301100000"),
         ]

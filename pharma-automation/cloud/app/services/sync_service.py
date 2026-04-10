@@ -1,6 +1,9 @@
+import logging
 from datetime import datetime, timedelta, timezone
 
 from app.exceptions import ServiceError
+
+logger = logging.getLogger(__name__)
 from sqlalchemy import and_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,7 +27,6 @@ from app.schemas.api import (
     SyncVisitsRequest,
     SyncVisitsResponse,
 )
-from app.schemas.drug_stock import SyncDrugStockRequest, SyncDrugStockResponse
 from app.schemas.drug_sync import SyncDrugsRequest, SyncDrugsResponse
 from app.services.drug_resolver import DrugResolver
 
@@ -380,7 +382,10 @@ async def sync_visits(
         db.add_all(new_visits)
         await db.flush()
 
-    # 7. Now all new_visits have .id assigned — bulk-add VisitDrugs
+    # 7. Now all new_visits have .id assigned — bulk-add VisitDrugs + collect deductions
+    deductions: dict[int, int] = {}  # {drug_id: total_quantity_to_deduct}
+    resolved_drugs: dict[int, Drug] = {}  # {drug_id: Drug} for alert names
+
     for visit, visit_in in zip(new_visits, visit_inputs):
         visit_ids.append(visit.id)
         for drug_in in visit_in.drugs:
@@ -398,6 +403,41 @@ async def sync_visits(
                 drug_id=drug.id,
                 quantity_dispensed=drug_in.quantity_dispensed,
             ))
+            deductions[drug.id] = deductions.get(drug.id, 0) + drug_in.quantity_dispensed
+            resolved_drugs[drug.id] = drug
+
+    # 8. Deduct dispensed quantities from drug_stock (only for new visits)
+    if deductions:
+        stock_result = await db.execute(
+            select(DrugStock).where(
+                and_(
+                    DrugStock.pharmacy_id == pharmacy_id,
+                    DrugStock.drug_id.in_(deductions.keys()),
+                )
+            )
+        )
+        stock_map = {s.drug_id: s for s in stock_result.scalars().all()}
+
+        for drug_id, qty in deductions.items():
+            stock = stock_map.get(drug_id)
+            if not stock:
+                continue  # drug_stock not initialized yet — skip
+            new_qty = float(stock.current_quantity) - qty
+            if new_qty < 0:
+                logger.warning(
+                    "Stock for drug_id=%d would go negative (%.1f - %d), clamping to 0",
+                    drug_id, float(stock.current_quantity), qty,
+                )
+                new_qty = 0
+            stock.current_quantity = new_qty
+            stock.updated_at = datetime.now(timezone.utc)
+
+            # Check low-stock alert
+            drug = resolved_drugs[drug_id]
+            await check_and_create_low_stock_alert(
+                db, pharmacy_id, drug_id, new_qty, drug.name,
+                "LOW_STOCK", "drug_stock",
+            )
 
     return SyncVisitsResponse(
         synced_count=len(visit_ids),
@@ -478,85 +518,3 @@ async def sync_drugs(
     )
 
 
-# ---------------------------------------------------------------------------
-# sync_drug_stock: ~4 queries (was 4N)
-# ---------------------------------------------------------------------------
-
-
-async def sync_drug_stock(
-    db: AsyncSession, pharmacy_id: int, req: SyncDrugStockRequest
-) -> SyncDrugStockResponse:
-    """PM+20 TEMP_STOCK → drug_stock 테이블 UPSERT. (pharmacy_id, drug_id) 기준."""
-    low_stock_alerts: list[LowStockAlertOut] = []
-    synced = 0
-    skipped = 0
-
-    # 1. Build drug resolver (insurance_code primary, standard_code fallback)
-    insurance_codes = {item.drug_insurance_code for item in req.items if item.drug_insurance_code}
-    standard_codes = {item.drug_standard_code for item in req.items if item.drug_standard_code}
-    resolver = await DrugResolver.build(db, insurance_codes, standard_codes)
-
-    # 2. Prefetch existing drug_stock for this pharmacy
-    resolved_drug_ids = resolver.all_drug_ids
-    if resolved_drug_ids:
-        stock_result = await db.execute(
-            select(DrugStock).where(
-                and_(
-                    DrugStock.pharmacy_id == pharmacy_id,
-                    DrugStock.drug_id.in_(resolved_drug_ids),
-                )
-            )
-        )
-        stock_map: dict[int, DrugStock] = {
-            s.drug_id: s for s in stock_result.scalars().all()
-        }
-    else:
-        stock_map = {}
-
-    # 3. Prefetch thresholds + recent alerts
-    threshold_map = await _prefetch_thresholds(db, pharmacy_id, resolved_drug_ids)
-    alerted_ids = await _prefetch_recent_alerts(
-        db, pharmacy_id, "LOW_STOCK", "drug_stock", resolved_drug_ids,
-    )
-
-    # 4. Loop in memory
-    for item in req.items:
-        drug = resolver.resolve(item.drug_insurance_code, item.drug_standard_code)
-        if not drug:
-            skipped += 1
-            continue
-
-        # Determine is_narcotic from cloud drugs table (not from Agent1)
-        is_narcotic = drug.category == "NARCOTIC"
-
-        stock = stock_map.get(drug.id)
-
-        if stock:
-            stock.current_quantity = item.current_quantity
-            stock.is_narcotic = is_narcotic
-            stock.synced_at = req.synced_at
-            stock.updated_at = datetime.now(timezone.utc)
-        else:
-            stock = DrugStock(
-                pharmacy_id=pharmacy_id,
-                drug_id=drug.id,
-                current_quantity=item.current_quantity,
-                is_narcotic=is_narcotic,
-                quantity_source="PM20",
-                synced_at=req.synced_at,
-            )
-            db.add(stock)
-
-        synced += 1
-
-        await _maybe_create_low_stock_alert(
-            pharmacy_id, drug.id, drug.name, item.current_quantity,
-            threshold_map, alerted_ids, db, low_stock_alerts,
-            "drug_stock",
-        )
-
-    return SyncDrugStockResponse(
-        synced_count=synced,
-        skipped_count=skipped,
-        low_stock_alerts=low_stock_alerts,
-    )

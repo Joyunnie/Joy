@@ -105,7 +105,6 @@ class Agent1:
         if self.pm20_reader:
             if self._should_sync_drug_master():
                 self._sync_drug_master()
-            self._sync_drug_stock()
             self._sync_visits()
             self._sync_inventory()
 
@@ -130,21 +129,6 @@ class Agent1:
             self._last_drug_master_sync = datetime.now(timezone.utc)
         except Exception as e:
             logger.error("Drug master sync failed: %s", e)
-
-    def _sync_drug_stock(self):
-        """약품별 재고 동기화 (매 사이클)."""
-        try:
-            stock = self.pm20_reader.read_drug_stock()
-            if stock:
-                self._sync_or_queue("drug-stock", {
-                    "items": [
-                        {"drug_insurance_code": s.drug_insurance_code, "current_quantity": s.current_quantity}
-                        for s in stock
-                    ],
-                    "synced_at": datetime.now(timezone.utc).isoformat(),
-                })
-        except Exception as e:
-            logger.error("Drug stock sync failed: %s", e)
 
     def _sync_visits(self):
         """방문 이력 동기화 (매 사이클, PROC_DTIME 증분)."""
