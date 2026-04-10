@@ -1,9 +1,9 @@
-interface FilterChip<T> {
+interface FilterChip<T extends string | number> {
   value: T;
   label: string;
 }
 
-interface FilterChipsProps<T> {
+interface FilterChipsProps<T extends string | number> {
   options: readonly FilterChip<T>[];
   value: T;
   onChange: (value: T) => void;
@@ -12,7 +12,7 @@ interface FilterChipsProps<T> {
 }
 
 /** Horizontally scrollable row of pill-shaped filter chips. */
-export default function FilterChips<T>({
+export default function FilterChips<T extends string | number>({
   options,
   value,
   onChange,

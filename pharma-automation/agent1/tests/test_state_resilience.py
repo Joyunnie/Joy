@@ -114,9 +114,14 @@ class TestStateSave:
         saved = json.loads(agent._state_path.read_text())
         assert saved == {}
 
-    def test_save_permission_error_logged_not_raised(self, agent):
+    def test_save_permission_error_logged_not_raised(self, agent, tmp_path):
         """Permission error on save is logged but doesn't crash."""
-        agent._state_path = Path("/proc/readonly/state.json")
+        readonly_dir = tmp_path / "readonly"
+        readonly_dir.mkdir()
+        readonly_dir.chmod(0o444)
+        agent._state_path = readonly_dir / "state.json"
         agent._last_visit_proc_dtime = "20260315120000"
         # Should not raise
         agent._save_state()
+        # Restore permissions so tmp_path cleanup works
+        readonly_dir.chmod(0o755)

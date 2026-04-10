@@ -41,8 +41,8 @@ async def _seed_alerts(pharmacy_id: int, count: int) -> None:
         await db.commit()
 
 
-async def _seed_todos(pharmacy_id: int, count: int, auth_headers: dict, client) -> None:
-    """Create todos via API to properly set pharmacy_id."""
+async def _seed_todos(count: int, auth_headers: dict, client) -> None:
+    """Create todos via API (pharmacy_id comes from auth token)."""
     for i in range(count):
         await client.post(
             "/api/v1/todos",
@@ -120,7 +120,7 @@ class TestTodosPagination:
     async def test_offset_beyond_total(
         self, client: AsyncClient, auth_headers: dict,
     ):
-        await _seed_todos(0, 3, auth_headers, client)
+        await _seed_todos(3, auth_headers, client)
 
         resp = await client.get(
             "/api/v1/todos", params={"offset": 100}, headers=auth_headers,
@@ -133,7 +133,7 @@ class TestTodosPagination:
     async def test_limit_one(
         self, client: AsyncClient, auth_headers: dict,
     ):
-        await _seed_todos(0, 5, auth_headers, client)
+        await _seed_todos(5, auth_headers, client)
 
         resp = await client.get(
             "/api/v1/todos", params={"limit": 1}, headers=auth_headers,

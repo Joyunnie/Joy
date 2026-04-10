@@ -50,7 +50,6 @@ async def check_and_create_low_stock_alert(
                 AlertLog.ref_table == ref_table,
                 AlertLog.ref_id == drug_id,
                 AlertLog.sent_at >= cutoff,
-                AlertLog.read_at.is_(None),
             )
         )
     )
