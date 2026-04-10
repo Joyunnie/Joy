@@ -23,7 +23,7 @@ class InventoryItem:
 class DrugStockItem:
     """PM+20 TEMP_STOCK 약품별 재고 (카세트가 아닌 약품 단위)."""
     drug_insurance_code: str  # TEMP_STOCK.DRUG_CODE (건강보험 약품코드)
-    drug_name: str            # TBSIM040_01.DRUG_NM
+    drug_name: str            # TBSIM040_01.ARTCNM
     current_quantity: float   # TEMP_STOCK.MDCN_MQTY (decimal, 음수 가능)
 
 

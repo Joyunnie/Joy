@@ -107,16 +107,16 @@ export default function OtcFormModal({ mode, item, onClose, onSuccess, onError }
   return (
     <Modal isOpen onClose={onClose} title={title}>
       <div className="space-y-3">
-        {mode === 'add' && selectedDrug ? (
+        {mode === 'edit' ? (
+          <div className="bg-gray-50 rounded-lg p-2 text-sm font-medium text-gray-700">
+            {item.drug_name ?? `Drug #${item.drug_id}`}
+          </div>
+        ) : selectedDrug ? (
           <div className="bg-blue-50 rounded-lg p-2 text-sm">
             <span className="font-medium">{selectedDrug.name}</span>
             <button onClick={() => setSelectedDrug(null)} className="ml-2 text-blue-600 text-xs">변경</button>
           </div>
-        ) : (
-          <div className="bg-gray-50 rounded-lg p-2 text-sm font-medium text-gray-700">
-            {item.drug_name ?? `Drug #${item.drug_id}`}
-          </div>
-        )}
+        ) : null}
         <div>
           <label className="block text-xs text-gray-600 mb-1">수량</label>
           <input

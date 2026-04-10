@@ -52,7 +52,7 @@ async def sync_drugs(
     pharmacy: Pharmacy = Depends(verify_api_key),
     db: AsyncSession = Depends(get_db),
 ):
-    return await sync_service.sync_drugs(db, req)
+    return await sync_service.sync_drugs(db, pharmacy.id, req)
 
 
 @router.post("/drug-stock", response_model=SyncDrugStockResponse)

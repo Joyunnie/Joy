@@ -8,10 +8,13 @@ Usage:
 """
 
 import argparse
+import json
 import logging
+import os
 import signal
 import threading
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 
 from agent1.agent.cloud_client import CloudClient
 from agent1.agent.config import load_config
@@ -34,7 +37,16 @@ class Agent1:
         self.tray_manager = None
         self._stop_event = threading.Event()
         self._last_drug_master_sync: datetime | None = None
-        self._last_visit_proc_dtime: str | None = None
+
+        # State file for incremental sync markers (survives restarts)
+        state_dir = self.config.agent.get("state_dir")
+        if state_dir:
+            self._state_path = Path(state_dir) / "state.json"
+        else:
+            self._state_path = Path(config_path).parent / "state.json"
+
+        state = self._load_state()
+        self._last_visit_proc_dtime: str | None = state.get("last_visit_proc_dtime")
 
     def run(self):
         """메인 루프: config의 polling_interval_seconds 간격으로 sync 실행."""
@@ -63,6 +75,28 @@ class Agent1:
     def _handle_signal(self, signum, frame):
         logger.info("Received signal %s, stopping...", signum)
         self._stop_event.set()
+
+    def _load_state(self) -> dict:
+        """Load persisted state from disk."""
+        try:
+            if self._state_path.exists():
+                return json.loads(self._state_path.read_text(encoding="utf-8"))
+        except Exception as e:
+            logger.warning("Failed to load state from %s: %s", self._state_path, e)
+        return {}
+
+    def _save_state(self) -> None:
+        """Persist state to disk."""
+        state = {}
+        if self._last_visit_proc_dtime:
+            state["last_visit_proc_dtime"] = self._last_visit_proc_dtime
+        try:
+            self._state_path.parent.mkdir(parents=True, exist_ok=True)
+            self._state_path.write_text(
+                json.dumps(state, ensure_ascii=False), encoding="utf-8"
+            )
+        except Exception as e:
+            logger.warning("Failed to save state to %s: %s", self._state_path, e)
 
     def _should_sync_drug_master(self) -> bool:
         """약품 마스터 동기화 주기 확인."""
@@ -93,6 +127,7 @@ class Agent1:
                                         "name": d.name,
                                         "manufacturer": d.manufacturer,
                                         "category": d.category,
+                                        "insurance_code": d.insurance_code,
                                     }
                                     for d in drugs
                                 ]
@@ -151,43 +186,50 @@ class Agent1:
                     dtime_values = [v.proc_dtime for v in visits if v.proc_dtime]
                     if dtime_values:
                         self._last_visit_proc_dtime = max(dtime_values)
+                        self._save_state()
             except Exception as e:
                 logger.error("Visit sync failed: %s", e)
 
             # 2d. ATDPS 카세트 재고 (기존, read_inventory — Phase 4B에서 활성화)
-            inventory = self.pm20_reader.read_inventory()
-            if inventory:
-                self._sync_or_queue(
-                    "inventory",
-                    {
-                        "items": [
-                            {
-                                "cassette_number": item.cassette_number,
-                                "drug_standard_code": item.drug_standard_code,
-                                "current_quantity": item.current_quantity,
-                                "quantity_source": "PM20",
-                            }
-                            for item in inventory
-                        ]
-                    },
-                )
+            try:
+                inventory = self.pm20_reader.read_inventory()
+                if inventory:
+                    self._sync_or_queue(
+                        "inventory",
+                        {
+                            "items": [
+                                {
+                                    "cassette_number": item.cassette_number,
+                                    "drug_standard_code": item.drug_standard_code,
+                                    "current_quantity": item.current_quantity,
+                                    "quantity_source": "PM20",
+                                }
+                                for item in inventory
+                            ]
+                        },
+                    )
+            except Exception as e:
+                logger.error("Inventory sync failed: %s", e)
 
         # 3. ATDPS 카세트 매핑 읽기 (구현체 없으면 스킵)
         if self.atdps_reader and self.atdps_reader.is_available():
-            mappings = self.atdps_reader.read_cassette_mappings()
-            self._sync_or_queue(
-                "cassette-mapping",
-                {
-                    "mappings": [
-                        {
-                            "cassette_number": m.cassette_number,
-                            "drug_standard_code": m.drug_standard_code,
-                            "mapping_source": "ATDPS",
-                        }
-                        for m in mappings
-                    ]
-                },
-            )
+            try:
+                mappings = self.atdps_reader.read_cassette_mappings()
+                self._sync_or_queue(
+                    "cassette-mapping",
+                    {
+                        "mappings": [
+                            {
+                                "cassette_number": m.cassette_number,
+                                "drug_standard_code": m.drug_standard_code,
+                                "mapping_source": "ATDPS",
+                            }
+                            for m in mappings
+                        ]
+                    },
+                )
+            except Exception as e:
+                logger.error("ATDPS cassette mapping sync failed: %s", e)
 
     def _sync_or_queue(self, sync_type: str, data: dict):
         """Cloud 전송 시도, 실패 시 오프라인 큐에 저장."""

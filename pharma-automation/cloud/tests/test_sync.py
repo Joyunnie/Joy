@@ -70,7 +70,7 @@ async def test_sync_visits_with_skipped_drugs(client: AsyncClient, seed_data: di
     assert data["synced_count"] == 1
     assert len(data["visit_ids"]) == 1
     assert len(data["skipped_drugs"]) == 1
-    assert data["skipped_drugs"][0]["drug_standard_code"] == "UNKNOWN999"
+    assert data["skipped_drugs"][0]["drug_code"] == "UNKNOWN999"
     assert data["skipped_drugs"][0]["reason"] == "not_found_in_drugs_master"
 
 

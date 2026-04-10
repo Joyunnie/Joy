@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 # === Sync: Inventory ===
@@ -54,6 +54,12 @@ class VisitDrugIn(BaseModel):
     drug_standard_code: str | None = None   # DA_Goods.Goods_RegNo (legacy)
     quantity_dispensed: int
 
+    @model_validator(mode="after")
+    def require_at_least_one_code(self):
+        if not self.drug_insurance_code and not self.drug_standard_code:
+            raise ValueError("At least one of drug_insurance_code or drug_standard_code is required")
+        return self
+
 
 class VisitIn(BaseModel):
     patient_hash: str
@@ -68,7 +74,7 @@ class SyncVisitsRequest(BaseModel):
 
 
 class SkippedDrugOut(BaseModel):
-    drug_standard_code: str
+    drug_code: str  # insurance_code or standard_code — whichever was sent
     reason: str
 
 

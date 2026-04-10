@@ -2,7 +2,9 @@ from __future__ import annotations
 
 """Agent1 sync_cycle 통합 테스트 — Reader + CloudClient mock."""
 
+import json
 from datetime import date, datetime, timezone
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -173,3 +175,46 @@ class TestSyncPayloadFormat:
         assert visit["source"] == "PM20_SYNC"
         assert visit["drugs"][0]["drug_insurance_code"] == "643507086"
         assert visit["drugs"][0]["quantity_dispensed"] == 30
+
+
+class TestStatePersistence:
+    def test_proc_dtime_saved_to_disk(self, agent, tmp_path):
+        """sync_cycle saves _last_visit_proc_dtime to state.json."""
+        mock_reader = MagicMock()
+        mock_reader.read_drug_master.return_value = []
+        mock_reader.read_drug_stock.return_value = []
+        mock_reader.read_recent_visits.return_value = [
+            VisitRecord("hash1", date(2026, 3, 1), 7, [], proc_dtime="20260301100000"),
+        ]
+        mock_reader.read_inventory.return_value = []
+        agent.pm20_reader = mock_reader
+        agent._last_drug_master_sync = datetime.now(timezone.utc)
+
+        agent.sync_cycle()
+
+        state_file = tmp_path / "state.json"
+        assert state_file.exists()
+        state = json.loads(state_file.read_text())
+        assert state["last_visit_proc_dtime"] == "20260301100000"
+
+    def test_proc_dtime_restored_on_init(self, tmp_path, mock_config):
+        """Agent1 restores _last_visit_proc_dtime from state.json on startup."""
+        import yaml
+        config_path = tmp_path / "config.yaml"
+        config_path.write_text(yaml.dump(mock_config._data))
+        state_file = tmp_path / "state.json"
+        state_file.write_text(json.dumps({"last_visit_proc_dtime": "20260215140000"}))
+
+        with patch("agent1.agent.main.load_config", return_value=mock_config):
+            a = Agent1(str(config_path))
+            assert a._last_visit_proc_dtime == "20260215140000"
+
+    def test_missing_state_file_starts_fresh(self, tmp_path, mock_config):
+        """Missing state.json starts with None marker."""
+        import yaml
+        config_path = tmp_path / "config.yaml"
+        config_path.write_text(yaml.dump(mock_config._data))
+
+        with patch("agent1.agent.main.load_config", return_value=mock_config):
+            a = Agent1(str(config_path))
+            assert a._last_visit_proc_dtime is None

@@ -111,13 +111,21 @@ class OtcInventory(Base):
 # 6. prescription_inventory
 class PrescriptionInventory(Base):
     __tablename__ = "prescription_inventory"
-    __table_args__ = (UniqueConstraint("pharmacy_id", "cassette_number"),)
+    __table_args__ = (
+        UniqueConstraint("pharmacy_id", "cassette_number"),
+        Index("idx_prescription_inventory_insurance_code", "drug_insurance_code"),
+    )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
-    drug_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("drugs.id"))
+    drug_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("drugs.id"))
+    drug_insurance_code: Mapped[str | None] = mapped_column(String(20), comment="건강보험 약품코드")
+    drug_name: Mapped[str | None] = mapped_column(String(200))
     cassette_number: Mapped[int] = mapped_column(SmallInteger)
     current_quantity: Mapped[int] = mapped_column(Integer, default=0)
+    drug_type: Mapped[str | None] = mapped_column(String(50))
+    dispensing_mode: Mapped[str | None] = mapped_column(String(20), comment="순차 or 동시")
+    is_active: Mapped[bool] = mapped_column(Boolean, server_default="true")
     last_refill_date: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
     mapping_synced_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
     quantity_synced_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
@@ -180,6 +188,7 @@ class PatientVisitHistory(Base):
     __table_args__ = (
         Index("idx_visit_history_pharmacy_patient", "pharmacy_id", "patient_hash"),
         Index("idx_visit_history_visit_date", "visit_date"),
+        Index("idx_visit_history_pharmacy_date", "pharmacy_id", "visit_date"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -196,6 +205,7 @@ class VisitDrug(Base):
     __tablename__ = "visit_drugs"
     __table_args__ = (
         Index("idx_visit_drugs_visit", "visit_id"),
+        Index("idx_visit_drugs_drug_id", "drug_id"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -231,6 +241,7 @@ class ReceiptOcrRecord(Base):
     __tablename__ = "receipt_ocr_records"
     __table_args__ = (
         Index("idx_receipt_ocr_pharmacy_created", "pharmacy_id", "created_at"),
+        Index("idx_receipt_ocr_pharmacy_receipt_num", "pharmacy_id", "receipt_number"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
@@ -317,6 +328,7 @@ class PrescriptionOcrRecord(Base):
     __tablename__ = "prescription_ocr_records"
     __table_args__ = (
         Index("idx_prescription_ocr_pharmacy_created", "pharmacy_id", "created_at"),
+        Index("idx_prescription_ocr_pharmacy_presc_num", "pharmacy_id", "prescription_number"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)

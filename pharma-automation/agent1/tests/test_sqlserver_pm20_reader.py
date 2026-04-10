@@ -96,40 +96,176 @@ class TestReadDrugStock:
 
 
 class TestReadDrugMaster:
-    def test_basic(self, reader):
+    def test_pass1_code_match(self, reader):
+        """Pass 1: TBSID040_04 goods_code → insurance_code mapping."""
         r, mock_conn = reader
         cursor = MagicMock()
         mock_conn.cursor.return_value = cursor
-        cursor.fetchall.return_value = [
-            {
-                "standard_code": "KD12345",
-                "name": "아모시실린",
-                "manufacturer": "제약사A",
-                "category": "PRESCRIPTION",
-                "insurance_code": None,
-            },
-            {
-                "standard_code": "NC00001",
-                "name": "펜타닐패치",
-                "manufacturer": None,
-                "category": "NARCOTIC",
-            },
+        # Query 1: SQL_DRUG_MASTER, Query 2: SQL_GOODS_CODE_TO_INSURANCE, Query 3: SQL_INSURANCE_CODE_BY_NAME
+        cursor.fetchall.side_effect = [
+            [
+                {"standard_code": "KD12345", "goods_code": "ZD0001", "name": "아모시실린",
+                 "manufacturer": "제약사A", "category": "PRESCRIPTION"},
+                {"standard_code": "NC00001", "goods_code": "ZD0002", "name": "펜타닐패치",
+                 "manufacturer": None, "category": "NARCOTIC"},
+            ],
+            [
+                {"goods_code": "ZD0001", "insurance_code": "643507086"},
+                {"goods_code": "ZD0002", "insurance_code": "671806320"},
+            ],
+            [],  # pass 2 not needed
         ]
 
         result = r.read_drug_master()
         assert len(result) == 2
-        assert isinstance(result[0], DrugMasterItem)
         assert result[0].standard_code == "KD12345"
-        assert result[0].category == "PRESCRIPTION"
-        assert result[1].category == "NARCOTIC"
-        # TODO: Goods_Gubun 값 확인 후 OTC 카테고리 매핑 추가
+        assert result[0].insurance_code == "643507086"
+        assert result[1].insurance_code == "671806320"
+
+    def test_pass2_name_fallback(self, reader):
+        """Pass 2: name-based matching for items not matched in pass 1."""
+        r, mock_conn = reader
+        cursor = MagicMock()
+        mock_conn.cursor.return_value = cursor
+        cursor.fetchall.side_effect = [
+            [{"standard_code": "KD12345", "goods_code": "ZD0001", "name": "아모시실린",
+              "manufacturer": None, "category": "PRESCRIPTION"}],
+            [],  # pass 1 returns nothing
+            [{"insurance_code": "643507086", "drug_name": "아모시실린"}],  # pass 2 matches by name
+        ]
+
+        result = r.read_drug_master()
+        assert result[0].insurance_code == "643507086"
+
+    def test_pass2_name_collision_skips_both(self, reader):
+        """이름 충돌 시 양쪽 모두 스킵 (잘못된 매칭보다 매칭 없음이 안전)."""
+        r, mock_conn = reader
+        cursor = MagicMock()
+        mock_conn.cursor.return_value = cursor
+        cursor.fetchall.side_effect = [
+            [{"standard_code": "KD12345", "goods_code": "", "name": "다이아벡스정",
+              "manufacturer": None, "category": "PRESCRIPTION"}],
+            [],  # pass 1 no match
+            [
+                {"insurance_code": "641600370", "drug_name": "다이아벡스정"},
+                {"insurance_code": "641600390", "drug_name": "다이아벡스정"},  # collision!
+            ],
+        ]
+
+        result = r.read_drug_master()
+        assert result[0].insurance_code is None  # collision → no match
+
+    def test_pass1_takes_priority_over_pass2(self, reader):
+        """Pass 1 매칭 결과는 pass 2에서 덮어쓰지 않음."""
+        r, mock_conn = reader
+        cursor = MagicMock()
+        mock_conn.cursor.return_value = cursor
+        cursor.fetchall.side_effect = [
+            [{"standard_code": "KD12345", "goods_code": "ZD0001", "name": "아모시실린",
+              "manufacturer": None, "category": "PRESCRIPTION"}],
+            [{"goods_code": "ZD0001", "insurance_code": "643507086"}],  # pass 1 match
+            [{"insurance_code": "999999999", "drug_name": "아모시실린"}],  # pass 2 would differ
+        ]
+
+        result = r.read_drug_master()
+        assert result[0].insurance_code == "643507086"  # pass 1 wins
+
+    def test_unmatched_both_passes_leaves_none(self, reader):
+        """양쪽 모두 불일치 시 insurance_code는 None."""
+        r, mock_conn = reader
+        cursor = MagicMock()
+        mock_conn.cursor.return_value = cursor
+        cursor.fetchall.side_effect = [
+            [{"standard_code": "KD99999", "goods_code": "ZD9999", "name": "미등록약품",
+              "manufacturer": None, "category": "PRESCRIPTION"}],
+            [],  # pass 1 no match
+            [{"insurance_code": "999999999", "drug_name": "완전다른이름"}],  # pass 2 no match
+        ]
+
+        result = r.read_drug_master()
+        assert result[0].insurance_code is None
+
+    def test_pass1_query_failure_falls_through_to_pass2(self, reader):
+        """Pass 1 실패 시 pass 2로 fallback."""
+        r, mock_conn = reader
+        cursor = MagicMock()
+        mock_conn.cursor.return_value = cursor
+        cursor.fetchall.side_effect = [
+            [{"standard_code": "KD12345", "goods_code": "ZD0001", "name": "아모시실린",
+              "manufacturer": None, "category": "PRESCRIPTION"}],
+            Exception("TBSID040_04 connection failed"),  # pass 1 fails
+            [{"insurance_code": "643507086", "drug_name": "아모시실린"}],  # pass 2 works
+        ]
+
+        result = r.read_drug_master()
+        assert result[0].insurance_code == "643507086"
+
+    def test_both_passes_fail_returns_items_without_insurance(self, reader):
+        """양쪽 모두 실패해도 items는 정상 반환."""
+        r, mock_conn = reader
+        cursor = MagicMock()
+        mock_conn.cursor.return_value = cursor
+        cursor.fetchall.side_effect = [
+            [{"standard_code": "KD12345", "goods_code": "", "name": "아모시실린",
+              "manufacturer": None, "category": "PRESCRIPTION"}],
+            Exception("pass 1 fail"),
+            Exception("pass 2 fail"),
+        ]
+
+        result = r.read_drug_master()
+        assert len(result) == 1
+        assert result[0].insurance_code is None
+
+    def test_name_collision_logs_warning(self, reader, caplog):
+        """이름 충돌 시 경고 로그 출력."""
+        import logging
+        r, mock_conn = reader
+        cursor = MagicMock()
+        mock_conn.cursor.return_value = cursor
+        cursor.fetchall.side_effect = [
+            [{"standard_code": "KD12345", "goods_code": "", "name": "다이아벡스정",
+              "manufacturer": None, "category": "PRESCRIPTION"}],
+            [],
+            [
+                {"insurance_code": "641600370", "drug_name": "다이아벡스정"},
+                {"insurance_code": "641600390", "drug_name": "다이아벡스정"},
+            ],
+        ]
+
+        with caplog.at_level(logging.WARNING, logger="agent1.pm20_reader"):
+            r.read_drug_master()
+        assert "Name collision" in caplog.text
+        assert "다이아벡스정" in caplog.text
+
+    def test_mixed_pass1_and_pass2_results(self, reader):
+        """3 drugs: pass1 match, pass2 match, unmatched."""
+        r, mock_conn = reader
+        cursor = MagicMock()
+        mock_conn.cursor.return_value = cursor
+        cursor.fetchall.side_effect = [
+            [
+                {"standard_code": "KD001", "goods_code": "ZD0001", "name": "약품A",
+                 "manufacturer": None, "category": "PRESCRIPTION"},
+                {"standard_code": "KD002", "goods_code": "ZD0002", "name": "약품B",
+                 "manufacturer": None, "category": "PRESCRIPTION"},
+                {"standard_code": "KD003", "goods_code": "ZD0003", "name": "약품C",
+                 "manufacturer": None, "category": "PRESCRIPTION"},
+            ],
+            [{"goods_code": "ZD0001", "insurance_code": "111111111"}],  # pass 1: only 약품A
+            [{"insurance_code": "222222222", "drug_name": "약품B"}],    # pass 2: only 약품B
+        ]
+
+        result = r.read_drug_master()
+        assert result[0].insurance_code == "111111111"  # pass 1
+        assert result[1].insurance_code == "222222222"  # pass 2
+        assert result[2].insurance_code is None          # unmatched
 
     def test_null_goods_regno_filtered(self, reader):
         """Goods_RegNo가 null인 약품은 SQL WHERE에서 제외 (DB 레벨)."""
         r, mock_conn = reader
         cursor = MagicMock()
         mock_conn.cursor.return_value = cursor
-        cursor.fetchall.return_value = []  # DB가 필터링
+        cursor.fetchall.side_effect = [[], [], []]  # All three queries return empty
 
         result = r.read_drug_master()
         assert result == []

@@ -1,6 +1,8 @@
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import and_, func, select
+import logging
+
+from sqlalchemy import and_, delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.tables import (
@@ -10,9 +12,12 @@ from app.models.tables import (
     PatientVisitHistory,
     Pharmacy,
     PrescriptionInventory,
+    RefreshToken,
     VisitDrug,
     VisitPrediction,
 )
+
+logger = logging.getLogger(__name__)
 from app.schemas.api import (
     NeededDrugOut,
     PredictionListResponse,
@@ -316,5 +321,15 @@ async def run_daily_predictions(
                     )
                     db.add(low_alert)
                     stats["alerts_created"] += 1
+
+    # Housekeeping: clean up expired refresh tokens (>7 days past expiry)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+    result = await db.execute(
+        delete(RefreshToken).where(RefreshToken.expires_at < cutoff)
+    )
+    deleted_tokens = result.rowcount
+    if deleted_tokens:
+        logger.info("Cleaned up %d expired refresh tokens", deleted_tokens)
+    stats["expired_tokens_cleaned"] = deleted_tokens
 
     return stats
