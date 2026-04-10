@@ -1,11 +1,10 @@
 from pydantic import BaseModel, Field
 
-
-DEFAULT_PHARMACY_ID = 7
+from app.config import settings
 
 
 class RegisterRequest(BaseModel):
-    pharmacy_id: int = DEFAULT_PHARMACY_ID
+    pharmacy_id: int = settings.default_pharmacy_id
     invite_code: str = Field(..., min_length=1, max_length=20)
     username: str = Field(..., min_length=2, max_length=50)
     password: str = Field(..., min_length=8, max_length=128)
@@ -20,7 +19,7 @@ class RegisterResponse(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    pharmacy_id: int = DEFAULT_PHARMACY_ID
+    pharmacy_id: int = settings.default_pharmacy_id
     username: str
     password: str
 

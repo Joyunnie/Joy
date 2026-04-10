@@ -8,7 +8,7 @@ const api = axios.create({
 // --- Request interceptor: attach JWT ---
 
 api.interceptors.request.use((config) => {
-  // TODO: 프로덕션 배포 시 httpOnly 쿠키 전환 검토
+
   const token = localStorage.getItem('access_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -59,7 +59,7 @@ api.interceptors.response.use(
     originalRequest._retry = true;
     isRefreshing = true;
 
-    // TODO: 프로덕션 배포 시 httpOnly 쿠키 전환 검토
+  
     const refreshToken = localStorage.getItem('refresh_token');
     if (!refreshToken) {
       isRefreshing = false;
@@ -75,7 +75,7 @@ api.interceptors.response.use(
         { refresh_token: refreshToken },
       );
 
-      // TODO: 프로덕션 배포 시 httpOnly 쿠키 전환 검토
+    
       localStorage.setItem('access_token', data.access_token);
 
       originalRequest.headers.Authorization = `Bearer ${data.access_token}`;

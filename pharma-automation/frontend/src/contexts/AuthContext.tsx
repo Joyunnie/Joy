@@ -36,19 +36,22 @@ function decodeJwt(token: string): JwtPayload | null {
 
 function loadInitialState(): AuthState {
   const token = localStorage.getItem('access_token');
-  if (!token) {
-    return { isAuthenticated: false, pharmacyId: null, username: null, role: null };
+  const refreshToken = localStorage.getItem('refresh_token');
+
+  // Valid access token → authenticated with full payload
+  if (token) {
+    const payload = decodeJwt(token);
+    if (payload && payload.exp * 1000 > Date.now()) {
+      return { isAuthenticated: true, pharmacyId: payload.pharmacy_id, username: null, role: payload.role };
+    }
   }
-  const payload = decodeJwt(token);
-  if (!payload || payload.exp * 1000 < Date.now()) {
-    return { isAuthenticated: false, pharmacyId: null, username: null, role: null };
+
+  // Access expired but refresh exists → optimistic auth (interceptor handles 401→refresh)
+  if (refreshToken) {
+    return { isAuthenticated: true, pharmacyId: null, username: null, role: null };
   }
-  return {
-    isAuthenticated: true,
-    pharmacyId: payload.pharmacy_id,
-    username: null,
-    role: payload.role,
-  };
+
+  return { isAuthenticated: false, pharmacyId: null, username: null, role: null };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -61,7 +64,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!accessToken && refreshToken) {
       api.post('/auth/refresh', { refresh_token: refreshToken })
         .then(({ data }) => {
-          // TODO: 프로덕션 배포 시 httpOnly 쿠키 전환 검토
           localStorage.setItem('access_token', data.access_token);
           const payload = decodeJwt(data.access_token);
           if (payload) {

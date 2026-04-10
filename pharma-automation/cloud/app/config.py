@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     # P33: 업로드 디렉토리
     upload_dir: str = "uploads/receipts"
 
+    # Single-pharmacy system default
+    default_pharmacy_id: int = 7
+
     model_config = SettingsConfigDict(env_prefix="PHARMA_")
 
 
