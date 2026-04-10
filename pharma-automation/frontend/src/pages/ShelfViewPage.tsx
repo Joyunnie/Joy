@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client.ts';
 import type {
@@ -55,48 +55,49 @@ export default function ShelfViewPage() {
 
   useEffect(() => { fetchLayouts(); }, [fetchLayouts]);
 
-  function handleCellClick(row: number, col: number) {
+  const handleCellClick = useCallback((row: number, col: number) => {
     setCellDetailTarget({ row, col });
-  }
+  }, []);
 
-  async function handleCellDrugsSave(drugs: string[]) {
+  const handleCellDrugsSave = useCallback(async (drugs: string[]) => {
     if (!selectedLayout || !cellDetailTarget) return;
     try {
       const { data } = await api.patch<ShelfLayoutResponse>(
         `/shelf-layouts/${selectedLayout.id}/cells/${cellDetailTarget.row}/${cellDetailTarget.col}/drugs`,
         { drugs },
       );
-      // Update local state with the returned layout
       setSelectedLayout(data);
       setLayouts((prev) => prev.map((l) => (l.id === data.id ? data : l)));
     } catch {
       showToast('약품 저장에 실패했습니다', 'error');
     }
-  }
+  }, [selectedLayout, cellDetailTarget, showToast]);
 
-  function handleEditorSave() {
+  const handleEditorSave = useCallback(() => {
     setEditorOpen(false);
     setEditLayout(undefined);
     showToast('저장되었습니다');
     fetchLayouts();
-  }
+  }, [showToast, fetchLayouts]);
 
-  function openAddEditor(position: ShelfPosition) {
+  const openAddEditor = useCallback((position: ShelfPosition) => {
     setEditLayout(undefined);
     setEditorDefaultPosition(position);
     setEditorOpen(true);
-  }
+  }, []);
 
-  function openEditEditor(layout: ShelfLayoutResponse) {
+  const openEditEditor = useCallback((layout: ShelfLayoutResponse) => {
     setEditLayout(layout);
     setEditorDefaultPosition(layout.position);
     setEditorOpen(true);
-  }
+  }, []);
 
   // Group layouts by position for floorplan
-  const frontLayouts = layouts.filter((l) => l.position === 'front');
-  const leftLayouts = layouts.filter((l) => l.position === 'left');
-  const rightLayouts = layouts.filter((l) => l.position === 'right');
+  const { frontLayouts, leftLayouts, rightLayouts } = useMemo(() => ({
+    frontLayouts: layouts.filter((l) => l.position === 'front'),
+    leftLayouts: layouts.filter((l) => l.position === 'left'),
+    rightLayouts: layouts.filter((l) => l.position === 'right'),
+  }), [layouts]);
 
   return (
     <div className="p-4 max-w-lg mx-auto">

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { fetchPredictions } from '../api/predictionsApi.ts';
 import type { PredictionOut } from '../types/api.ts';
 import EmptyState from '../components/EmptyState.tsx';
@@ -57,16 +57,16 @@ export default function PredictionsPage() {
 
   useEffect(() => { loadPredictions(); }, [loadPredictions]);
 
-  function toggleExpand(id: number) {
+  const toggleExpand = useCallback((id: number) => {
     setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  }
+  }, []);
 
-  const grouped = groupByDate(predictions);
+  const grouped = useMemo(() => groupByDate(predictions), [predictions]);
 
   return (
     <div className="p-4 max-w-lg mx-auto">
