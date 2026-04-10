@@ -1,6 +1,8 @@
+type SpinnerHeight = 'h-40' | 'h-64';
+
 interface SpinnerProps {
-  /** Tailwind height class for the wrapper div, e.g. "h-40", "h-64". Defaults to "h-40". */
-  containerHeight?: string;
+  /** Tailwind height class for the wrapper div. Defaults to "h-40". */
+  containerHeight?: SpinnerHeight;
 }
 
 /** Full-width centered loading spinner for page/section loading states. */

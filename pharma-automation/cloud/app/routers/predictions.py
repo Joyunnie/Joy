@@ -13,9 +13,9 @@ router = APIRouter()
 @router.get("", response_model=PredictionListResponse)
 async def get_predictions(
     user: User = Depends(get_current_user),
-    days_ahead: int = Query(7),
+    days_ahead: int = Query(7, ge=1),
     include_alerted: bool = Query(True),
-    limit: int = Query(200, le=500),
+    limit: int = Query(200, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
