@@ -8,7 +8,9 @@ import { fetchAlerts } from '../api/alertsApi.ts';
 import { fetchPredictions } from '../api/predictionsApi.ts';
 import { fetchTodos, toggleComplete, type TodoItem } from '../api/todos.ts';
 import Spinner from '../components/Spinner.tsx';
+import Toast from '../components/Toast.tsx';
 import PageHeader from '../components/common/PageHeader.tsx';
+import { useToast } from '../hooks/useToast.ts';
 import type {
   InventoryStatusResponse,
   NarcoticsListResponse,
@@ -34,6 +36,7 @@ export default function DashboardPage() {
   const [todos, setTodos] = useState<TodoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const { toasts, showToast, removeToast } = useToast();
 
   useEffect(() => {
     let cancelled = false;
@@ -127,8 +130,12 @@ export default function DashboardPage() {
   if (!data) return null;
 
   async function handleToggleTodo(id: number) {
-    const updated = await toggleComplete(id);
-    setTodos((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+    try {
+      const updated = await toggleComplete(id);
+      setTodos((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+    } catch {
+      showToast('상태 변경에 실패했습니다', 'error');
+    }
   }
 
   function formatTime(dateStr: string | null): string {
@@ -142,6 +149,7 @@ export default function DashboardPage() {
 
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto">
+      <Toast toasts={toasts} onRemove={removeToast} />
       <PageHeader title="대시보드" />
 
       {/* 오늘 할 일 */}

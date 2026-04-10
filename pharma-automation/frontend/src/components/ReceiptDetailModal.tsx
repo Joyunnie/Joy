@@ -17,6 +17,7 @@ export default function ReceiptDetailModal({ recordId, onClose, onConfirmed, onE
   const [detail, setDetail] = useState<ReceiptOcrDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
+  const [confirmingAll, setConfirmingAll] = useState(false);
 
   const fetchDetail = useCallback(async () => {
     setLoading(true);
@@ -42,18 +43,28 @@ export default function ReceiptDetailModal({ recordId, onClose, onConfirmed, onE
 
   async function handleConfirmAll() {
     if (!detail) return;
-    // 전체 항목 확인 처리
-    for (const item of detail.items) {
-      if (!item.is_confirmed && (item.drug_id || item.confirmed_drug_id)) {
-        try {
-          await api.put<ReceiptOcrItemOut>(
-            `/receipt-ocr/${recordId}/items/${item.id}`,
-            { drug_id: item.confirmed_drug_id ?? item.drug_id, quantity: item.confirmed_quantity ?? item.quantity },
-          );
-        } catch { /* continue */ }
+    setConfirmingAll(true);
+    let failCount = 0;
+    try {
+      for (const item of detail.items) {
+        if (!item.is_confirmed && (item.drug_id || item.confirmed_drug_id)) {
+          try {
+            await api.put<ReceiptOcrItemOut>(
+              `/receipt-ocr/${recordId}/items/${item.id}`,
+              { drug_id: item.confirmed_drug_id ?? item.drug_id, quantity: item.confirmed_quantity ?? item.quantity },
+            );
+          } catch {
+            failCount++;
+          }
+        }
       }
+      if (failCount > 0) {
+        showToast(`${failCount}건 확인 실패`, 'error');
+      }
+      await fetchDetail();
+    } finally {
+      setConfirmingAll(false);
     }
-    await fetchDetail();
   }
 
   async function handleConfirmIntake() {
@@ -124,9 +135,10 @@ export default function ReceiptDetailModal({ recordId, onClose, onConfirmed, onE
               {!allConfirmed && (
                 <button
                   onClick={handleConfirmAll}
-                  className="flex-1 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                  disabled={confirmingAll}
+                  className="flex-1 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg disabled:opacity-50 transition-colors"
                 >
-                  전체 확인
+                  {confirmingAll ? '처리 중...' : '전체 확인'}
                 </button>
               )}
               <button
