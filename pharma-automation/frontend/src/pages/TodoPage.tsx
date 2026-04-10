@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import PageHeader from '../components/common/PageHeader.tsx';
+import SegmentControl from '../components/common/SegmentControl.tsx';
 import {
   fetchTodos,
   createTodo,
@@ -139,10 +140,10 @@ export default function TodoPage() {
     }
   }
 
-  const TABS: { key: Tab; label: string }[] = [
-    { key: 'today', label: '오늘' },
-    { key: 'upcoming', label: '예정' },
-    { key: 'completed', label: '완료' },
+  const TABS = [
+    { value: 'today' as Tab, label: '오늘' },
+    { value: 'upcoming' as Tab, label: '예정' },
+    { value: 'completed' as Tab, label: '완료' },
   ];
 
   function renderContent() {
@@ -198,22 +199,7 @@ export default function TodoPage() {
 
       <PageHeader title="할일" />
 
-      {/* Segment tabs */}
-      <div className="flex bg-gray-100 rounded-lg p-1 mb-4">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            className={`flex-1 py-2 text-sm rounded-md transition-colors ${
-              tab === t.key
-                ? 'bg-white text-blue-600 font-semibold shadow-sm'
-                : 'text-gray-500 font-medium'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <SegmentControl options={TABS} value={tab} onChange={setTab} />
 
       {renderContent()}
 

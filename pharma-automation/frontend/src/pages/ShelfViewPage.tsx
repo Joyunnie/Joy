@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client.ts';
 import PageHeader from '../components/common/PageHeader.tsx';
+import SegmentControl from '../components/common/SegmentControl.tsx';
 import type {
   ShelfLayoutListResponse,
   ShelfLayoutResponse,
@@ -106,22 +107,14 @@ export default function ShelfViewPage() {
 
       <PageHeader title="약장 관리" onBack={() => navigate('/inventory')} />
 
-      {/* Location type tabs */}
-      <div className="flex gap-2 mb-4">
-        {(['DISPLAY', 'STORAGE'] as const).map((type) => (
-          <button
-            key={type}
-            onClick={() => { setLocationType(type); setSelectedLayout(null); }}
-            className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-              locationType === type
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {type === 'DISPLAY' ? '재고' : '창고'}
-          </button>
-        ))}
-      </div>
+      <SegmentControl
+        options={[
+          { value: 'DISPLAY' as const, label: '재고' },
+          { value: 'STORAGE' as const, label: '창고' },
+        ]}
+        value={locationType}
+        onChange={(v) => { setLocationType(v); setSelectedLayout(null); }}
+      />
 
       {/* === DISPLAY: Floorplan View === */}
       {locationType === 'DISPLAY' && (

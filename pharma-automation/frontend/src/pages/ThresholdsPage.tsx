@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import PageHeader from '../components/common/PageHeader.tsx';
+import Card from '../components/common/Card.tsx';
+import Toggle from '../components/common/Toggle.tsx';
 import axios from 'axios';
 import api from '../api/client.ts';
 import type {
@@ -137,10 +139,7 @@ export default function ThresholdsPage() {
         <>
           <div className="space-y-2">
             {items.map((item) => (
-              <div
-                key={item.id}
-                className="bg-white rounded-lg shadow-sm p-3 border border-gray-100"
-              >
+              <Card key={item.id}>
                 <div className="flex items-start justify-between">
                   <div
                     className="flex-1 cursor-pointer"
@@ -151,33 +150,29 @@ export default function ThresholdsPage() {
                         {item.drug_name ?? `Drug #${item.drug_id}`}
                       </p>
                       {item.drug_category && (
-                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${CATEGORY_COLORS[item.drug_category] ?? 'bg-gray-100 text-gray-600'}`}>
+                        <span className={`text-xs rounded-full px-2.5 py-0.5 font-medium ${CATEGORY_COLORS[item.drug_category] ?? 'bg-gray-100 text-gray-600'}`}>
                           {item.drug_category}
                         </span>
                       )}
                     </div>
-                    <div className="mt-1 text-xs text-gray-500 flex items-center gap-3">
-                      <span>최소수량: {item.min_quantity}</span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleToggleActive(item); }}
-                        className={`px-1.5 py-0.5 rounded font-medium ${
-                          item.is_active
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-gray-100 text-gray-500'
-                        }`}
-                      >
-                        {item.is_active ? '활성' : '비활성'}
-                      </button>
+                    <div className="mt-1 text-xs text-gray-500">
+                      최소수량: {item.min_quantity}
                     </div>
                   </div>
-                  <button
-                    onClick={() => setDeleteItem(item)}
-                    className="text-gray-400 hover:text-red-500 ml-2"
-                  >
-                    <X size={18} />
-                  </button>
+                  <div className="flex items-center gap-2 ml-2">
+                    <Toggle
+                      checked={item.is_active}
+                      onChange={() => handleToggleActive(item)}
+                    />
+                    <button
+                      onClick={() => setDeleteItem(item)}
+                      className="text-gray-400 hover:text-red-500 transition-colors duration-150"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
           <Pagination total={total} limit={LIMIT} offset={offset} onChange={setOffset} />
@@ -361,7 +356,7 @@ function ThresholdEditModal({
         <div className="bg-gray-50 rounded-lg p-2 text-sm font-medium text-gray-700">
           {item.drug_name ?? `Drug #${item.drug_id}`}
           {item.drug_category && (
-            <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${CATEGORY_COLORS[item.drug_category] ?? 'bg-gray-100 text-gray-600'}`}>
+            <span className={`ml-2 text-xs rounded-full px-2.5 py-0.5 font-medium ${CATEGORY_COLORS[item.drug_category] ?? 'bg-gray-100 text-gray-600'}`}>
               {item.drug_category}
             </span>
           )}
@@ -376,15 +371,10 @@ function ThresholdEditModal({
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={isActive}
-            onChange={(e) => setIsActive(e.target.checked)}
-            className="rounded border-gray-300"
-          />
-          활성화
-        </label>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-gray-700">활성화</span>
+          <Toggle checked={isActive} onChange={setIsActive} />
+        </div>
         <button
           onClick={handleSave}
           disabled={saving || minQuantity < 1}

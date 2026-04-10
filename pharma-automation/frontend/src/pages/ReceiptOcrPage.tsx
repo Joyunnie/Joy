@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import api from '../api/client.ts';
+import Card from '../components/common/Card.tsx';
 import PageHeader from '../components/common/PageHeader.tsx';
+import FilterChips from '../components/FilterChips.tsx';
 import type { ReceiptListResponse, ReceiptOcrRecordOut, ReceiptOcrResponse } from '../types/api.ts';
 import Pagination from '../components/Pagination.tsx';
 import EmptyState from '../components/EmptyState.tsx';
@@ -14,8 +16,14 @@ import { useToast } from '../hooks/useToast.ts';
 
 const LIMIT = 20;
 
+const STATUS_OPTIONS = [
+  { value: '', label: '전체' },
+  { value: 'PENDING', label: '대기' },
+  { value: 'CONFIRMED', label: '확정' },
+  { value: 'CANCELLED', label: '취소' },
+] as const;
+
 const STATUS_LABELS: Record<string, string> = {
-  '': '전체',
   PENDING: '대기',
   CONFIRMED: '확정',
   CANCELLED: '취소',
@@ -86,29 +94,20 @@ export default function ReceiptOcrPage() {
         action={
           <button
             onClick={() => setUploadOpen(true)}
-            className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+            className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-150"
           >
+            <Plus size={16} />
             촬영
           </button>
         }
       />
 
-      {/* 상태 필터 */}
-      <div className="flex gap-1.5 mb-4">
-        {Object.entries(STATUS_LABELS).map(([value, label]) => (
-          <button
-            key={value}
-            onClick={() => { setStatusFilter(value); setOffset(0); }}
-            className={`px-2.5 py-1 text-xs rounded-full transition-colors ${
-              statusFilter === value
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <FilterChips
+        options={STATUS_OPTIONS}
+        value={statusFilter}
+        onChange={(v) => { setStatusFilter(v); setOffset(0); }}
+        className="mb-4"
+      />
 
       {loading ? (
         <Spinner />
@@ -118,17 +117,14 @@ export default function ReceiptOcrPage() {
         <>
           <div className="space-y-2">
             {items.map((rec) => (
-              <div
-                key={rec.id}
-                className="bg-white rounded-lg shadow-sm p-3 border border-gray-100"
-              >
+              <Card key={rec.id} onClick={() => setDetailId(rec.id)}>
                 <div className="flex items-start justify-between">
-                  <div className="flex-1 cursor-pointer" onClick={() => setDetailId(rec.id)}>
+                  <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <p className="text-sm font-medium text-gray-800">
                         {rec.supplier_name ?? '거래처 미확인'}
                       </p>
-                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${statusColor(rec.intake_status)}`}>
+                      <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${statusColor(rec.intake_status)}`}>
                         {STATUS_LABELS[rec.intake_status] ?? rec.intake_status}
                       </span>
                     </div>
@@ -150,7 +146,7 @@ export default function ReceiptOcrPage() {
                     </button>
                   )}
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
           <Pagination total={total} limit={LIMIT} offset={offset} onChange={setOffset} />
