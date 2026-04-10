@@ -27,6 +27,7 @@ class TestSyncDrugsBulk:
                 "standard_code": f"BULK_{suffix}_{i:03d}",
                 "name": f"벌크약품{i}",
                 "category": "PRESCRIPTION",
+                "insurance_code": f"9{suffix}{i:04d}",
             }
             for i in range(50)
         ]

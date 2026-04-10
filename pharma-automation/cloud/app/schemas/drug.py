@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 class DrugOut(BaseModel):
     id: int
-    standard_code: str
+    standard_code: str | None = None
     name: str
     category: str
 

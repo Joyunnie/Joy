@@ -22,11 +22,12 @@ class TestSyncDrugs:
                         "name": "테스트약품A",
                         "manufacturer": "제약사A",
                         "category": "PRESCRIPTION",
+                        "insurance_code": f"6{suffix}01",
                     },
                     {
-                        "standard_code": f"PM_NEW_B{suffix}",
                         "name": "테스트약품B",
                         "category": "NARCOTIC",
+                        "insurance_code": f"6{suffix}02",
                     },
                 ]
             },
@@ -39,14 +40,14 @@ class TestSyncDrugs:
     async def test_sync_update_existing_drug(self, client, seed_data):
         """기존 약품 업데이트."""
         import time
-        code = f"PM_UPD_{int(time.time()) % 100000}"
+        ins_code = f"6{int(time.time()) % 100000}"
         headers = {"X-API-Key": seed_data["api_key"]}
         await client.post(
             "/api/v1/sync/drugs",
             headers=headers,
             json={
                 "drugs": [
-                    {"standard_code": code, "name": "원래이름", "category": "PRESCRIPTION"}
+                    {"name": "원래이름", "category": "PRESCRIPTION", "insurance_code": ins_code}
                 ]
             },
         )
@@ -56,10 +57,10 @@ class TestSyncDrugs:
             json={
                 "drugs": [
                     {
-                        "standard_code": code,
                         "name": "변경이름",
                         "manufacturer": "새제약사",
                         "category": "NARCOTIC",
+                        "insurance_code": ins_code,
                     }
                 ]
             },
@@ -69,23 +70,23 @@ class TestSyncDrugs:
         assert data["updated_count"] == 1
         assert data["new_count"] == 0
 
-    async def test_sync_drugs_empty_standard_code_rejected(self, client, seed_data):
-        """빈 standard_code는 422."""
+    async def test_sync_drugs_missing_insurance_code_rejected(self, client, seed_data):
+        """insurance_code 없으면 422."""
         resp = await client.post(
             "/api/v1/sync/drugs",
             headers={"X-API-Key": seed_data["api_key"]},
             json={
-                "drugs": [{"standard_code": "", "name": "빈코드", "category": "PRESCRIPTION"}]
+                "drugs": [{"name": "코드없음", "category": "PRESCRIPTION"}]
             },
         )
         assert resp.status_code == 422
 
     async def test_sync_drugs_no_api_key(self, client):
-        """API 키 없으면 401/403/422."""
+        """API 키 없으면 401/403."""
         resp = await client.post(
             "/api/v1/sync/drugs",
             headers={"X-API-Key": "invalid-key-xyz"},
-            json={"drugs": [{"standard_code": "X", "name": "Y", "category": "PRESCRIPTION"}]},
+            json={"drugs": [{"name": "Y", "category": "PRESCRIPTION", "insurance_code": "X"}]},
         )
         assert resp.status_code in (401, 403)
 
