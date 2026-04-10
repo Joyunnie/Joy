@@ -14,13 +14,15 @@ router = APIRouter()
 async def get_alerts(
     user: User = Depends(get_current_user),
     alert_type: str | None = Query(None),
-    unread_only: bool = Query(False),
+    is_read: bool | None = Query(None),
     limit: int = Query(50, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     return await alert_service.get_alerts(
-        db, user.pharmacy_id, alert_type=alert_type, unread_only=unread_only, limit=limit, offset=offset
+        db, user.pharmacy_id,
+        alert_type=alert_type, is_read=is_read,
+        limit=limit, offset=offset,
     )
 
 

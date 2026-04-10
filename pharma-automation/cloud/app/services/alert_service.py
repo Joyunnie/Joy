@@ -12,14 +12,16 @@ async def get_alerts(
     db: AsyncSession,
     pharmacy_id: int,
     alert_type: str | None = None,
-    unread_only: bool = False,
+    is_read: bool | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> AlertListResponse:
     conditions = [AlertLog.pharmacy_id == pharmacy_id]
     if alert_type:
         conditions.append(AlertLog.alert_type == alert_type)
-    if unread_only:
+    if is_read is True:
+        conditions.append(AlertLog.read_at.is_not(None))
+    elif is_read is False:
         conditions.append(AlertLog.read_at.is_(None))
 
     # Total count

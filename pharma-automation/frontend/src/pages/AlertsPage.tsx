@@ -77,8 +77,7 @@ export default function AlertsPage() {
         limit: LIMIT,
         offset,
         alert_type: typeFilter || undefined,
-        unread_only: readFilter === 'unread' || undefined,
-        read_only: readFilter === 'read' || undefined,
+        is_read: readFilter === 'read' ? true : readFilter === 'unread' ? false : undefined,
       });
       setAlerts(data.alerts);
       setTotal(data.total);

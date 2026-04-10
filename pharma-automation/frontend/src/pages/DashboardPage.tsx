@@ -42,7 +42,7 @@ export default function DashboardPage() {
       try {
         const [alertsData, otcRes, narcLowRes, prescRes, predData, todosRes] =
           await Promise.all([
-            fetchAlerts({ unread_only: true, limit: 5 }),
+            fetchAlerts({ is_read: false, limit: 5 }),
             api.get<OtcListResponse>('/otc-inventory', {
               params: { low_stock_only: true, limit: 1 },
             }),
@@ -93,7 +93,7 @@ export default function DashboardPage() {
     if (polling.current) return;
     polling.current = true;
     try {
-      const alertData = await fetchAlerts({ unread_only: true, limit: 5 });
+      const alertData = await fetchAlerts({ is_read: false, limit: 5 });
       setData(prev => prev ? {
         ...prev,
         unreadAlerts: alertData.total,

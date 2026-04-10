@@ -5,8 +5,7 @@ export interface FetchAlertsParams {
   limit?: number;
   offset?: number;
   alert_type?: string;
-  unread_only?: boolean;
-  read_only?: boolean;
+  is_read?: boolean;
 }
 
 export async function fetchAlerts(params: FetchAlertsParams = {}): Promise<AlertListResponse> {

@@ -83,11 +83,11 @@ class TestMarkAlertRead:
     async def test_unread_filter_excludes_read_alerts(
         self, client: AsyncClient, auth_headers, seed_data
     ):
-        """After marking as read, unread_only=true filter excludes it."""
+        """After marking as read, is_read=false filter excludes it."""
         alert_id = await _create_alert(seed_data["pharmacy_id"])
 
         # Before read: appears in unread list
-        resp = await client.get(f"{BASE}?unread_only=true", headers=auth_headers)
+        resp = await client.get(f"{BASE}?is_read=false", headers=auth_headers)
         ids_before = [a["id"] for a in resp.json()["alerts"]]
         assert alert_id in ids_before
 
@@ -95,7 +95,7 @@ class TestMarkAlertRead:
         await client.patch(f"{BASE}/{alert_id}/read", headers=auth_headers)
 
         # After read: excluded from unread list
-        resp = await client.get(f"{BASE}?unread_only=true", headers=auth_headers)
+        resp = await client.get(f"{BASE}?is_read=false", headers=auth_headers)
         ids_after = [a["id"] for a in resp.json()["alerts"]]
         assert alert_id not in ids_after
 
