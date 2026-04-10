@@ -110,7 +110,7 @@ export default function CanisterPage() {
       {/* Header */}
       <div className="sticky top-0 bg-white border-b px-4 py-3 z-10">
         <div className="flex items-center justify-between mb-2">
-          <h1 className="text-lg font-bold">캐니스터 매핑</h1>
+          <h1 className="text-lg font-semibold text-gray-900">캐니스터 매핑</h1>
           <span className="text-sm text-gray-500">
             {filledCount}/{TOTAL_SLOTS} 슬롯 사용
           </span>
