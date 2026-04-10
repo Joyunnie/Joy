@@ -11,7 +11,7 @@ from app.config import settings
 from app.database import engine
 from app.exceptions import ServiceError
 from app.rate_limit import limiter
-from app.routers import alerts, auth, drugs, inventory, narcotics, otc, predictions, prescription_ocr, receipt_ocr, rpa_commands, shelf_layouts, sync, thresholds, todos
+from app.routers import alerts, auth, drugs, inventory, narcotics, otc, predictions, receipt_ocr, shelf_layouts, sync, thresholds, todos
 from app.services.ocr_engine import init_ocr_engine
 
 
@@ -75,8 +75,6 @@ app.include_router(drugs.router)
 app.include_router(thresholds.router)
 app.include_router(shelf_layouts.router)
 app.include_router(receipt_ocr.router)
-app.include_router(prescription_ocr.router)
-app.include_router(rpa_commands.router)
 app.include_router(todos.router, prefix="/api/v1/todos", tags=["todos"])
 
 

@@ -319,64 +319,7 @@ class AtdpsCommand(Base):
     error_message: Mapped[str | None] = mapped_column(Text)
 
 
-# 15. prescription_ocr_records
-class PrescriptionOcrRecord(Base):
-    __tablename__ = "prescription_ocr_records"
-    __table_args__ = (
-        Index("idx_prescription_ocr_pharmacy_created", "pharmacy_id", "created_at"),
-        Index("idx_prescription_ocr_pharmacy_presc_num", "pharmacy_id", "prescription_number"),
-    )
-
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
-    image_path: Mapped[str | None] = mapped_column(Text)
-    ocr_status: Mapped[str] = mapped_column(String(20))
-    raw_text: Mapped[str | None] = mapped_column(Text)
-    patient_hash: Mapped[str | None] = mapped_column(String(64))
-    visit_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("patient_visit_history.id"))
-    patient_name: Mapped[str | None] = mapped_column(String(100))
-    patient_dob: Mapped[str | None] = mapped_column(String(20))
-    insurance_type: Mapped[str | None] = mapped_column(String(30))
-    prescriber_name: Mapped[str | None] = mapped_column(String(100))
-    prescriber_clinic: Mapped[str | None] = mapped_column(String(200))
-    prescription_date: Mapped[date | None] = mapped_column(Date)
-    prescription_number: Mapped[str | None] = mapped_column(String(50))
-    ocr_engine: Mapped[str | None] = mapped_column(String(30), server_default="GOOGLE_VISION")
-    confirmed_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
-    confirmed_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"))
-    duplicate_of: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("prescription_ocr_records.id"))
-    processed_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
-
-
-# 16. prescription_ocr_drugs
-class PrescriptionOcrDrug(Base):
-    __tablename__ = "prescription_ocr_drugs"
-    __table_args__ = (
-        Index("idx_prescription_ocr_drugs_record", "record_id"),
-    )
-
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    record_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("prescription_ocr_records.id", ondelete="CASCADE"))
-    drug_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("drugs.id"))
-    drug_name_raw: Mapped[str | None] = mapped_column(String(200))
-    dosage: Mapped[str | None] = mapped_column(String(50))
-    frequency: Mapped[str | None] = mapped_column(String(50))
-    days: Mapped[int | None] = mapped_column(Integer)
-    total_quantity: Mapped[float | None] = mapped_column(Float)
-    confidence: Mapped[float | None] = mapped_column(Float)
-    match_score: Mapped[float | None] = mapped_column(Float)
-    matched_drug_name: Mapped[str | None] = mapped_column(String(200))
-    is_narcotic: Mapped[bool] = mapped_column(Boolean, server_default="false")
-    is_confirmed: Mapped[bool] = mapped_column(Boolean, server_default="false")
-    confirmed_drug_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("drugs.id"))
-    confirmed_dosage: Mapped[str | None] = mapped_column(String(50))
-    confirmed_frequency: Mapped[str | None] = mapped_column(String(50))
-    confirmed_days: Mapped[int | None] = mapped_column(Integer)
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
-
-
-# 17. narcotics_inventory
+# 15. narcotics_inventory
 class NarcoticsInventory(Base):
     __tablename__ = "narcotics_inventory"
     __table_args__ = (UniqueConstraint("pharmacy_id", "drug_id", "lot_number"),)
@@ -452,27 +395,7 @@ class BackupLog(Base):
     reported_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
 
 
-# 21. rpa_commands — RPA 자동 입력 커맨드 큐
-class RpaCommand(Base):
-    __tablename__ = "rpa_commands"
-    __table_args__ = (
-        Index("idx_rpa_commands_pharmacy_status", "pharmacy_id", "status"),
-    )
-
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    pharmacy_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("pharmacies.id"))
-    command_type: Mapped[str] = mapped_column(String(30))  # NARCOTICS_INPUT | PRESCRIPTION_INPUT
-    payload: Mapped[dict] = mapped_column(JSONB)
-    status: Mapped[str] = mapped_column(String(20), default="PENDING")  # PENDING | SENT | EXECUTING | SUCCESS | FAILED | SKIPPED
-    created_at: Mapped[datetime] = mapped_column(TIMESTAMPTZ, server_default="now()")
-    sent_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
-    started_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
-    completed_at: Mapped[datetime | None] = mapped_column(TIMESTAMPTZ)
-    error_message: Mapped[str | None] = mapped_column(Text)
-    retry_count: Mapped[int] = mapped_column(Integer, default=0)
-
-
-# 22. todos — 약국 공유 할일 메모장
+# 19. todos — 약국 공유 할일 메모장
 class Todo(Base):
     __tablename__ = "todos"
     __table_args__ = (

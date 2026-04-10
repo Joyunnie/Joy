@@ -33,8 +33,6 @@ class Agent1:
         self.offline_queue = OfflineQueue(self.config)
         self.pm20_reader: PM20Reader | None = None
         self.atdps_reader: ATDPSReader | None = None
-        self.rpa_manager = None
-        self.tray_manager = None
         self._stop_event = threading.Event()
         self._last_drug_master_sync: datetime | None = None
 
@@ -65,11 +63,6 @@ class Agent1:
                 logger.error("Sync cycle failed: %s", e)
             self._stop_event.wait(timeout=self.config.agent.polling_interval_seconds)
 
-        # Graceful shutdown: RPA + tray
-        if self.rpa_manager:
-            self.rpa_manager.stop()
-        if self.tray_manager:
-            self.tray_manager.stop()
         logger.info("Agent1 shutting down gracefully.")
 
     def _handle_signal(self, signum, frame):
@@ -269,28 +262,6 @@ def main():
             logger.warning("pymssql not installed, PM20Reader disabled")
         except Exception as e:
             logger.error("Failed to initialize PM20Reader: %s", e)
-
-    # RPA 모듈 초기화 (P35: polling_interval from config)
-    rpa_enabled = config.get_section("rpa").get("enabled", False) if config.get_section("rpa") else False
-    if rpa_enabled:
-        try:
-            from agent1.agent.rpa.rpa_manager import RpaManager
-            from agent1.agent.rpa.tray import TrayManager
-
-            rpa_polling = config.get_section("rpa").get("polling_interval_seconds", 2)
-            rpa_coords = config.get_section("rpa").get("coordinates", {})
-            agent.rpa_manager = RpaManager(
-                agent.cloud_client,
-                polling_interval=rpa_polling,
-                rpa_coordinates=rpa_coords,
-            )
-            agent.tray_manager = TrayManager(agent.rpa_manager)
-            agent.tray_manager.start()
-            logger.info("RPA module initialized (polling every %ds)", rpa_polling)
-        except ImportError as e:
-            logger.warning("RPA dependencies not installed: %s", e)
-        except Exception as e:
-            logger.error("Failed to initialize RPA: %s", e)
 
     agent.run()
 

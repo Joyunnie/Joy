@@ -10,7 +10,6 @@ import PredictionsPage from './pages/PredictionsPage.tsx';
 import ThresholdsPage from './pages/ThresholdsPage.tsx';
 import ShelfViewPage from './pages/ShelfViewPage.tsx';
 import ReceiptOcrPage from './pages/ReceiptOcrPage.tsx';
-import PrescriptionOcrPage from './pages/PrescriptionOcrPage.tsx';
 import TodoPage from './pages/TodoPage.tsx';
 
 export default function App() {
@@ -28,7 +27,6 @@ export default function App() {
               <Route path="/thresholds" element={<ThresholdsPage />} />
               <Route path="/shelf" element={<ShelfViewPage />} />
               <Route path="/receipt-ocr" element={<ReceiptOcrPage />} />
-              <Route path="/prescription-ocr" element={<PrescriptionOcrPage />} />
               <Route path="/todos" element={<TodoPage />} />
             </Route>
           </Route>

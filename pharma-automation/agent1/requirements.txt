@@ -2,10 +2,3 @@ psutil
 pymssql
 pyyaml
 requests
-# RPA dependencies (Phase 5B)
-pyautogui
-pygetwindow
-pyperclip
-pystray
-Pillow
-pynput
