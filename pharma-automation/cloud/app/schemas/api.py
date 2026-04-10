@@ -124,7 +124,6 @@ class InventoryStatusResponse(BaseModel):
 class NeededDrugOut(BaseModel):
     drug_name: str
     quantity: int
-    in_stock: int | None = None
 
 
 class PredictionOut(BaseModel):
@@ -141,3 +140,4 @@ class PredictionOut(BaseModel):
 
 class PredictionListResponse(BaseModel):
     predictions: list[PredictionOut]
+    total: int

@@ -1,5 +1,4 @@
 from datetime import date, datetime, timedelta, timezone
-
 import logging
 
 from sqlalchemy import and_, delete, func, select
@@ -7,22 +6,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.tables import (
     AlertLog,
+    AtdpsCanister,
     Drug,
-    DrugThreshold,
     PatientVisitHistory,
     Pharmacy,
-    PrescriptionInventory,
     RefreshToken,
     VisitDrug,
     VisitPrediction,
 )
-
-logger = logging.getLogger(__name__)
 from app.schemas.api import (
     NeededDrugOut,
     PredictionListResponse,
     PredictionOut,
 )
+
+logger = logging.getLogger(__name__)
 
 
 async def get_predictions(
@@ -30,6 +28,8 @@ async def get_predictions(
     pharmacy_id: int,
     days_ahead: int = 7,
     include_alerted: bool = True,
+    limit: int = 200,
+    offset: int = 0,
 ) -> PredictionListResponse:
     today = date.today()
     cutoff = today + timedelta(days=days_ahead)
@@ -40,7 +40,7 @@ async def get_predictions(
     )
     pharmacy = pharm_result.scalar_one_or_none()
     if not pharmacy:
-        return PredictionListResponse(predictions=[])
+        return PredictionListResponse(predictions=[], total=0)
 
     conditions = [
         VisitPrediction.pharmacy_id == pharmacy_id,
@@ -49,8 +49,17 @@ async def get_predictions(
     if not include_alerted:
         conditions.append(VisitPrediction.alert_sent == False)  # noqa: E712
 
+    total_result = await db.execute(
+        select(func.count(VisitPrediction.id)).where(and_(*conditions))
+    )
+    total = total_result.scalar() or 0
+
     result = await db.execute(
-        select(VisitPrediction).where(and_(*conditions)).order_by(VisitPrediction.predicted_visit_date)
+        select(VisitPrediction)
+        .where(and_(*conditions))
+        .order_by(VisitPrediction.predicted_visit_date)
+        .limit(limit)
+        .offset(offset)
     )
     predictions = result.scalars().all()
 
@@ -68,7 +77,6 @@ async def get_predictions(
 
     # Prefetch visit_drugs + drug info for all visit_ids at once
     visit_drug_map: dict[int, list[tuple]] = {}  # {visit_id: [(vd, drug), ...]}
-    all_drug_ids: set[int] = set()
     if visit_ids:
         vd_result = await db.execute(
             select(VisitDrug, Drug)
@@ -77,21 +85,6 @@ async def get_predictions(
         )
         for vd, drug in vd_result.all():
             visit_drug_map.setdefault(vd.visit_id, []).append((vd, drug))
-            all_drug_ids.add(drug.id)
-
-    # Prefetch inventory for all drug_ids at once
-    if all_drug_ids:
-        inv_result = await db.execute(
-            select(PrescriptionInventory).where(
-                and_(
-                    PrescriptionInventory.pharmacy_id == pharmacy_id,
-                    PrescriptionInventory.drug_id.in_(all_drug_ids),
-                )
-            )
-        )
-        inv_map = {inv.drug_id: inv for inv in inv_result.scalars().all()}
-    else:
-        inv_map = {}
 
     # Build response in memory
     out: list[PredictionOut] = []
@@ -108,12 +101,10 @@ async def get_predictions(
                 based_on_visit_date = last_visit.visit_date
 
             for vd, drug in visit_drug_map.get(vp.last_visit_id, []):
-                inv = inv_map.get(drug.id)
                 needed_drugs.append(
                     NeededDrugOut(
                         drug_name=drug.name,
                         quantity=vd.quantity_dispensed,
-                        in_stock=inv.current_quantity if inv else None,
                     )
                 )
 
@@ -131,7 +122,7 @@ async def get_predictions(
             )
         )
 
-    return PredictionListResponse(predictions=out)
+    return PredictionListResponse(predictions=out, total=total)
 
 
 async def run_daily_predictions(
@@ -213,8 +204,7 @@ async def run_daily_predictions(
             vp.patient_hash: vp for vp in vp_result.scalars().all()
         }
 
-        # 3. Bulk: prefetch all thresholds for this pharmacy
-        all_drug_ids: set[int] = set()
+        # 3. Collect alert candidates
         visit_ids_for_alerts: list[int] = []
 
         # Process predictions in memory
@@ -253,74 +243,49 @@ async def run_daily_predictions(
                     alert_candidates.append((visit.patient_hash, predicted_date, visit, vp))
                     visit_ids_for_alerts.append(visit.id)
 
-        # 4. Bulk: fetch drugs + inventory for all alert-candidate visits at once
+        # 4. Bulk: fetch drugs for alert candidates + canister drug codes
         if visit_ids_for_alerts:
+            canister_result = await db.execute(
+                select(AtdpsCanister.drug_code, AtdpsCanister.drug_name)
+                .where(AtdpsCanister.pharmacy_id == pharmacy.id)
+            )
+            canister_name_by_code: dict[str, str] = {
+                row.drug_code: row.drug_name for row in canister_result.all()
+            }
+
             vd_result = await db.execute(
-                select(VisitDrug, Drug, PrescriptionInventory)
+                select(VisitDrug, Drug)
                 .join(Drug, VisitDrug.drug_id == Drug.id)
-                .outerjoin(
-                    PrescriptionInventory,
-                    and_(
-                        PrescriptionInventory.pharmacy_id == pharmacy.id,
-                        PrescriptionInventory.drug_id == Drug.id,
-                    ),
-                )
                 .where(VisitDrug.visit_id.in_(visit_ids_for_alerts))
             )
-            # Group by visit_id
             visit_drugs_map: dict[int, list[tuple]] = {}
-            for vd, drug, inv in vd_result.all():
-                visit_drugs_map.setdefault(vd.visit_id, []).append((vd, drug, inv))
-                if drug:
-                    all_drug_ids.add(drug.id)
-
-            # 5. Bulk: prefetch thresholds for all drugs across all alert candidates
-            threshold_map: dict[int, DrugThreshold] = {}
-            if all_drug_ids:
-                th_result = await db.execute(
-                    select(DrugThreshold).where(
-                        and_(
-                            DrugThreshold.pharmacy_id == pharmacy.id,
-                            DrugThreshold.drug_id.in_(all_drug_ids),
-                            DrugThreshold.is_active == True,  # noqa: E712
-                        )
-                    )
-                )
-                threshold_map = {t.drug_id: t for t in th_result.scalars().all()}
+            for vd, drug in vd_result.all():
+                visit_drugs_map.setdefault(vd.visit_id, []).append((vd, drug))
         else:
+            canister_name_by_code = {}
             visit_drugs_map = {}
-            threshold_map = {}
 
-        # 6. Create alerts in memory
+        # 5. Create alerts — only for patients with at least one canister drug
         for patient_hash, predicted_date, visit, vp in alert_candidates:
+            canister_drugs = sorted({
+                canister_name_by_code[drug.insurance_code]
+                for vd, drug in visit_drugs_map.get(visit.id, [])
+                if drug.insurance_code and drug.insurance_code in canister_name_by_code
+            })
+            if not canister_drugs:
+                continue  # Don't mark alert_sent — re-evaluate if canisters change
+
             alert = AlertLog(
                 pharmacy_id=pharmacy.id,
                 alert_type="VISIT_APPROACHING",
                 ref_table="visit_predictions",
                 ref_id=vp.id,
-                message=f"환자 {patient_hash[:8]}... 예상 내원일: {predicted_date}",
+                message=f"환자 {patient_hash[:8]}... 예상 내원일: {predicted_date} — 캐니스터 약품: {', '.join(canister_drugs)}",
                 sent_via="IN_APP",
             )
             db.add(alert)
             vp.alert_sent = True
             stats["alerts_created"] += 1
-
-            # Check low-stock for this visit's drugs (all from prefetched maps)
-            for vd, drug, inv in visit_drugs_map.get(visit.id, []):
-                if not inv:
-                    continue
-                threshold = threshold_map.get(drug.id)
-                if threshold and inv.current_quantity < threshold.min_quantity:
-                    low_alert = AlertLog(
-                        pharmacy_id=pharmacy.id,
-                        alert_type="LOW_STOCK",
-                        ref_table="prescription_inventory",
-                        ref_id=drug.id,
-                        message=f"{drug.name} 재고 부족 (현재: {inv.current_quantity}, 최소: {threshold.min_quantity}) — 환자 {patient_hash[:8]}... 내원 예정",
-                        sent_via="IN_APP",
-                    )
-                    db.add(low_alert)
-                    stats["alerts_created"] += 1
 
     # Housekeeping: clean up expired refresh tokens (>7 days past expiry)
     cutoff = datetime.now(timezone.utc) - timedelta(days=7)

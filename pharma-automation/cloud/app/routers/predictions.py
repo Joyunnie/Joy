@@ -15,8 +15,12 @@ async def get_predictions(
     user: User = Depends(get_current_user),
     days_ahead: int = Query(7),
     include_alerted: bool = Query(True),
+    limit: int = Query(200, le=500),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
     return await prediction_service.get_predictions(
-        db, user.pharmacy_id, days_ahead=days_ahead, include_alerted=include_alerted
+        db, user.pharmacy_id,
+        days_ahead=days_ahead, include_alerted=include_alerted,
+        limit=limit, offset=offset,
     )

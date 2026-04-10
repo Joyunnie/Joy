@@ -97,7 +97,6 @@ export interface InventoryStatusResponse {
 export interface NeededDrug {
   drug_name: string;
   quantity: number;
-  in_stock: number | null;
 }
 
 export interface PredictionOut {
@@ -114,6 +113,7 @@ export interface PredictionOut {
 
 export interface PredictionListResponse {
   predictions: PredictionOut[];
+  total: number;
 }
 
 // --- Drug Search ---
