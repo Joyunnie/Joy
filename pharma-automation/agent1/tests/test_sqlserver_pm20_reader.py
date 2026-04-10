@@ -11,7 +11,6 @@ import pytest
 
 from agent1.agent.interfaces.pm20_reader import (
     DrugMasterItem,
-    DrugStockItem,
     VisitRecord,
 )
 from agent1.agent.readers.sqlserver_pm20_reader import SqlServerPM20Reader
@@ -26,73 +25,6 @@ def reader(mock_config):
         r = SqlServerPM20Reader(mock_config)
         r._conn = mock_conn
         yield r, mock_conn
-
-
-class TestReadDrugStock:
-    def test_basic(self, reader):
-        r, mock_conn = reader
-        cursor = MagicMock()
-        mock_conn.cursor.return_value = cursor
-        cursor.fetchall.return_value = [
-            {
-                "insurance_code": "643507086",
-                "drug_name": "아모시실린",
-                "current_quantity": Decimal("50.00"),
-            },
-            {
-                "insurance_code": "671806320",
-                "drug_name": "펜타닐패치",
-                "current_quantity": Decimal("5.50"),
-            },
-        ]
-
-        result = r.read_drug_stock()
-
-        assert len(result) == 2
-        assert isinstance(result[0], DrugStockItem)
-        assert result[0].drug_insurance_code == "643507086"
-        assert result[0].drug_name == "아모시실린"
-        assert result[0].current_quantity == 50.0
-
-    def test_empty_temp_stock(self, reader):
-        r, mock_conn = reader
-        cursor = MagicMock()
-        mock_conn.cursor.return_value = cursor
-        cursor.fetchall.return_value = []
-
-        result = r.read_drug_stock()
-        assert result == []
-
-    def test_negative_quantity(self, reader):
-        """음수 재고 처리."""
-        r, mock_conn = reader
-        cursor = MagicMock()
-        mock_conn.cursor.return_value = cursor
-        cursor.fetchall.return_value = [
-            {
-                "insurance_code": "643507086",
-                "drug_name": "아모시실린",
-                "current_quantity": Decimal("-3.50"),
-            },
-        ]
-
-        result = r.read_drug_stock()
-        assert result[0].current_quantity == -3.5
-
-    def test_data_error_skipped(self, reader):
-        """JOIN 실패 또는 데이터 이상 행은 스킵."""
-        r, mock_conn = reader
-        cursor = MagicMock()
-        mock_conn.cursor.return_value = cursor
-        cursor.fetchall.return_value = [
-            {"insurance_code": None, "drug_name": "??", "current_quantity": 10},
-            {"insurance_code": "643507086", "drug_name": "정상", "current_quantity": Decimal("5")},
-        ]
-
-        result = r.read_drug_stock()
-        # None insurance_code → strip() 실패 → 스킵
-        assert len(result) == 1
-        assert result[0].drug_insurance_code == "643507086"
 
 
 class TestReadDrugMaster:
@@ -423,5 +355,5 @@ class TestConnectionHandling:
             cursor.fetchone.return_value = (1,)
             cursor.fetchall.return_value = []
 
-            r.read_drug_stock()
+            r.read_drug_master()
             mock_pymssql.connect.assert_called_once()

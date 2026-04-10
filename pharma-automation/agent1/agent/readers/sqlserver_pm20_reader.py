@@ -18,27 +18,12 @@ from agent1.agent.config import AgentConfig
 from agent1.agent.interfaces.pm20_reader import (
     DrugDispensed,
     DrugMasterItem,
-    DrugStockItem,
     InventoryItem,
     PM20Reader,
     VisitRecord,
 )
 
 logger = logging.getLogger("agent1.pm20_reader")
-
-# TEMP_STOCK.DRUG_CODE = 건강보험 약품코드 (nvarchar 18)
-# TBSIM040_01.DRUG_CODE = 건강보험 약품코드 마스터 (nvarchar 18)
-# TRIM only the small-table side (TEMP_STOCK) — leave TBSIM040_01 (186K rows) unwrapped
-# so SQL Server can use its index on DRUG_CODE.
-SQL_DRUG_STOCK = """
-SELECT
-    ts.DRUG_CODE        AS insurance_code,
-    m.ARTCNM            AS drug_name,
-    ts.MDCN_MQTY        AS current_quantity
-FROM TEMP_STOCK ts
-    INNER JOIN TBSIM040_01 m ON LTRIM(RTRIM(ts.DRUG_CODE)) = m.DRUG_CODE
-WHERE ts.DRUG_CODE IS NOT NULL AND ts.DRUG_CODE <> ''
-"""
 
 SQL_DRUG_MASTER = """
 SELECT
@@ -139,24 +124,6 @@ class SqlServerPM20Reader(PM20Reader):
     def read_inventory(self) -> list[InventoryItem]:
         """ATDPS 카세트 기반 재고. ATDPS 미연동이므로 빈 리스트."""
         return []
-
-    def read_drug_stock(self) -> list[DrugStockItem]:
-        """TEMP_STOCK + TBSIM040_01 JOIN: 약품별 현재 재고."""
-        rows = self._execute_query(SQL_DRUG_STOCK)
-        items = []
-        for row in rows:
-            try:
-                ins_code = row["insurance_code"]
-                if not ins_code:
-                    raise ValueError("empty insurance_code")
-                items.append(DrugStockItem(
-                    drug_insurance_code=ins_code.strip(),
-                    drug_name=row["drug_name"].strip() if row["drug_name"] else "",
-                    current_quantity=float(row["current_quantity"] or 0),
-                ))
-            except (KeyError, TypeError, ValueError, AttributeError) as e:
-                logger.warning("Skipping drug_stock row due to data error: %s (row=%s)", e, row)
-        return items
 
     def read_drug_master(self) -> list[DrugMasterItem]:
         """TBSID040_04 + TBSIM040_01: actually-dispensed prescription drug master."""

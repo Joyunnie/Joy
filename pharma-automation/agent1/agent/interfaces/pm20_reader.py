@@ -20,14 +20,6 @@ class InventoryItem:
 
 
 @dataclass
-class DrugStockItem:
-    """PM+20 TEMP_STOCK 약품별 재고 (카세트가 아닌 약품 단위)."""
-    drug_insurance_code: str  # TEMP_STOCK.DRUG_CODE (건강보험 약품코드)
-    drug_name: str            # TBSIM040_01.ARTCNM
-    current_quantity: float   # TEMP_STOCK.MDCN_MQTY (decimal, 음수 가능)
-
-
-@dataclass
 class DrugMasterItem:
     """PM+20 TBSID040_04 + TBSIM040_01 처방 약품 마스터."""
     standard_code: str | None  # TBSIM040_01.TITLECODE (barcode), None if absent
@@ -53,10 +45,6 @@ class PM20Reader(ABC):
     @abstractmethod
     def read_inventory(self) -> list[InventoryItem]:
         """ATDPS 카세트 기반 재고 조회. ATDPS 미연동 시 빈 리스트 반환."""
-
-    @abstractmethod
-    def read_drug_stock(self) -> list[DrugStockItem]:
-        """TEMP_STOCK + TBSIM040_01 JOIN: 약품별 현재 재고 수량 조회."""
 
     @abstractmethod
     def read_drug_master(self) -> list[DrugMasterItem]:

@@ -281,8 +281,48 @@ async def sync_cassette_mapping(
     )
 
 
+async def _deduct_dispensed_from_stock(
+    db: AsyncSession,
+    pharmacy_id: int,
+    deductions: dict[int, int],
+    resolved_drugs: dict[int, Drug],
+) -> None:
+    """Deduct dispensed quantities from drug_stock. Clamps to 0 if negative."""
+    if not deductions:
+        return
+    stock_result = await db.execute(
+        select(DrugStock).where(
+            and_(
+                DrugStock.pharmacy_id == pharmacy_id,
+                DrugStock.drug_id.in_(deductions.keys()),
+            )
+        )
+    )
+    stock_map = {s.drug_id: s for s in stock_result.scalars().all()}
+
+    for drug_id, qty in deductions.items():
+        stock = stock_map.get(drug_id)
+        if not stock:
+            continue  # drug_stock not initialized yet — skip
+        new_qty = float(stock.current_quantity) - qty
+        if new_qty < 0:
+            logger.warning(
+                "Stock for drug_id=%d would go negative (%.1f - %d), clamping to 0",
+                drug_id, float(stock.current_quantity), qty,
+            )
+            new_qty = 0
+        stock.current_quantity = new_qty
+        stock.updated_at = datetime.now(timezone.utc)
+
+        drug = resolved_drugs[drug_id]
+        await check_and_create_low_stock_alert(
+            db, pharmacy_id, drug_id, new_qty, drug.name,
+            "LOW_STOCK", "drug_stock",
+        )
+
+
 # ---------------------------------------------------------------------------
-# sync_visits: ~3 queries (was M+E+D)
+# sync_visits: ~6 queries (resolver 2 + existing visits 1 + visit drugs 1 + drug_stock 1 + alerts)
 # ---------------------------------------------------------------------------
 
 
@@ -407,37 +447,7 @@ async def sync_visits(
             resolved_drugs[drug.id] = drug
 
     # 8. Deduct dispensed quantities from drug_stock (only for new visits)
-    if deductions:
-        stock_result = await db.execute(
-            select(DrugStock).where(
-                and_(
-                    DrugStock.pharmacy_id == pharmacy_id,
-                    DrugStock.drug_id.in_(deductions.keys()),
-                )
-            )
-        )
-        stock_map = {s.drug_id: s for s in stock_result.scalars().all()}
-
-        for drug_id, qty in deductions.items():
-            stock = stock_map.get(drug_id)
-            if not stock:
-                continue  # drug_stock not initialized yet — skip
-            new_qty = float(stock.current_quantity) - qty
-            if new_qty < 0:
-                logger.warning(
-                    "Stock for drug_id=%d would go negative (%.1f - %d), clamping to 0",
-                    drug_id, float(stock.current_quantity), qty,
-                )
-                new_qty = 0
-            stock.current_quantity = new_qty
-            stock.updated_at = datetime.now(timezone.utc)
-
-            # Check low-stock alert
-            drug = resolved_drugs[drug_id]
-            await check_and_create_low_stock_alert(
-                db, pharmacy_id, drug_id, new_qty, drug.name,
-                "LOW_STOCK", "drug_stock",
-            )
+    await _deduct_dispensed_from_stock(db, pharmacy_id, deductions, resolved_drugs)
 
     return SyncVisitsResponse(
         synced_count=len(visit_ids),
