@@ -62,6 +62,18 @@ class Agent1:
                 logger.error("Sync cycle failed: %s", e)
             self._stop_event.wait(timeout=self.config.agent.polling_interval_seconds)
 
+        # Close readers to release DB connections
+        if self.pm20_reader:
+            try:
+                self.pm20_reader.close()
+            except Exception as e:
+                logger.warning("Error closing PM20 reader: %s", e)
+        if self.atdps_reader and hasattr(self.atdps_reader, "close"):
+            try:
+                self.atdps_reader.close()
+            except Exception as e:
+                logger.warning("Error closing ATDPS reader: %s", e)
+
         logger.info("Agent1 shutting down gracefully.")
 
     def _handle_signal(self, signum, frame):
