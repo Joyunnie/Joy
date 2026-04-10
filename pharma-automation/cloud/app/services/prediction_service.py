@@ -4,8 +4,6 @@ import logging
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.utils.timezone import KST
-
 from app.models.tables import (
     AlertLog,
     AtdpsCanister,
@@ -22,6 +20,8 @@ from app.schemas.api import (
 )
 
 logger = logging.getLogger(__name__)
+
+KST = timezone(timedelta(hours=9))
 
 
 async def get_predictions(

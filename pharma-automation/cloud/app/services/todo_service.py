@@ -7,7 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.tables import Todo
 from app.schemas.todo import TodoFilter, TodoListResponse
-from app.utils.timezone import KST
+
+KST = timezone(timedelta(hours=9))
 
 
 def _kst_today_range() -> tuple[datetime, datetime]:
