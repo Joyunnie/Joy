@@ -33,12 +33,12 @@ class TestEnqueueAndFlush:
         assert queue.pending_count() == 0
         queue.enqueue("inventory", {"items": []})
         assert queue.pending_count() == 1
-        queue.enqueue("drug-stock", {"items": [1, 2]})
+        queue.enqueue("inventory", {"items": [1, 2]})
         assert queue.pending_count() == 2
 
     def test_flush_sends_all_items_in_fifo_order(self, queue):
         queue.enqueue("inventory", {"order": 1})
-        queue.enqueue("drug-stock", {"order": 2})
+        queue.enqueue("inventory", {"order": 2})
         queue.enqueue("visits", {"order": 3})
 
         sent_types = []
@@ -47,7 +47,7 @@ class TestEnqueueAndFlush:
 
         count = queue.flush(mock_client)
         assert count == 3
-        assert sent_types == ["inventory", "drug-stock", "visits"]
+        assert sent_types == ["inventory", "inventory", "visits"]
         assert queue.pending_count() == 0
 
     def test_flush_empty_queue_returns_zero(self, queue):
@@ -57,7 +57,7 @@ class TestEnqueueAndFlush:
 
     def test_flush_preserves_json_payload(self, queue):
         payload = {"items": [{"code": "KD123", "qty": 50.5}]}
-        queue.enqueue("drug-stock", payload)
+        queue.enqueue("inventory", payload)
 
         received = []
         mock_client = MagicMock()

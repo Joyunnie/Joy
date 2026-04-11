@@ -34,11 +34,11 @@ class TestPostSync:
         mock_resp.raise_for_status.return_value = None
         client.session.post = MagicMock(return_value=mock_resp)
 
-        result = client.post_sync("drug-stock", {"items": []})
+        result = client.post_sync("inventory", {"items": []})
         assert result == {"synced_count": 5}
         client.session.post.assert_called_once()
         call_args = client.session.post.call_args
-        assert "/api/v1/sync/drug-stock" in call_args.args[0]
+        assert "/api/v1/sync/inventory" in call_args.args[0]
 
     def test_connection_error_raises(self, client):
         client.session.post = MagicMock(

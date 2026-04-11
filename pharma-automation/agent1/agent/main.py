@@ -172,15 +172,18 @@ class Agent1:
         try:
             inventory = self.pm20_reader.read_inventory()
             if inventory:
-                self._sync_or_queue("inventory", {"items": [
-                    {
-                        "cassette_number": item.cassette_number,
-                        "drug_standard_code": item.drug_standard_code,
-                        "current_quantity": item.current_quantity,
-                        "quantity_source": "PM20",
-                    }
-                    for item in inventory
-                ]})
+                self._sync_or_queue("inventory", {
+                    "items": [
+                        {
+                            "cassette_number": item.cassette_number,
+                            "drug_standard_code": item.drug_standard_code,
+                            "current_quantity": item.current_quantity,
+                            "quantity_source": "PM20",
+                        }
+                        for item in inventory
+                    ],
+                    "synced_at": datetime.now(timezone.utc).isoformat(),
+                })
         except Exception as e:
             logger.error("Inventory sync failed: %s", e)
 
@@ -188,14 +191,17 @@ class Agent1:
         """ATDPS 카세트 매핑 동기화."""
         try:
             mappings = self.atdps_reader.read_cassette_mappings()
-            self._sync_or_queue("cassette-mapping", {"mappings": [
-                {
-                    "cassette_number": m.cassette_number,
-                    "drug_standard_code": m.drug_standard_code,
-                    "mapping_source": "ATDPS",
-                }
-                for m in mappings
-            ]})
+            self._sync_or_queue("cassette-mapping", {
+                "mappings": [
+                    {
+                        "cassette_number": m.cassette_number,
+                        "drug_standard_code": m.drug_standard_code,
+                        "mapping_source": "ATDPS",
+                    }
+                    for m in mappings
+                ],
+                "synced_at": datetime.now(timezone.utc).isoformat(),
+            })
         except Exception as e:
             logger.error("ATDPS cassette mapping sync failed: %s", e)
 
